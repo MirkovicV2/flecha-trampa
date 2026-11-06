@@ -98,3 +98,23 @@ test('home and settings fit portrait screens and all navigation works', async ({
   await page.screenshot({ path: `.artifacts/game-${testInfo.project.name}.png`, fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
+
+test('reload restores the exact board, hints, settings and one counted start', async ({ page }) => {
+  await skipTutorial(page);
+  await page.getByRole('button', { name: /Jugar ahora/ }).click();
+  const board = await readBoard(page);
+  const first = solve(board).sequence[0]!;
+  await page.locator(`[data-arrow="${first}"]`).click();
+  await expect(page.locator('[data-arrow]')).toHaveCount(board.arrows.length - 1);
+  await page.getByRole('button', { name: 'Una pista' }).click();
+  await page.reload();
+  await page.getByRole('button', { name: /Continuar partida/ }).click();
+  await readBoard(page);
+  await expect(page.locator('[data-arrow]')).toHaveCount(board.arrows.length - 1);
+  await expect(page.locator(`[data-arrow="${first}"]`)).toHaveCount(0);
+  await expect(page.locator('[data-hints]')).toHaveText('2');
+  await page.getByRole('button', { name: 'Pausar', exact: true }).click();
+  await page.getByRole('button', { name: 'Volver al inicio', exact: true }).click();
+  await page.getByRole('button', { name: 'Tu progreso', exact: true }).click();
+  await expect(page.locator('.stat-card').filter({ hasText: 'Partidas jugadas' }).locator('strong')).toHaveText('1');
+});
