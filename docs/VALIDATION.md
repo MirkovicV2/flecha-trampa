@@ -4,16 +4,19 @@ Fecha: 6 de noviembre de 2026. Equipo Windows 11 Pro, build 26200; proyecto en `
 
 ## Comprobaciones realizadas
 
-| Comprobación                                        | Resultado                                                                     |
-| --------------------------------------------------- | ----------------------------------------------------------------------------- |
-| ESLint sin advertencias                             | Correcto                                                                      |
-| TypeScript estricto y Vite build                    | Correcto                                                                      |
-| Vitest                                              | 64 pruebas correctas en 7 archivos                                            |
-| Generación masiva                                   | 1.000 tableros solucionados por solver y ejecutados por el motor, sin errores |
-| Chromium móvil y escritorio, servidor de desarrollo | 20 pruebas correctas                                                          |
-| npm audit                                           | 0 vulnerabilidades conocidas en la última instalación revisada                |
+| Comprobación                                        | Resultado                                                                      |
+| --------------------------------------------------- | ------------------------------------------------------------------------------ |
+| ESLint sin advertencias                             | Correcto                                                                       |
+| TypeScript estricto y Vite build                    | Correcto                                                                       |
+| Vitest                                              | 64 pruebas correctas en 7 archivos                                             |
+| Generación masiva                                   | 1.000 tableros solucionados por solver y ejecutados por el motor, sin errores  |
+| Chromium móvil y escritorio, servidor de desarrollo | 20 pruebas correctas                                                           |
+| GitHub Actions, Node 24 en Linux                    | `validate` y `browser-tests` correctos: 64 pruebas de lógica y 20 de navegador |
+| npm audit                                           | 0 vulnerabilidades conocidas en la última instalación revisada                 |
 
 Verificación final completada: `npm ci` correcto, cero vulnerabilidades conocidas, lint y formato correctos, TypeScript y Vite correctos y 20 pruebas de navegador correctas contra la compilación de producción en `dist/`. Se verificaron además los 100 tamaños rectangulares de fallback entre 1 y 10 celdas por eje. La cobertura de líneas de los módulos instrumentados (core, generator, solver y services) es del 85,08 %. `cap doctor` confirma las cuatro dependencias Capacitor 8.6.0 y `cap sync` web finaliza correctamente. Los scripts PowerShell se han comprobado con el parser. No se detectaron firmas habituales de secretos en las fuentes.
+
+La [ejecución remota 42288421160](https://github.com/MirkovicV2/flecha-trampa/actions/runs/42288421160) repitió instalación, lint, formato, Vitest, build y pruebas contra producción en un runner Linux, con ambos trabajos correctos. El commit comprobado fue `2829cb458c515806af26da56a37e301708f3abc4`; la lógica del juego coincide con la etiqueta `v0.1.0`.
 
 ## Cobertura de comportamiento
 
@@ -23,7 +26,7 @@ En navegador: tutorial completo, derrota y reinicio, pista válida, pausa del re
 
 ## Límites de la validación
 
-Las pruebas de providers usan adaptadores de prueba aislados; la app real conserva NoOp para publicidad y pagos. Preferences y ciclo de vida se verifican por contrato y compilación, sin un dispositivo Android/iOS. No se han generado APK/AAB/IPA ni probado Safari. GitHub rechazó el acceso, por lo que no se ha ejecutado Actions remotamente ni activado protección de ramas.
+Las pruebas de providers usan adaptadores de prueba aislados; la app real conserva NoOp para publicidad y pagos. Preferences y ciclo de vida se verifican por contrato y compilación, sin un dispositivo Android/iOS. No se han generado APK/AAB/IPA ni probado Safari. El repositorio privado y los pushes ya se han verificado. Las ejecuciones de Actions y la restricción de plan que impide proteger `main` se registran en [estado remoto](REMOTE_STATUS.md).
 
 ## Repetir
 

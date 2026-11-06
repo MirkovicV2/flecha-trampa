@@ -4,7 +4,7 @@
 
 ## Estado de GitHub
 
-El proyecto y su historial Git están en este ordenador. GitHub rechazó la consulta de identidad y la creación del repositorio privado con **HTTP 403: `Sorry. Your account was suspended`**. No se han verificado repositorio remoto, pushes, ejecuciones de Actions ni protección de ramas. Ver [error y sincronización pendiente](docs/REMOTE_STATUS.md).
+Repositorio privado verificado: [MirkovicV2/flecha-trampa](https://github.com/MirkovicV2/flecha-trampa). `main`, `develop`, las ramas de funcionalidad y la etiqueta anotada `v0.1.0` están publicadas. La cuenta activa se comprobó con `gh auth status` y `gh api user`. La protección remota de `main` no está activa: GitHub exige Pro para habilitarla en este repositorio privado. Ver [estado y comprobaciones de GitHub](docs/REMOTE_STATUS.md).
 
 ## Inicio rápido en este ordenador
 
@@ -132,9 +132,9 @@ Phaser se carga al abrir el tablero. Primero se aplica y guarda la transición p
 - `feature/*`: cada bloque nace de `develop`, pasa sus verificaciones y se integra con merge `--no-ff`.
 - Conventional Commits: `feat`, `fix`, `test`, `refactor`, `docs`, `chore`, `ci`.
 
-Antes de integrar: `npm run check`, `npm run format:check` y pruebas de navegador afectadas. Antes de una release: `npm ci`, batería completa, revisión visual, árbol limpio, integración de `develop` en `main` y tag anotado. Nunca force push. La etiqueta local `v0.1.0` solo se crea tras superar las verificaciones.
+Antes de integrar: `npm run check`, `npm run format:check` y pruebas de navegador afectadas. Antes de una release: `npm ci`, batería completa, revisión visual, árbol limpio, integración de `develop` en `main` y tag anotado. Nunca force push. La etiqueta `v0.1.0` se creó tras superar las verificaciones y está publicada sin modificar su destino.
 
-CI usa Node 24. Los trabajos `validate` y `browser-tests` instalan dependencias, ejecutan lint, formato, tests, build y pruebas de navegador. La ejecución remota está pendiente de acceso a GitHub. Ver [flujo y protección de ramas](docs/GIT_WORKFLOW.md), [validación](docs/VALIDATION.md) y [changelog](CHANGELOG.md).
+CI usa Node 24. Los trabajos `validate` y `browser-tests` instalan dependencias, ejecutan lint, formato, tests, build y pruebas de navegador. Admite push, pull request y ejecución manual. El resultado remoto está enlazado en [estado de GitHub](docs/REMOTE_STATUS.md). Ver [flujo y protección de ramas](docs/GIT_WORKFLOW.md), [validación](docs/VALIDATION.md) y [changelog](CHANGELOG.md).
 
 ## Android e iOS
 
@@ -153,4 +153,4 @@ Para iOS, ejecutar `npx cap add ios`, sincronizar y abrir Xcode en un Mac prepar
 
 `AdsService` y `PurchasesService` tienen implementaciones NoOp. No hay anuncios, pagos ni recompensas publicitarias simuladas. Están preparados los puntos de integración de pistas recompensadas, intersticiales entre niveles, eliminación de anuncios y cosméticos. Ver [monetización futura](docs/MONETIZATION.md).
 
-Pendiente: restablecer GitHub y publicar ramas/tag; activar y verificar protección de `main`; probar y firmar Android/iOS en dispositivos; alojar una URL pública para compartir entre equipos. No hay ranking global, sincronización en la nube, analítica ni caché PWA offline. La emulación Chromium no sustituye las pruebas en Safari/iOS y hardware Android.
+Pendiente: disponer de un plan compatible para activar y verificar protección de `main`; probar y firmar Android/iOS en dispositivos; alojar una URL pública para compartir entre equipos. No hay ranking global, sincronización en la nube, analítica ni caché PWA offline. La emulación Chromium no sustituye las pruebas en Safari/iOS y hardware Android.
