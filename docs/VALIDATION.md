@@ -1,0 +1,39 @@
+# Validación del MVP
+
+Fecha: 6 de noviembre de 2026. Equipo Windows 11 Pro, build 26200; proyecto en `C:\Users\brank\Documents\Proyectos\FlechaTrampa`. Node portátil 24.22.2, npm 11.19.1, Git 2.43.0.windows.1 y GitHub CLI 2.103.3.
+
+## Comprobaciones realizadas
+
+| Comprobación                                        | Resultado                                                                     |
+| --------------------------------------------------- | ----------------------------------------------------------------------------- |
+| ESLint sin advertencias                             | Correcto                                                                      |
+| TypeScript estricto y Vite build                    | Correcto                                                                      |
+| Vitest                                              | 64 pruebas correctas en 7 archivos                                            |
+| Generación masiva                                   | 1.000 tableros solucionados por solver y ejecutados por el motor, sin errores |
+| Chromium móvil y escritorio, servidor de desarrollo | 20 pruebas correctas                                                          |
+| npm audit                                           | 0 vulnerabilidades conocidas en la última instalación revisada                |
+
+Verificación final completada: `npm ci` correcto, cero vulnerabilidades conocidas, lint y formato correctos, TypeScript y Vite correctos y 20 pruebas de navegador correctas contra la compilación de producción en `dist/`. Se verificaron además los 100 tamaños rectangulares de fallback entre 1 y 10 celdas por eje. La cobertura de líneas de los módulos instrumentados (core, generator, solver y services) es del 85,08 %. `cap doctor` confirma las cuatro dependencias Capacitor 8.6.0 y `cap sync` web finaliza correctamente. Los scripts PowerShell se han comprobado con el parser. No se detectaron firmas habituales de secretos en las fuentes.
+
+## Cobertura de comportamiento
+
+Extracción y bloqueos en cuatro direcciones, vidas y estados terminales, entrada repetida, geometrías inválidas, ciclos del solver, semillas Unicode, determinismo, progreso y densidades extremas, fallback, corrupción y recuperación de guardados, estadísticas idempotentes, UTC y rachas, enlaces alterados y versiones no admitidas, Web Share/copia/cancelación, límites de monetización y escrituras nativas ordenadas.
+
+En navegador: tutorial completo, derrota y reinicio, pista válida, pausa del reloj, avance de nivel, ajustes y navegación, continuación tras recarga, diario completado persistente, enlace compartido reproducible, resultado copiable, pulsaciones rápidas, conflicto entre pestañas y tableros de 85 flechas en anchos 320/360/375/428. Las capturas están en `.artifacts/`, ignoradas por Git, y se han revisado visualmente.
+
+## Límites de la validación
+
+Las pruebas de providers usan adaptadores de prueba aislados; la app real conserva NoOp para publicidad y pagos. Preferences y ciclo de vida se verifican por contrato y compilación, sin un dispositivo Android/iOS. No se han generado APK/AAB/IPA ni probado Safari. GitHub rechazó el acceso, por lo que no se ha ejecutado Actions remotamente ni activado protección de ramas.
+
+## Repetir
+
+```powershell
+. .\scripts\use-local-tools.ps1
+npm ci
+npm run check
+npm run format:check
+npm run test:coverage
+npm run test:e2e:preview
+git diff --check
+git status --short
+```
