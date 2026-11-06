@@ -7,6 +7,7 @@ import { currentStreak, dailyChallenge, dailyCountdown, utcDate } from '../servi
 import { buildChallengeUrl, createChallenge, readChallengeUrl } from '../services/challenges';
 import type { ChallengeSpec } from '../services/challenges';
 import { ShareService } from '../services/share';
+import { MonetizationService } from '../services/monetization';
 import { newSession, tutorialSession } from '../services/session';
 import type { PlaySession } from '../services/session';
 import type { BoardRenderer } from '../scenes/BoardScene';
@@ -36,6 +37,7 @@ export class GameApp {
   private readonly shareService = new ShareService();
   private sharing = false;
   private manualShareText: string | null = null;
+  private readonly monetization = new MonetizationService();
 
   constructor(private readonly root: HTMLElement, private readonly store = new ProgressStore()) {
     root.addEventListener('click', (event) => {
@@ -83,7 +85,8 @@ export class GameApp {
       case 'settings': this.openOverlay('settings'); break;
       case 'close-overlay': this.closeOverlay(); break;
       case 'restart': this.restart(); break;
-      case 'next': this.playClassic(true); break;
+      case 'next': void this.advanceClassic(); break;
+      case 'rewarded-hint': void this.rewardedHint(); break;
       case 'hint': this.hint(); break;
       case 'toggle': this.toggleSetting(value); break;
       case 'theme': this.store.profile.settings.theme = value === 'ember' ? 'ember' : 'aurora'; this.visualSettingsDirty = true; this.store.flush(); this.renderOverlay(); break;
@@ -97,6 +100,28 @@ export class GameApp {
     if (!forceNext && saved?.state.status === 'playing') { this.begin(saved, false); return; }
     const level = this.store.profile.level;
     this.begin(newSession('classic', level, `classic:${this.store.profile.runId}:${level}`, configForLevel(level)));
+  }
+
+  private async advanceClassic(): Promise<void> {
+    if (this.busy || !this.session || this.session.state.status !== 'won') return;
+    this.busy = true;
+    const epoch = this.epoch;
+    await this.monetization.betweenLevels(this.session);
+    if (epoch !== this.epoch) return;
+    this.busy = false;
+    this.playClassic(true);
+  }
+
+  private async rewardedHint(): Promise<void> {
+    if (this.busy || this.overlay !== 'hints') return;
+    this.busy = true;
+    const result = await this.monetization.rewardedHint(() => {
+      this.store.profile.hints = Math.min(99, this.store.profile.hints + 1);
+      this.store.flush();
+    });
+    this.busy = false;
+    if (result === 'granted') { this.closeOverlay(); this.toast('Has recibido una pista.'); }
+    else if (result !== 'cancelled') this.toast('La recompensa no está disponible en este momento.');
   }
 
   private playDaily(): void {
@@ -450,7 +475,7 @@ export class GameApp {
       const settings = this.store.profile.settings;
       content = `${close}<div class="eyebrow">A TU GUSTO</div><h2>Tu espacio.</h2><p>Pequeños detalles para pensar mejor.</p><div class="settings-list">${[['sound','Sonido','Tonos suaves en cada movimiento'],['haptics','Vibración','Una respuesta que se siente'],['reducedMotion','Reducir movimiento','Animaciones más discretas']].map(([key,label,description]) => `<button class="setting-row" data-action="toggle" data-value="${key}" role="switch" aria-checked="${settings[key as 'sound' | 'haptics' | 'reducedMotion']}"><span><strong>${label}</strong><small>${description}</small></span><span class="switch ${settings[key as 'sound' | 'haptics' | 'reducedMotion'] ? 'on' : ''}"></span></button>`).join('')}</div><div class="theme-heading">PALETA DE FLECHAS</div><div class="theme-options">${[['aurora','Aurora'],['ember','Atardecer']].map(([name,label]) => `<button data-action="theme" data-value="${name}" class="theme-option ${settings.theme === name ? 'selected' : ''}" aria-pressed="${settings.theme === name}"><span class="theme-swatches ${name}"><i></i><i></i><i></i><i></i></span>${label}${settings.theme === name ? icon('check') : ''}</button>`).join('')}</div><button class="text-button centered" data-action="tutorial">${icon('help')} Repetir tutorial</button><p class="settings-footer">FLECHA TRAMPA · v0.1.0<br>Tu progreso se queda en este dispositivo.</p>`;
     }
-    if (this.overlay === 'hints') content = `${close}<div class="modal-symbol lavender">${icon('spark')}</div><h2>Tu ingenio<br>también recarga.</h2><p>No te quedan pistas. Cada tres victorias conseguirás una nueva. Los anuncios recompensados todavía no están disponibles.</p><button class="primary-button" data-action="close-overlay">Seguir pensando ${icon('arrow')}</button>`;
+    if (this.overlay === 'hints') content = `${close}<div class="modal-symbol lavender">${icon('spark')}</div><h2>Tu ingenio<br>también recarga.</h2><p>No te quedan pistas. Cada tres victorias conseguirás una nueva. ${this.monetization.ads.rewardedAvailable ? 'Puedes obtener otra viendo un anuncio recompensado.' : 'Los anuncios recompensados todavía no están disponibles.'}</p>${this.monetization.ads.rewardedAvailable ? `<button class="secondary-button" data-action="rewarded-hint">Ver anuncio por una pista ${icon('spark')}</button>` : ''}<button class="primary-button" data-action="close-overlay">Seguir pensando ${icon('arrow')}</button>`;
     if (this.overlay === 'result') content = this.resultContent();
     layer.innerHTML = `<div class="modal-backdrop"><section class="modal-card ${this.overlay === 'result' ? 'result-card' : ''}" role="dialog" aria-modal="true" aria-label="${this.overlay === 'settings' ? 'Ajustes' : this.overlay === 'result' ? 'Resultado de la partida' : this.overlay === 'pause' ? 'Partida en pausa' : 'FLECHA TRAMPA'}">${content}</section></div>`;
     window.requestAnimationFrame(() => layer.querySelector<HTMLElement>('button')?.focus());
