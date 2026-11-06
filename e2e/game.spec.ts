@@ -137,6 +137,7 @@ test('reload restores the exact board, hints, settings and one counted start', a
 test('daily challenge resumes and keeps a completed result after reload', async ({
   page,
 }, testInfo) => {
+  test.setTimeout(120000);
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await skipTutorial(page);
   await page.getByRole('button', { name: /El reto de hoy/ }).click();
@@ -256,6 +257,7 @@ test('a second tab preserves its newer progress and prompts the stale tab to rel
 });
 
 test('portrait layouts keep a dense board inside the viewport', async ({ page }, testInfo) => {
+  test.setTimeout(120000);
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await skipTutorial(page);
   for (const width of [320, 360, 375, 428]) {

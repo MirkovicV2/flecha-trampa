@@ -1,4 +1,4 @@
-﻿$ErrorActionPreference = 'Stop'
+﻿# Select project tools without changing the caller error policy.
 $flechaRoot = Split-Path -Parent $PSScriptRoot
 $flechaTools = Join-Path $flechaRoot '.tools'
 if (Test-Path -LiteralPath $flechaTools) {
