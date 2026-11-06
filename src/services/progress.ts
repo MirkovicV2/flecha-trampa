@@ -1,6 +1,13 @@
 import { DEFAULT_SETTINGS } from '../config/theme';
 import type { PlayerSettings } from '../config/theme';
 import type { PlaySession } from './session';
+import { decodeProfile } from './save-validation';
+
+export const SAVE_KEY = 'flecha-trampa:profile:v1';
+export interface StoragePort {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+}
 
 export interface PlayerProfile {
   schema: 1;
@@ -21,9 +28,87 @@ export function defaultProfile(): PlayerProfile {
   };
 }
 
-/** Session-facing repository. A durable adapter is added independently of the renderer. */
-export class ProgressStore {
-  readonly profile = defaultProfile();
-  available = true;
-  flush(): void { /* In-memory repository used by the initial interface. */ }
+function browserStorage(): StoragePort | null {
+  try { return typeof localStorage !== 'undefined' ? localStorage : null; } catch { return null; }
 }
+
+/** Versioned, validated saves with a last-known-good backup and a memory-only fallback. */
+export class ProgressStore {
+  readonly profile: PlayerProfile;
+  available: boolean;
+  recovery: 'none' | 'backup' | 'reset' = 'none';
+  private lastGood: string | null = null;
+
+  constructor(private readonly storage: StoragePort | null = browserStorage()) {
+    this.available = storage !== null;
+    let loaded: PlayerProfile | null = null;
+    if (storage) {
+      try {
+        const primary = storage.getItem(SAVE_KEY);
+        loaded = decodeProfile(primary);
+        if (loaded) this.lastGood = primary;
+        else {
+          const backup = storage.getItem(`${SAVE_KEY}:backup`);
+          loaded = decodeProfile(backup);
+          if (loaded) { this.recovery = 'backup'; this.lastGood = backup; }
+          else if (primary || backup) this.recovery = 'reset';
+        }
+      } catch { this.available = false; }
+    }
+    this.profile = loaded ?? defaultProfile();
+    const saved = this.profile.classicSave;
+    // A page can close after the final move was saved and before its animation completed.
+    if (saved && saved.state.status !== 'playing' && !saved.recorded) this.recordResult(saved);
+  }
+
+  flush(): boolean {
+    if (!this.storage) { this.available = false; return false; }
+    try {
+      const serialized = JSON.stringify(this.profile);
+      if (serialized === this.lastGood) return this.available;
+      if (this.lastGood) this.storage.setItem(`${SAVE_KEY}:backup`, this.lastGood);
+      this.storage.setItem(SAVE_KEY, serialized);
+      this.lastGood = serialized;
+      this.available = true;
+      return true;
+    } catch { this.available = false; return false; }
+  }
+
+  beginSession(session: PlaySession): void {
+    if (session.mode !== 'tutorial' && !session.counted) {
+      session.counted = true;
+      this.profile.stats.played++;
+    }
+    if (session.mode === 'classic') this.profile.classicSave = session;
+    this.flush();
+  }
+
+  addPlayTime(session: PlaySession, milliseconds: number): void {
+    if (!nonNegativeTime(milliseconds)) return;
+    session.elapsedMs += milliseconds;
+    if (session.mode !== 'tutorial') this.profile.stats.totalPlayMs += milliseconds;
+  }
+
+  consumeHint(): boolean {
+    if (this.profile.hints < 1) return false;
+    this.profile.hints--;
+    this.flush();
+    return true;
+  }
+
+  recordResult(session: PlaySession): void {
+    if (session.recorded || session.state.status === 'playing') return;
+    session.recorded = true;
+    if (session.mode === 'tutorial') {
+      if (session.state.status === 'won') this.profile.tutorialDone = true;
+    } else if (session.state.status === 'won') {
+      this.profile.stats.wins++;
+      if (!session.state.errors) this.profile.stats.flawless++;
+      if (this.profile.stats.wins % 3 === 0) this.profile.hints = Math.min(99, this.profile.hints + 1);
+      if (session.mode === 'classic') this.profile.level = Math.max(this.profile.level, session.level + 1);
+    }
+    this.flush();
+  }
+}
+
+const nonNegativeTime = (value: number): boolean => Number.isFinite(value) && value >= 0;

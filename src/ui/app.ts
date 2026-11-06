@@ -43,6 +43,9 @@ export class GameApp {
     window.setInterval(() => this.tick(), 250);
     this.render();
     if (!this.store.profile.tutorialDone) this.openOverlay('onboarding');
+    if (!this.store.available) this.toast('Guardado no disponible: este navegador conservará la partida solo mientras siga abierta.');
+    else if (this.store.recovery === 'backup') this.toast('Hemos recuperado la última copia válida de tu progreso.');
+    else if (this.store.recovery === 'reset') this.toast('El guardado estaba dañado. Se ha iniciado un nuevo progreso local.');
   }
 
   private action(action: string, value?: string): void {
@@ -77,8 +80,7 @@ export class GameApp {
   private begin(session: PlaySession, count = true): void {
     this.tick();
     this.session = session;
-    if (count && session.mode !== 'tutorial') this.store.profile.stats.played++;
-    if (session.mode === 'classic') this.store.profile.classicSave = session;
+    if (count || !session.counted) this.store.beginSession(session);
     this.screen = 'game';
     this.overlay = null;
     this.busy = false;
@@ -113,8 +115,7 @@ export class GameApp {
     const delta = Math.max(0, Math.min(now - this.lastTick, 1500));
     this.lastTick = now;
     if (this.screen !== 'game' || this.overlay || !this.session || this.session.state.status !== 'playing' || document.hidden) return;
-    this.session.elapsedMs += delta;
-    if (this.session.mode !== 'tutorial') this.store.profile.stats.totalPlayMs += delta;
+    this.store.addPlayTime(this.session, delta);
     const timer = this.root.querySelector('[data-timer]');
     if (timer) timer.textContent = formatTime(this.session.elapsedMs);
     if (now - this.lastSave > 1000) { this.lastSave = now; this.store.flush(); }
@@ -130,6 +131,7 @@ export class GameApp {
     const epoch = this.epoch;
     session.state = result.state;
     if (result.kind === 'removed' && session.mode !== 'tutorial') this.store.profile.stats.arrowsCleared++;
+    if (session.state.status !== 'playing') this.store.recordResult(session);
     this.store.flush();
     this.feedback.play(result.kind === 'removed' ? 'tap' : 'blocked', this.store.profile.settings);
     this.updateHud();
@@ -146,19 +148,7 @@ export class GameApp {
   private finish(): void {
     const session = this.session;
     if (!session) return;
-    if (!session.recorded) {
-      session.recorded = true;
-      if (session.mode === 'tutorial') {
-        if (session.state.status === 'won') this.store.profile.tutorialDone = true;
-      } else if (session.state.status === 'won') {
-        const profile = this.store.profile;
-        profile.stats.wins++;
-        if (!session.state.errors) profile.stats.flawless++;
-        if (profile.stats.wins % 3 === 0) profile.hints = Math.min(99, profile.hints + 1);
-        if (session.mode === 'classic') profile.level = Math.max(profile.level, session.level + 1);
-      }
-      this.store.flush();
-    }
+    this.store.recordResult(session);
     if (session.state.status === 'won') this.feedback.play('win', this.store.profile.settings);
     this.openOverlay('result');
   }
@@ -168,8 +158,7 @@ export class GameApp {
     if (this.store.profile.hints <= 0) { this.openOverlay('hints'); return; }
     const valid = availableMoves(this.session.state.board)[0];
     if (!valid) return;
-    this.store.profile.hints--;
-    this.store.flush();
+    if (!this.store.consumeHint()) return;
     this.updateHud();
     this.renderer.hint(valid.id);
     const button = this.root.querySelector<HTMLElement>(`[data-arrow="${valid.id}"]`);
