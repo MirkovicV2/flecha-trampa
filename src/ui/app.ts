@@ -3,13 +3,14 @@ import { availableMoves } from '../core/board';
 import { configForLevel } from '../generator/config';
 import { FeedbackService } from '../services/feedback';
 import { ProgressStore } from '../services/progress';
+import { currentStreak, dailyChallenge, dailyCountdown, utcDate } from '../services/daily';
 import { newSession, tutorialSession } from '../services/session';
 import type { PlaySession } from '../services/session';
 import type { BoardRenderer } from '../scenes/BoardScene';
 import { escapeHtml, formatTime } from '../utils/format';
 import { icon } from './icons';
 
-type Screen = 'home' | 'modes' | 'game' | 'stats';
+type Screen = 'home' | 'modes' | 'game' | 'stats' | 'daily';
 type Overlay = 'pause' | 'settings' | 'result' | 'onboarding' | 'hints' | null;
 const DIRECTION_LABEL = { up: 'arriba', right: 'derecha', down: 'abajo', left: 'izquierda' };
 
@@ -26,6 +27,7 @@ export class GameApp {
   private readonly feedback = new FeedbackService();
   private previousFocus: HTMLElement | null = null;
   private visualSettingsDirty = false;
+  private displayedDailyDate = utcDate();
 
   constructor(private readonly root: HTMLElement, private readonly store = new ProgressStore()) {
     root.addEventListener('click', (event) => {
@@ -52,6 +54,8 @@ export class GameApp {
     switch (action) {
       case 'home': this.go('home'); break;
       case 'modes': this.go('modes'); break;
+      case 'daily': this.go('daily'); break;
+      case 'daily-play': this.playDaily(); break;
       case 'stats': this.go('stats'); break;
       case 'play': this.playClassic(); break;
       case 'tutorial': this.begin(tutorialSession()); break;
@@ -75,6 +79,13 @@ export class GameApp {
     if (!forceNext && saved?.state.status === 'playing') { this.begin(saved, false); return; }
     const level = this.store.profile.level;
     this.begin(newSession('classic', level, `classic:${this.store.profile.runId}:${level}`, configForLevel(level)));
+  }
+
+  private playDaily(): void {
+    const challenge = dailyChallenge();
+    const saved = this.store.profile.dailySave;
+    if (saved?.date === challenge.date && saved.state.status === 'playing') { this.begin(saved, false); return; }
+    this.begin(newSession('daily', 1, challenge.seed, challenge.config, challenge.date));
   }
 
   private begin(session: PlaySession, count = true): void {
@@ -114,6 +125,11 @@ export class GameApp {
     const now = performance.now();
     const delta = Math.max(0, Math.min(now - this.lastTick, 1500));
     this.lastTick = now;
+    if (this.screen === 'daily') {
+      if (this.displayedDailyDate !== utcDate()) { this.render(); return; }
+      const countdown = this.root.querySelector('[data-countdown]');
+      if (countdown) countdown.textContent = dailyCountdown();
+    }
     if (this.screen !== 'game' || this.overlay || !this.session || this.session.state.status !== 'playing' || document.hidden) return;
     this.store.addPlayTime(this.session, delta);
     const timer = this.root.querySelector('[data-timer]');
@@ -190,7 +206,7 @@ export class GameApp {
 
   private header(): string {
     const game = this.screen === 'game';
-    return `<header class="topbar"><button class="brand" data-action="${game ? 'pause' : 'home'}" aria-label="${game ? 'Pausar partida' : 'Ir al inicio'}"><span class="brand-mark">${icon('arrow')}</span><span>FLECHA<span class="brand-light">TRAMPA</span></span></button><div class="topbar-actions">${game ? `<span class="level-chip">${this.session?.mode === 'tutorial' ? 'PRIMEROS PASOS' : `NIVEL ${String(this.session?.level ?? 1).padStart(2, '0')}`}</span><button class="icon-button" data-action="pause" aria-label="Pausar">${icon('pause')}</button>` : `<span class="edition">UN RETO. TU RITMO.</span><button class="icon-button" data-action="settings" aria-label="Abrir ajustes">${icon('settings')}</button>`}</div></header>`;
+    return `<header class="topbar"><button class="brand" data-action="${game ? 'pause' : 'home'}" aria-label="${game ? 'Pausar partida' : 'Ir al inicio'}"><span class="brand-mark">${icon('arrow')}</span><span>FLECHA<span class="brand-light">TRAMPA</span></span></button><div class="topbar-actions">${game ? `<span class="level-chip">${this.sessionLabel()}</span><button class="icon-button" data-action="pause" aria-label="Pausar">${icon('pause')}</button>` : `<span class="edition">UN RETO. TU RITMO.</span><button class="icon-button" data-action="settings" aria-label="Abrir ajustes">${icon('settings')}</button>`}</div></header>`;
   }
 
   private content(): string {
@@ -198,6 +214,7 @@ export class GameApp {
       case 'home': return this.homeContent();
       case 'modes': return this.modesContent();
       case 'stats': return this.statsContent();
+      case 'daily': return this.dailyContent();
       case 'game': return this.gameContent();
     }
   }
@@ -205,16 +222,34 @@ export class GameApp {
   private homeContent(): string {
     const profile = this.store.profile;
     const continuing = profile.classicSave?.state.status === 'playing';
-    return `<section class="home-hero"><div class="hero-copy"><div class="eyebrow"><span class="live-dot"></span> TU PRÓXIMA PEQUEÑA VICTORIA</div><h1>Piensa<br>la <span>salida.</span></h1><p class="hero-description">Cada flecha tiene un camino.<br>El truco es encontrar el orden.</p><button class="primary-button hero-play" data-action="play"><span>${continuing ? 'Continuar partida' : 'Jugar ahora'}<small>CLÁSICO <span>·</span> NIVEL ${String(profile.level).padStart(2, '0')}</small></span>${icon('diagonal')}</button><p class="hero-caption">${icon('heart')} Tres vidas. Cero prisas.</p></div><div class="hero-art" aria-hidden="true"><div class="art-orbit orbit-one"></div><div class="art-orbit orbit-two"></div><div class="art-caption">ENCUENTRA TU CAMINO</div>${['up','right','left','down','right','up','down','left','up'].map((direction, index) => `<div class="art-tile art-${index} direction-${direction}"><span>↑</span></div>`).join('')}<div class="art-tag">${icon('spark')} UN MOVIMIENTO LO CAMBIA TODO</div></div></section><section class="home-lower"><div class="section-heading"><span>Más formas de pensar</span><span class="micro-copy">ELIGE TU RETO</span></div><div class="mode-preview-grid"><button class="mode-preview daily-preview" data-action="modes"><span class="preview-icon">${icon('calendar')}</span><span><small>UNO CADA DÍA</small><strong>El reto de hoy</strong><span>Un nuevo día, una nueva salida.</span></span>${icon('diagonal')}</button><button class="mode-preview share-preview" data-action="modes"><span class="preview-icon">${icon('share')}</span><span><small>MEJOR EN COMPAÑÍA</small><strong>Reta a alguien</strong><span>El mismo puzle. ¿Otro camino?</span></span>${icon('diagonal')}</button></div><div class="home-footnote"><span class="tiny-dots"><i></i><i></i><i></i><i></i></span> Sin cuenta. Sin prisa. Con ingenio.</div></section>`;
+    return `<section class="home-hero"><div class="hero-copy"><div class="eyebrow"><span class="live-dot"></span> TU PRÓXIMA PEQUEÑA VICTORIA</div><h1>Piensa<br>la <span>salida.</span></h1><p class="hero-description">Cada flecha tiene un camino.<br>El truco es encontrar el orden.</p><button class="primary-button hero-play" data-action="play"><span>${continuing ? 'Continuar partida' : 'Jugar ahora'}<small>CLÁSICO <span>·</span> NIVEL ${String(profile.level).padStart(2, '0')}</small></span>${icon('diagonal')}</button><p class="hero-caption">${icon('heart')} Tres vidas. Cero prisas.</p></div><div class="hero-art" aria-hidden="true"><div class="art-orbit orbit-one"></div><div class="art-orbit orbit-two"></div><div class="art-caption">ENCUENTRA TU CAMINO</div>${['up','right','left','down','right','up','down','left','up'].map((direction, index) => `<div class="art-tile art-${index} direction-${direction}"><span>↑</span></div>`).join('')}<div class="art-tag">${icon('spark')} UN MOVIMIENTO LO CAMBIA TODO</div></div></section><section class="home-lower"><div class="section-heading"><span>Más formas de pensar</span><span class="micro-copy">ELIGE TU RETO</span></div><div class="mode-preview-grid"><button class="mode-preview daily-preview" data-action="daily"><span class="preview-icon">${icon('calendar')}</span><span><small>UNO CADA DÍA</small><strong>El reto de hoy</strong><span>Un nuevo día, una nueva salida.</span></span>${icon('diagonal')}</button><button class="mode-preview share-preview" data-action="modes"><span class="preview-icon">${icon('share')}</span><span><small>MEJOR EN COMPAÑÍA</small><strong>Reta a alguien</strong><span>El mismo puzle. ¿Otro camino?</span></span>${icon('diagonal')}</button></div><div class="home-footnote"><span class="tiny-dots"><i></i><i></i><i></i><i></i></span> Sin cuenta. Sin prisa. Con ingenio.</div></section>`;
   }
 
   private modesContent(): string {
-    return `<section class="page-section"><div class="eyebrow">CADA MENTE TIENE SU CAMINO</div><h1 class="page-title">A tu manera.</h1><p class="page-description">Elige cómo quieres poner a prueba tu ingenio.</p><div class="mode-list"><button class="mode-card" data-action="play"><span class="mode-number">01</span><div>${icon('grid')}<h2>Un poco más lejos.</h2><p>Niveles infinitos, dificultad progresiva y tres vidas para encontrar la salida.</p><span class="mode-label">CLÁSICO ${icon('arrow')}</span></div></button><div class="mode-card upcoming"><span class="mode-number">02</span><div>${icon('calendar')}<h2>Una cita con tu ingenio.</h2><p>El desafío diario se incorporará en la siguiente integración.</p><span class="mode-label">DESAFÍO DIARIO</span></div></div><div class="mode-card upcoming"><span class="mode-number">03</span><div>${icon('share')}<h2>Comparte el desafío.</h2><p>Los retos reproducibles se incorporarán en la siguiente integración.</p><span class="mode-label">RETOS COMPARTIDOS</span></div></div></div></section>`;
+    return `<section class="page-section"><div class="eyebrow">CADA MENTE TIENE SU CAMINO</div><h1 class="page-title">A tu manera.</h1><p class="page-description">Elige cómo quieres poner a prueba tu ingenio.</p><div class="mode-list"><button class="mode-card" data-action="play"><span class="mode-number">01</span><div>${icon('grid')}<h2>Un poco más lejos.</h2><p>Niveles infinitos, dificultad progresiva y tres vidas para encontrar la salida.</p><span class="mode-label">CLÁSICO ${icon('arrow')}</span></div></button><button class="mode-card" data-action="daily"><span class="mode-number">02</span><div>${icon('calendar')}<h2>Una cita con tu ingenio.</h2><p>Un tablero al día, el mismo para todos. Suma pequeñas victorias y mantén tu racha.</p><span class="mode-label">DESAFÍO DIARIO ${icon('arrow')}</span></div></button><div class="mode-card upcoming"><span class="mode-number">03</span><div>${icon('share')}<h2>Comparte el desafío.</h2><p>Los retos reproducibles se incorporarán en la siguiente integración.</p><span class="mode-label">RETOS COMPARTIDOS</span></div></div></div></section>`;
   }
 
   private statsContent(): string {
     const { stats, level, hints } = this.store.profile;
-    return `<section class="page-section"><div class="eyebrow">CADA MOVIMIENTO CUENTA</div><h1 class="page-title">Tu camino.</h1><p class="page-description">Las pequeñas victorias también merecen su espacio.</p><div class="progress-hero">${icon('trophy')}<span>NIVEL ACTUAL</span><strong>${String(level).padStart(2, '0')}</strong><p>${level - 1} niveles clásicos superados</p></div><div class="stat-grid">${[[stats.played,'Partidas jugadas','grid'],[stats.wins,'Victorias','trophy'],[stats.flawless,'Sin errores','shield'],[formatTime(stats.totalPlayMs),'Tiempo de juego','clock'],[stats.arrowsCleared,'Flechas liberadas','arrow'],[hints,'Pistas disponibles','spark']].map(([value,label,glyph]) => `<div class="stat-card">${icon(String(glyph))}<strong>${value}</strong><span>${label}</span></div>`).join('')}</div><div class="info-note">${icon('shield')} Tu progreso vive en este dispositivo. No necesitas registrarte.</div></section>`;
+    return `<section class="page-section"><div class="eyebrow">CADA MOVIMIENTO CUENTA</div><h1 class="page-title">Tu camino.</h1><p class="page-description">Las pequeñas victorias también merecen su espacio.</p><div class="progress-hero">${icon('trophy')}<span>NIVEL ACTUAL</span><strong>${String(level).padStart(2, '0')}</strong><p>${level - 1} niveles clásicos superados</p></div><div class="stat-grid">${[[stats.played,'Partidas jugadas','grid'],[stats.wins,'Victorias','trophy'],[stats.flawless,'Sin errores','shield'],[formatTime(stats.totalPlayMs),'Tiempo de juego','clock'],[stats.arrowsCleared,'Flechas liberadas','arrow'],[hints,'Pistas disponibles','spark'],[currentStreak(this.store.profile.daily),'Racha diaria','flame'],[this.store.profile.daily.bestStreak,'Mejor racha','calendar'],[this.store.profile.daily.completedDays,'D?as completados','check']].map(([value,label,glyph]) => `<div class="stat-card">${icon(String(glyph))}<strong>${value}</strong><span>${label}</span></div>`).join('')}</div><div class="info-note">${icon('shield')} Tu progreso vive en este dispositivo. No necesitas registrarte.</div></section>`;
+  }
+
+  private dailyContent(): string {
+    const profile = this.store.profile;
+    const today = utcDate();
+    this.displayedDailyDate = today;
+    const record = profile.daily.records[today];
+    const continuing = profile.dailySave?.date === today && profile.dailySave.state.status === 'playing';
+    const dateLabel = new Intl.DateTimeFormat('es', { day: 'numeric', month: 'long', timeZone: 'UTC' }).format(new Date(`${today}T12:00:00Z`));
+    return `<section class="page-section daily-page"><div class="eyebrow">UNA NUEVA SALIDA CADA DÍA</div><h1 class="page-title">Hoy también<br>cuenta.</h1><p class="page-description">El mismo tablero para todos. Una pequeña cita con tu ingenio.</p><div class="daily-feature"><div class="daily-date">${icon('calendar')} ${escapeHtml(dateLabel)} <span>UTC</span></div><div class="daily-emblem">${icon(record?.completed ? 'check' : 'spark')}</div><h2>${record?.completed ? 'Tu reto de hoy, superado.' : '¿Encuentras el orden?'}</h2><p>7 × 7 · 33 flechas · Tres vidas</p>${record?.completed ? `<div class="daily-best"><span>MEJOR RESULTADO</span><strong>${formatTime(record.bestTimeMs ?? 0)} <small>· ${record.bestErrors} errores</small></strong></div>` : ''}<button class="primary-button" data-action="daily-play">${continuing ? 'Continuar el reto' : record?.completed ? 'Volver a jugar' : 'Aceptar el reto'} ${icon('arrow')}</button><div class="daily-countdown">Próximo reto en <strong data-countdown>${dailyCountdown()}</strong></div></div><div class="daily-streak"><span>${icon('flame')} <strong>${currentStreak(profile.daily)}</strong> días de racha</span><span>Mejor racha <strong>${profile.daily.bestStreak}</strong></span></div><p class="daily-fineprint">Se renueva a las 00:00 UTC. Tu tiempo, tus errores y tus días completados se guardan en este dispositivo.</p></section>`;
+  }
+
+  private sessionLabel(): string {
+    const session = this.session;
+    if (session?.mode === 'tutorial') return 'PRIMEROS PASOS';
+    if (session?.mode === 'daily') return 'DIARIO · UTC';
+    if (session?.mode === 'shared') return 'ENTRE AMIGOS';
+    return `NIVEL ${String(session?.level ?? 1).padStart(2, '0')}`;
   }
 
   private gameContent(): string {
@@ -329,7 +364,9 @@ export class GameApp {
     const session = this.session!;
     const won = session.state.status === 'won';
     const tutorial = session.mode === 'tutorial';
-    return `<div class="result-burst ${won ? '' : 'defeat'}">${icon(won ? 'spark' : 'retry')}</div><div class="eyebrow">${won ? tutorial ? 'YA TIENES LA CLAVE' : 'CAMINO DESPEJADO' : 'TÓMATE OTRO INTENTO'}</div><h2>${won ? tutorial ? 'Ahora, a<br>tu manera.' : session.state.errors === 0 ? 'Así de<br>impecable.' : 'Una pequeña<br>gran victoria.' : 'La salida<br>sigue ahí.'}</h2><p>${won ? tutorial ? 'Busca caminos libres. Cada flecha que sale abre nuevas posibilidades.' : session.state.errors === 0 ? 'Ni un solo error. A veces, todo encaja.' : 'Has encontrado el orden. Disfruta ese momento.' : 'Tres vidas después, ya conoces mejor el tablero. ¿Lo vuelves a intentar?'}</p><div class="result-stats"><div><strong>${formatTime(session.elapsedMs)}</strong><span>TIEMPO</span></div><div><strong>${session.state.errors}</strong><span>ERRORES</span></div><div><strong>${session.state.totalArrows - session.state.board.arrows.length}</strong><span>FLECHAS</span></div></div>${won && !tutorial && this.store.profile.stats.wins % 3 === 0 ? '<div class="reward-note">+1 pista · Cada victoria abre caminos.</div>' : ''}<button class="primary-button" data-action="${won ? 'next' : 'restart'}">${won ? tutorial ? 'Empezar mi aventura' : 'Siguiente nivel' : 'Volver a intentarlo'} ${icon(won ? 'arrow' : 'retry')}</button><button class="text-button centered" data-action="home">Volver al inicio</button>`;
+    const nextAction = won ? session.mode === 'daily' ? 'daily' : 'next' : 'restart';
+    const nextLabel = won ? tutorial ? 'Empezar mi aventura' : session.mode === 'daily' ? 'Volver al desafío' : 'Siguiente nivel' : 'Volver a intentarlo';
+    return `<div class="result-burst ${won ? '' : 'defeat'}">${icon(won ? 'spark' : 'retry')}</div><div class="eyebrow">${won ? tutorial ? 'YA TIENES LA CLAVE' : 'CAMINO DESPEJADO' : 'TÓMATE OTRO INTENTO'}</div><h2>${won ? tutorial ? 'Ahora, a<br>tu manera.' : session.state.errors === 0 ? 'Así de<br>impecable.' : 'Una pequeña<br>gran victoria.' : 'La salida<br>sigue ahí.'}</h2><p>${won ? tutorial ? 'Busca caminos libres. Cada flecha que sale abre nuevas posibilidades.' : session.state.errors === 0 ? 'Ni un solo error. A veces, todo encaja.' : 'Has encontrado el orden. Disfruta ese momento.' : 'Tres vidas después, ya conoces mejor el tablero. ¿Lo vuelves a intentar?'}</p><div class="result-stats"><div><strong>${formatTime(session.elapsedMs)}</strong><span>TIEMPO</span></div><div><strong>${session.state.errors}</strong><span>ERRORES</span></div><div><strong>${session.state.totalArrows - session.state.board.arrows.length}</strong><span>FLECHAS</span></div></div>${won && !tutorial && this.store.profile.stats.wins % 3 === 0 ? '<div class="reward-note">+1 pista · Cada victoria abre caminos.</div>' : ''}<button class="primary-button" data-action="${nextAction}">${nextLabel} ${icon(won ? 'arrow' : 'retry')}</button><button class="text-button centered" data-action="home">Volver al inicio</button>`;
   }
 
   private handleKey(event: KeyboardEvent): void {
