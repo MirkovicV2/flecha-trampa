@@ -1,10 +1,18 @@
 # FLECHA TRAMPA
 
-**Piensa la salida.** Juego de puzles para móvil: flechas, tres vidas y el orden justo para despejar el tablero. MVP web v0.1.0, con TypeScript estricto, Phaser 3, Vite, Vitest y Capacitor 8.
+**Piensa la salida.** Juego de puzles para móvil: flechas, tres vidas y el orden justo para despejar el tablero. Versión 0.1.1 para web y Android, con TypeScript estricto, Phaser 3, Vite, Vitest y Capacitor 8.
+
+## Descargar e instalar la APK
+
+**[Descargar FLECHA TRAMPA v0.1.1 para Android](https://github.com/MirkovicV2/flecha-trampa/releases/download/v0.1.1/flecha-trampa-v0.1.1-android.apk)** · [Ver Release y archivos](https://github.com/MirkovicV2/flecha-trampa/releases/tag/v0.1.1).
+
+En GitHub Mobile, abrir Releases → v0.1.1 → Assets → `flecha-trampa-v0.1.1-android.apk`. El repositorio es privado: iniciar sesión con la cuenta que tiene acceso. Abrir el archivo descargado y seguir el instalador de Android.
+
+Requiere Android 7.0 o posterior y Android System WebView actualizado. Es una APK universal de tipo release, firmada para pruebas, con el juego incluido para jugar sin conexión. La misma firma permite actualizar conservando las partidas. El modo clásico y el diario funcionan localmente; compartir retos fuera de la app necesita configurar una URL web pública. No es una publicación de Google Play. Ver [compilación, firma y alcance de las pruebas Android](docs/MOBILE.md).
 
 ## Estado de GitHub
 
-Repositorio privado verificado: [MirkovicV2/flecha-trampa](https://github.com/MirkovicV2/flecha-trampa). `main`, `develop`, las ramas de funcionalidad y la etiqueta anotada `v0.1.0` están publicadas. La cuenta activa se comprobó con `gh auth status` y `gh api user`. La protección remota de `main` no está activa: GitHub exige Pro para habilitarla en este repositorio privado. Ver [estado y comprobaciones de GitHub](docs/REMOTE_STATUS.md).
+Repositorio privado verificado: [MirkovicV2/flecha-trampa](https://github.com/MirkovicV2/flecha-trampa). `main`, `develop` y las ramas de funcionalidad están publicadas. `v0.1.0` conserva el MVP web original y `v0.1.1` identifica la versión con APK Android. La cuenta activa se comprobó con `gh auth status` y `gh api user`. La protección remota de `main` no está activa: GitHub exige Pro para habilitarla en este repositorio privado. Ver [estado y comprobaciones de GitHub](docs/REMOTE_STATUS.md).
 
 ## Inicio rápido en este ordenador
 
@@ -57,6 +65,7 @@ Las dependencias tienen versiones exactas y lockfile versionado. El override de 
 | `npm run format` / `format:check` | Formato con Prettier                                 |
 | `npm run cap:sync`                | Compilar y sincronizar las plataformas añadidas      |
 | `npm run cap:android` / `cap:ios` | Abrir una plataforma previamente creada              |
+| `npm run android:apk`             | Validar, compilar y firmar la APK local en Windows   |
 
 En Windows, `scripts/dev.ps1 -Task check` o `-Task preview` selecciona también Node local.
 
@@ -136,21 +145,23 @@ Antes de integrar: `npm run check`, `npm run format:check` y pruebas de navegado
 
 CI usa Node 24. Los trabajos `validate` y `browser-tests` instalan dependencias, ejecutan lint, formato, tests, build y pruebas de navegador. Admite push, pull request y ejecución manual. El resultado remoto está enlazado en [estado de GitHub](docs/REMOTE_STATUS.md). Ver [flujo y protección de ramas](docs/GIT_WORKFLOW.md), [validación](docs/VALIDATION.md) y [changelog](CHANGELOG.md).
 
+El workflow Android añade `android-build-and-smoke`: lint nativo, compilación release y pruebas en emulador de Preferences, recreación de actividad y la interfaz release con pulsaciones reales. Las claves de firma de las APK publicadas permanecen en el ordenador.
+
 ## Android e iOS
 
-Configuración: `appId: com.flechatrampa.game`, nombre `FLECHA TRAMPA`, `webDir: dist`, zonas seguras y adaptadores de Preferences, App e Haptics. No se han generado ni firmado binarios de tienda.
+Configuración: `appId: com.flechatrampa.game`, nombre `FLECHA TRAMPA`, `webDir: dist`, zonas seguras y adaptadores de Preferences, App e Haptics. El proyecto Android está versionado; la APK firmada se distribuye como archivo de Release y las claves quedan fuera de Git. No se ha publicado en tiendas.
 
 ```sh
 npm run build
-npx cap add android
+npx cap sync android
 npm run cap:sync
 npm run cap:android
 ```
 
-Para iOS, ejecutar `npx cap add ios`, sincronizar y abrir Xcode en un Mac preparado. Android Studio y Android SDK no se encontraron en este PC; Java global es 19.0.2. iOS requiere macOS y Xcode. Ver [preparación móvil](docs/MOBILE.md).
+En este PC se han instalado JDK 21 y Android SDK 36 dentro de `.tools/`, sin sustituir Java global. `. ./scripts/use-android-tools.ps1` prepara la sesión y `npm run android:apk` genera el instalador. Para iOS, ejecutar `npx cap add ios`, sincronizar y abrir Xcode en un Mac preparado. Ver [preparación móvil](docs/MOBILE.md).
 
 ## Monetización y limitaciones
 
 `AdsService` y `PurchasesService` tienen implementaciones NoOp. No hay anuncios, pagos ni recompensas publicitarias simuladas. Están preparados los puntos de integración de pistas recompensadas, intersticiales entre niveles, eliminación de anuncios y cosméticos. Ver [monetización futura](docs/MONETIZATION.md).
 
-Pendiente: disponer de un plan compatible para activar y verificar protección de `main`; probar y firmar Android/iOS en dispositivos; alojar una URL pública para compartir entre equipos. No hay ranking global, sincronización en la nube, analítica ni caché PWA offline. La emulación Chromium no sustituye las pruebas en Safari/iOS y hardware Android.
+Pendiente: disponer de un plan compatible para activar y verificar protección de `main`; probar la APK en teléfonos físicos; preparar y firmar iOS en un Mac; alojar una URL pública para compartir entre equipos. No hay ranking global, sincronización en la nube, analítica ni caché PWA offline. Las pruebas automatizadas no sustituyen la validación en hardware real.
