@@ -27,14 +27,14 @@ Tras resolver la restricción, ejecutar desde PowerShell:
 
 ```powershell
 . .\scripts\use-local-tools.ps1
-gh auth status
+gh auth status --active --hostname github.com
 gh api user --jq .login
 # Solo si es necesario volver a autenticar:
-gh auth login --web --git-protocol https
+gh auth login --hostname github.com --web --git-protocol https --scopes workflow
 .\scripts\sync-github.ps1
 ```
 
-La autenticación usa el navegador y el almacén seguro. No escribir tokens en archivos del proyecto o mensajes de chat. El script obtiene la identidad real, crea `flecha-trampa` privado si falta, conserva un `origin` compatible y sube ramas y tags sin forzar. Un historial remoto diferente necesita revisión antes de sincronizar.
+La autenticación usa el navegador y el almacén seguro. No escribir tokens en archivos del proyecto o mensajes de chat. El script comprueba solo la cuenta activa, obtiene su identidad real, crea `flecha-trampa` privado si falta, conserva un `origin` compatible y sube ramas y tags sin forzar. Las operaciones Git usan la credencial de GitHub CLI únicamente para esos comandos, sin cambiar la configuración de otros proyectos. Las cuentas antiguas que sigan guardadas no determinan el destino. Un historial remoto diferente necesita revisión antes de sincronizar.
 
 ## Protección de main
 
