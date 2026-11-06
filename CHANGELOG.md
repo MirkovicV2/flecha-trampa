@@ -1,5 +1,11 @@
 # Changelog
 
+## Sin publicar
+
+- Sincronización de GitHub limitada a la cuenta activa y a los comandos del proyecto.
+- Repositorio privado publicado en `MirkovicV2/flecha-trampa`, con ramas y etiqueta original `v0.1.0`.
+- Ejecución manual de CI y documentación de autenticación y protección de ramas.
+
 ## 0.1.0 — 2026-11-06
 
 Primera versión jugable del MVP web FLECHA TRAMPA.
@@ -14,4 +20,4 @@ Primera versión jugable del MVP web FLECHA TRAMPA.
 - NoOp para anuncios y compras, con límites de integración y documentación de monetización futura.
 - TypeScript estricto, ESLint, Prettier, Vitest, Playwright y CI con Node 24.
 
-La publicación en GitHub está bloqueada por `HTTP 403: Sorry. Your account was suspended`. No hay binarios nativos, anuncios, pagos, ranking global ni publicación en tiendas.
+No hay binarios nativos, anuncios, pagos, ranking global ni publicación en tiendas. La sincronización inicial con GitHub se completó posteriormente al autenticar la cuenta indicada; la etiqueta `v0.1.0` conserva su commit original.

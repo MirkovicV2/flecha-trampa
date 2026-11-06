@@ -17,13 +17,13 @@ git switch develop
 git merge --no-ff feature/nombre-concreto
 ```
 
-Cuando exista remoto, subir la feature y `develop` con seguimiento. Preferir PRs para revisión. No integrar una comprobación fallida. Las versiones de dependencias son exactas; acompañar cada actualización del lockfile y sus verificaciones.
+Subir la feature y `develop` con seguimiento al remoto privado `https://github.com/MirkovicV2/flecha-trampa.git`. Preferir PRs para revisión. No integrar una comprobación fallida. Las versiones de dependencias son exactas; acompañar cada actualización del lockfile y sus verificaciones.
 
-## Recuperar GitHub
+## Autenticación y sincronización de GitHub
 
-La cuenta guardada en GitHub CLI era `Mirkovic-beep`. `gh api user` y `gh repo create` devolvieron `HTTP 403: Sorry. Your account was suspended`. No se ha creado un remoto ni se han subido ramas. Ver [comprobación original](REMOTE_STATUS.md).
+La cuenta activa verificada es `MirkovicV2`. El repositorio privado, las ramas y la etiqueta `v0.1.0` están publicados. El bloqueo de la cuenta anterior quedó resuelto al autorizar esta cuenta mediante el flujo web seguro de GitHub CLI. Ver [comprobación del remoto](REMOTE_STATUS.md).
 
-Tras resolver la restricción, ejecutar desde PowerShell:
+Para comprobar la identidad y sincronizar desde PowerShell:
 
 ```powershell
 . .\scripts\use-local-tools.ps1
@@ -38,9 +38,9 @@ La autenticación usa el navegador y el almacén seguro. No escribir tokens en a
 
 ## Protección de main
 
-**Estado actual: no activada ni verificable, por el rechazo de la cuenta y la ausencia de un repositorio creado.**
+**Estado actual: no activada.** Las consultas y el intento de aplicar la protección por API devolvieron HTTP 403: `Upgrade to GitHub Pro or make this repository public to enable this feature.` Se conserva la visibilidad privada solicitada. El flujo de revisión y las comprobaciones se siguen manualmente mientras el plan no admita estas reglas.
 
-Después del primer push y de una ejecución correcta de CI, abrir Settings → Branches → Add branch protection rule para `main`. Exigir pull request, ramas actualizadas y comprobaciones `validate` y `browser-tests`. Impedir force push y borrado; aplicar también a administradores. Con una sola persona, el ejemplo exige PR y checks pero no una aprobación de otro revisor.
+Cuando el plan lo permita y después de una ejecución correcta de CI, abrir Settings → Branches → Add branch protection rule para `main`. Exigir pull request, ramas actualizadas y comprobaciones `validate` y `browser-tests`. Impedir force push y borrado; aplicar también a administradores. Con una sola persona, el ejemplo exige PR y checks pero no una aprobación de otro revisor.
 
 Puede aplicarse por API con el cuerpo revisable [branch-protection.json](../scripts/branch-protection.json):
 
