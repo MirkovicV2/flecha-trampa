@@ -1,0 +1,75 @@
+name: Android APK
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, develop, feature/android-apk]
+  pull_request:
+    branches: [main, develop]
+permissions:
+  contents: read
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  android:
+    name: android-build-and-smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+      - run: npm ci
+      - run: npm run check
+      - run: npm run format:check
+      - run: npx cap sync android
+      - name: Validate and assemble native variants
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon --max-workers=2 :app:lintRelease :app:assembleRelease :app:assembleDebugAndroidTest
+      - name: Enable emulator acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Test native launch, save, activity recreation and Android back
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          profile: pixel_5
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: |
+            adb shell svc wifi disable
+            adb shell svc data disable
+            ./android/gradlew --project-dir android --no-daemon --max-workers=2 :app:connectedDebugAndroidTest
+            mkdir -p .artifacts/android-smoke
+            adb pull /sdcard/Android/data/com.flechatrampa.game/files/native-smoke.png .artifacts/android-smoke/native-smoke.png
+      - name: Retain unsigned release candidate
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-unsigned-${{ github.sha }}
+          path: android/app/build/outputs/apk/release/app-release-unsigned.apk
+          if-no-files-found: error
+          retention-days: 14
+      - name: Retain Android reports and screenshot
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-reports-${{ github.sha }}
+          path: |
+            android/app/build/reports/
+            android/app/build/outputs/androidTest-results/
+            .artifacts/android-smoke/
+          if-no-files-found: ignore
+          retention-days: 14
