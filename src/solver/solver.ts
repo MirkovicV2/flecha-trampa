@@ -13,10 +13,14 @@ export interface Solution {
 /** Independent geometric predicate: does not call core.findBlocker or generator code. */
 function obstructs(arrow: Arrow, other: Arrow): boolean {
   switch (arrow.direction) {
-    case 'up': return other.x === arrow.x && other.y < arrow.y;
-    case 'down': return other.x === arrow.x && other.y > arrow.y;
-    case 'left': return other.y === arrow.y && other.x < arrow.x;
-    case 'right': return other.y === arrow.y && other.x > arrow.x;
+    case 'up':
+      return other.x === arrow.x && other.y < arrow.y;
+    case 'down':
+      return other.x === arrow.x && other.y > arrow.y;
+    case 'left':
+      return other.y === arrow.y && other.x < arrow.x;
+    case 'right':
+      return other.y === arrow.y && other.x > arrow.x;
   }
 }
 
@@ -54,8 +58,11 @@ export function solve(board: Board): Solution {
   return {
     solvable: sequence.length === board.arrows.length,
     sequence,
-    remaining: board.arrows.filter((arrow) => (count.get(arrow.id) ?? 0) > 0).map((arrow) => arrow.id),
-    dependencies, initialMoves,
+    remaining: board.arrows
+      .filter((arrow) => (count.get(arrow.id) ?? 0) > 0)
+      .map((arrow) => arrow.id),
+    dependencies,
+    initialMoves,
     depth: Math.max(0, ...depth.values()),
   };
 }

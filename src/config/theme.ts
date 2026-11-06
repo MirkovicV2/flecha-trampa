@@ -13,4 +13,9 @@ export interface PlayerSettings {
   theme: ThemeName;
 }
 
-export const DEFAULT_SETTINGS: PlayerSettings = { sound: false, haptics: true, reducedMotion: false, theme: 'aurora' };
+export const DEFAULT_SETTINGS: PlayerSettings = {
+  sound: false,
+  haptics: true,
+  reducedMotion: false,
+  theme: 'aurora',
+};

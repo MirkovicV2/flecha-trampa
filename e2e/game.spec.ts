@@ -11,10 +11,17 @@ async function skipTutorial(page: Page): Promise<void> {
 
 async function readBoard(page: Page): Promise<Board> {
   await expect(page.locator('.board-loading')).toHaveCount(0);
-  const arrows = await page.locator('[data-arrow]').evaluateAll((buttons) => buttons.map((button) => {
-    const data = (button as HTMLElement).dataset;
-    return { id: data.arrow!, x: Number(data.x), y: Number(data.y), direction: data.direction as Direction };
-  }));
+  const arrows = await page.locator('[data-arrow]').evaluateAll((buttons) =>
+    buttons.map((button) => {
+      const data = (button as HTMLElement).dataset;
+      return {
+        id: data.arrow!,
+        x: Number(data.x),
+        y: Number(data.y),
+        direction: data.direction as Direction,
+      };
+    }),
+  );
   return { width: 10, height: 10, arrows };
 }
 
@@ -78,9 +85,13 @@ test('hints identify a legal move and pause freezes the timer', async ({ page })
   await expect(page.locator('.level-chip')).toContainText('NIVEL 02');
 });
 
-test('home and settings fit portrait screens and all navigation works', async ({ page }, testInfo) => {
+test('home and settings fit portrait screens and all navigation works', async ({
+  page,
+}, testInfo) => {
   await skipTutorial(page);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
   await page.screenshot({ path: `.artifacts/home-${testInfo.project.name}.png`, fullPage: true });
   await page.getByRole('button', { name: 'Abrir ajustes' }).click();
   const sound = page.getByRole('switch', { name: /Sonido/ });
@@ -96,7 +107,9 @@ test('home and settings fit portrait screens and all navigation works', async ({
   await page.getByRole('button', { name: /Jugar ahora/ }).click();
   await readBoard(page);
   await page.screenshot({ path: `.artifacts/game-${testInfo.project.name}.png`, fullPage: true });
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
 });
 
 test('reload restores the exact board, hints, settings and one counted start', async ({ page }) => {
@@ -116,10 +129,14 @@ test('reload restores the exact board, hints, settings and one counted start', a
   await page.getByRole('button', { name: 'Pausar', exact: true }).click();
   await page.getByRole('button', { name: 'Volver al inicio', exact: true }).click();
   await page.getByRole('button', { name: 'Tu progreso', exact: true }).click();
-  await expect(page.locator('.stat-card').filter({ hasText: 'Partidas jugadas' }).locator('strong')).toHaveText('1');
+  await expect(
+    page.locator('.stat-card').filter({ hasText: 'Partidas jugadas' }).locator('strong'),
+  ).toHaveText('1');
 });
 
-test('daily challenge resumes and keeps a completed result after reload', async ({ page }, testInfo) => {
+test('daily challenge resumes and keeps a completed result after reload', async ({
+  page,
+}, testInfo) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await skipTutorial(page);
   await page.getByRole('button', { name: /El reto de hoy/ }).click();
@@ -144,7 +161,10 @@ test('daily challenge resumes and keeps a completed result after reload', async 
   await expect(page.locator('.daily-streak')).toContainText('1 días de racha');
 });
 
-test('a shared link reproduces a board and shares an actual result', async ({ page, context }, testInfo) => {
+test('a shared link reproduces a board and shares an actual result', async ({
+  page,
+  context,
+}, testInfo) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await skipTutorial(page);
   await page.getByRole('button', { name: /Reta a alguien/ }).click();
@@ -154,12 +174,23 @@ test('a shared link reproduces a board and shares an actual result', async ({ pa
   await page.getByRole('button', { name: 'Crear mi reto' }).click();
   const url = await page.getByRole('textbox', { name: 'Enlace del reto' }).inputValue();
   expect(url).toContain('#reto=FT1.');
-  await page.evaluate(() => Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (value: string) => { sessionStorage.setItem('test:copied', value); } } }));
+  await page.evaluate(() =>
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        writeText: async (value: string) => {
+          sessionStorage.setItem('test:copied', value);
+        },
+      },
+    }),
+  );
   await page.getByRole('button', { name: 'Copiar enlace', exact: true }).click();
   expect(await page.evaluate(() => sessionStorage.getItem('test:copied'))).toBe(url);
   await page.screenshot({ path: `.artifacts/shared-${testInfo.project.name}.png`, fullPage: true });
   await page.getByRole('button', { name: 'Jugar este reto' }).click();
   const original = await readBoard(page);
+  // Model switching away from the first tab, which is not automatic in headless Chromium.
+  await page.getByRole('button', { name: 'Pausar', exact: true }).click();
   const receiver = await context.newPage();
   await receiver.emulateMedia({ reducedMotion: 'reduce' });
   await receiver.goto(url);
@@ -170,10 +201,86 @@ test('a shared link reproduces a board and shares an actual result', async ({ pa
   await expect(receiver.getByRole('dialog')).toContainText('CAMINO DESPEJADO');
   await receiver.evaluate(() => {
     Object.defineProperty(navigator, 'share', { configurable: true, value: undefined });
-    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (value: string) => { sessionStorage.setItem('test:result', value); } } });
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        writeText: async (value: string) => {
+          sessionStorage.setItem('test:result', value);
+        },
+      },
+    });
   });
   await receiver.getByRole('button', { name: 'Compartir resultado', exact: true }).click();
   await expect(receiver.locator('.toast')).toContainText('Resultado y enlace copiados');
-  expect(await receiver.evaluate(() => sessionStorage.getItem('test:result'))).toContain('Errores: 0');
+  expect(await receiver.evaluate(() => sessionStorage.getItem('test:result'))).toContain(
+    'Errores: 0',
+  );
   await receiver.close();
+});
+
+test('fast repeated input cannot remove an arrow twice or lose extra lives', async ({ page }) => {
+  await skipTutorial(page);
+  await page.getByRole('button', { name: /Jugar ahora/ }).click();
+  const board = await readBoard(page);
+  const valid = availableMoves(board)[0]!;
+  await page.locator(`[data-arrow="${valid.id}"]`).evaluate((button) => {
+    for (let i = 0; i < 12; i++) (button as HTMLButtonElement).click();
+  });
+  await expect(page.locator('[data-arrow]')).toHaveCount(board.arrows.length - 1);
+  await expect(page.locator('[data-lives]')).toHaveAttribute('aria-label', '3 vidas');
+});
+
+test('a second tab preserves its newer progress and prompts the stale tab to reload', async ({
+  page,
+  context,
+}) => {
+  await skipTutorial(page);
+  await page.getByRole('button', { name: /Jugar ahora/ }).click();
+  await readBoard(page);
+  // Each headless page remains visible. Pause explicitly to model leaving the first tab.
+  await page.getByRole('button', { name: 'Pausar', exact: true }).click();
+  const second = await context.newPage();
+  await second.emulateMedia({ reducedMotion: 'reduce' });
+  await second.goto('/');
+  await second.getByRole('button', { name: /Continuar partida/ }).click();
+  const board = await readBoard(second);
+  const firstMove = solve(board).sequence[0]!;
+  await second.locator(`[data-arrow="${firstMove}"]`).click();
+  await expect(page.getByRole('dialog')).toContainText('Otra pestaña');
+  await second.getByRole('button', { name: 'Pausar', exact: true }).click();
+  await page.getByRole('button', { name: 'Recuperar el progreso' }).click();
+  await page.getByRole('button', { name: /Continuar partida/ }).click();
+  await readBoard(page);
+  await expect(page.locator(`[data-arrow="${firstMove}"]`)).toHaveCount(0);
+  await second.close();
+});
+
+test('portrait layouts keep a dense board inside the viewport', async ({ page }, testInfo) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await skipTutorial(page);
+  for (const width of [320, 360, 375, 428]) {
+    await page.setViewportSize({ width, height: 812 });
+    await page.getByRole('button', { name: /Reta a alguien/ }).click();
+    const createAnother = page.getByRole('button', { name: 'Crear otro reto' });
+    if (await createAnother.count()) await createAnother.click();
+    await page.getByRole('combobox', { name: 'TAMAÑO DEL TABLERO' }).selectOption('10');
+    await page.getByRole('combobox', { name: 'DENSIDAD', exact: true }).selectOption('0.85');
+    await page.getByRole('button', { name: 'Crear mi reto' }).click();
+    await page.getByRole('button', { name: 'Jugar este reto' }).click();
+    await readBoard(page);
+    await expect(page.locator('[data-arrow]')).toHaveCount(85);
+    const bounds = await page.locator('.board-frame').boundingBox();
+    expect(bounds!.x).toBeGreaterThanOrEqual(0);
+    expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    ).toBe(true);
+    if (width === 360)
+      await page.screenshot({
+        path: `.artifacts/dense-360-${testInfo.project.name}.png`,
+        fullPage: true,
+      });
+    await page.getByRole('button', { name: 'Pausar', exact: true }).click();
+    await page.getByRole('button', { name: 'Volver al inicio', exact: true }).click();
+  }
 });

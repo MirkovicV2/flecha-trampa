@@ -9,7 +9,9 @@ export class FeedbackService {
   play(kind: 'tap' | 'blocked' | 'win', settings: PlayerSettings): void {
     if (settings.haptics) {
       if (Capacitor.isNativePlatform()) {
-        void Haptics.impact({ style: kind === 'blocked' ? ImpactStyle.Medium : ImpactStyle.Light }).catch(() => undefined);
+        void Haptics.impact({
+          style: kind === 'blocked' ? ImpactStyle.Medium : ImpactStyle.Light,
+        }).catch(() => undefined);
       } else if (typeof navigator.vibrate === 'function') {
         navigator.vibrate(kind === 'blocked' ? [30, 30, 30] : 12);
       }
@@ -19,7 +21,12 @@ export class FeedbackService {
       this.context ??= new AudioContext();
       const context = this.context;
       void context.resume().catch(() => undefined);
-      const notes = kind === 'win' ? [523.25, 659.25, 783.99, 1046.5] : kind === 'blocked' ? [150, 110] : [540, 760];
+      const notes =
+        kind === 'win'
+          ? [523.25, 659.25, 783.99, 1046.5]
+          : kind === 'blocked'
+            ? [150, 110]
+            : [540, 760];
       notes.forEach((frequency, index) => {
         const oscillator = context.createOscillator();
         const gain = context.createGain();
@@ -34,6 +41,8 @@ export class FeedbackService {
         oscillator.start(time);
         oscillator.stop(time + 0.21);
       });
-    } catch { /* Audio can be unavailable in embedded browsers. Gameplay remains available. */ }
+    } catch {
+      /* Audio can be unavailable in embedded browsers. Gameplay remains available. */
+    }
   }
 }

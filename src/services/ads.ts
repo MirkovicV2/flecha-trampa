@@ -14,6 +14,10 @@ export interface AdsService {
 export class NoOpAdsService implements AdsService {
   readonly rewardedAvailable = false;
   readonly interstitialAvailable = false;
-  async showRewardedHint(): Promise<RewardedAdResult> { return { status: 'unavailable' }; }
-  async showInterstitial(): Promise<InterstitialResult> { return 'unavailable'; }
+  async showRewardedHint(): Promise<RewardedAdResult> {
+    return { status: 'unavailable' };
+  }
+  async showInterstitial(): Promise<InterstitialResult> {
+    return 'unavailable';
+  }
 }

@@ -25,5 +25,10 @@ ios/App/build/
 *.keystore
 *.jks
 *.p12
+*.pfx
+*.pem
+*.key
+id_rsa*
+id_ed25519*
 *.mobileprovision
 credentials*.json
