@@ -40,7 +40,7 @@ La autenticación usa el navegador y el almacén seguro. No escribir tokens en a
 
 **Estado actual: no activada.** Las consultas y el intento de aplicar la protección por API devolvieron HTTP 403: `Upgrade to GitHub Pro or make this repository public to enable this feature.` Se conserva la visibilidad privada solicitada. El flujo de revisión y las comprobaciones se siguen manualmente mientras el plan no admita estas reglas.
 
-Cuando el plan lo permita y después de una ejecución correcta de CI, abrir Settings → Branches → Add branch protection rule para `main`. Exigir pull request, ramas actualizadas y comprobaciones `validate` y `browser-tests`. Impedir force push y borrado; aplicar también a administradores. Con una sola persona, el ejemplo exige PR y checks pero no una aprobación de otro revisor.
+Cuando el plan lo permita y después de una ejecución correcta de CI, abrir Settings → Branches → Add branch protection rule para `main`. Exigir pull request, ramas actualizadas y comprobaciones `validate`, `browser-tests` y `android-build-and-smoke`. Impedir force push y borrado; aplicar también a administradores. Con una sola persona, el ejemplo exige PR y checks pero no una aprobación de otro revisor.
 
 Puede aplicarse por API con el cuerpo revisable [branch-protection.json](../scripts/branch-protection.json):
 

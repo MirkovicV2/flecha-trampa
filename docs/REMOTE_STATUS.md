@@ -17,6 +17,10 @@ Actions está habilitado y el workflow `CI` está activo. Ejecuta `npm ci`, lint
 
 La [primera ejecución manual completa](https://github.com/MirkovicV2/flecha-trampa/actions/runs/42288421160), sobre el commit `2829cb458c515806af26da56a37e301708f3abc4`, terminó correctamente: `validate` y `browser-tests` con resultado `success`. Los logs confirman 64 pruebas de Vitest y 20 pruebas de navegador correctas en Linux. La ejecución anterior de la misma rama fue cancelada automáticamente por la regla de concurrencia al iniciar esta validación.
 
+## APK Android
+
+La versión Android se distribuye en la [Release v0.1.1](https://github.com/MirkovicV2/flecha-trampa/releases/tag/v0.1.1), con APK firmada, SHA-256 y certificado público. El workflow adicional `android.yml` valida el proyecto nativo y ejecuta pruebas de guardado y de la interfaz release en emulador. La clave privada de distribución no se sube al repositorio ni a Actions. Ver [alcance Android](MOBILE.md).
+
 ## Protección de main
 
 El intento de aplicar las reglas mediante `scripts/protect-main.ps1` y la consulta de protección devolvieron **HTTP 403**:

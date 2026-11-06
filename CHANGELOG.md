@@ -1,7 +1,12 @@
 # Changelog
 
-## Sin publicar
+## 0.1.1 — 2026-11-06
 
+- APK Android release universal, firma de prueba persistente y descarga desde GitHub Releases.
+- Proyecto Android versionado, SDK 36, Java 21 y Gradle 8.14.3 con comprobación de checksum.
+- Icono y lanzamiento originales, orientación vertical y zonas seguras de Capacitor 8.
+- Compilación y firma locales con claves excluidas de Git, verificación de APK y SHA-256.
+- CI Android con lint nativo, APK release y prueba de arranque, guardado, recuperación y botón Atrás en emulador.
 - Sincronización de GitHub limitada a la cuenta activa y a los comandos del proyecto.
 - Repositorio privado publicado en `MirkovicV2/flecha-trampa`, con ramas y etiqueta original `v0.1.0`.
 - Ejecución manual de CI y documentación de autenticación y protección de ramas.

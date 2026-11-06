@@ -1,6 +1,6 @@
 {
   "name": "flecha-trampa",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "overrides": {
     "minimatch@>=7.0.0 <=11.0.0": "11.0.5"
@@ -26,6 +26,7 @@
     "check": "npm run lint && npm test && npm run build",
     "cap:sync": "npm run build && cap sync",
     "cap:android": "cap open android",
+    "android:apk": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-android.ps1",
     "cap:ios": "cap open ios"
   },
   "dependencies": {
