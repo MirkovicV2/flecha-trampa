@@ -145,7 +145,7 @@ Antes de integrar: `npm run check`, `npm run format:check` y pruebas de navegado
 
 CI usa Node 24. Los trabajos `validate` y `browser-tests` instalan dependencias, ejecutan lint, formato, tests, build y pruebas de navegador. Admite push, pull request y ejecución manual. El resultado remoto está enlazado en [estado de GitHub](docs/REMOTE_STATUS.md). Ver [flujo y protección de ramas](docs/GIT_WORKFLOW.md), [validación](docs/VALIDATION.md) y [changelog](CHANGELOG.md).
 
-El workflow Android añade `android-build-and-smoke`: lint nativo, compilación release y pruebas en emulador de Preferences, recreación de actividad y la interfaz release con pulsaciones reales. Las claves de firma de las APK publicadas permanecen en el ordenador.
+El workflow Android añade `android-build-and-smoke`: lint nativo, compilación release y pruebas en emulador de Preferences, recreación de actividad y la interfaz release mediante Espresso-Web. Las claves de firma de las APK publicadas permanecen en el ordenador.
 
 ## Android e iOS
 

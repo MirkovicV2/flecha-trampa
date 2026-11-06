@@ -1,6 +1,9 @@
 package com.flechatrampa.game;
 
 import static org.junit.Assert.*;
+import static androidx.test.espresso.web.sugar.Web.onWebView;
+import static androidx.test.espresso.web.webdriver.DriverAtoms.findElement;
+import static androidx.test.espresso.web.webdriver.DriverAtoms.webClick;
 
 import android.content.Context;
 import android.content.ContentValues;
@@ -10,12 +13,10 @@ import android.net.Uri;
 import android.os.Environment;
 import android.os.SystemClock;
 import android.provider.MediaStore;
-import android.view.InputDevice;
 import android.view.KeyEvent;
-import android.view.MotionEvent;
-import android.webkit.WebView;
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
+import androidx.test.espresso.web.webdriver.Locator;
 import androidx.test.filters.SdkSuppress;
 import androidx.test.platform.app.InstrumentationRegistry;
 import java.io.OutputStream;
@@ -100,39 +101,7 @@ public class NativeGameSmokeTest {
 
     private static void click(ActivityScenario<MainActivity> activity, String selector) throws Exception {
         await(activity, "!!document.querySelector(" + JSONObject.quote(selector) + ") && !document.querySelector(" + JSONObject.quote(selector) + ").disabled");
-        JSONObject point = new JSONObject(evaluate(activity, "(() => { const e = document.querySelector(" + JSONObject.quote(selector) + "); let r = e.getBoundingClientRect(); if (r.top < 0 || r.bottom > innerHeight) { e.scrollIntoView({block: 'center'}); r = e.getBoundingClientRect(); } return {x: r.left + r.width / 2, y: r.top + r.height / 2, viewport: innerWidth}; })()"));
-        final float x = (float) point.getDouble("x");
-        final float y = (float) point.getDouble("y");
-        final float viewport = (float) point.getDouble("viewport");
-        AtomicReference<float[]> screenPoint = new AtomicReference<>();
-        activity.onActivity(instance -> {
-            WebView webView = instance.getBridge().getWebView();
-            int[] origin = new int[2];
-            webView.getLocationOnScreen(origin);
-            float scale = webView.getWidth() / viewport;
-            screenPoint.set(new float[] {origin[0] + x * scale, origin[1] + y * scale});
-        });
-        final long downTime = SystemClock.uptimeMillis();
-        touch(downTime, MotionEvent.ACTION_DOWN, screenPoint.get()[0], screenPoint.get()[1]);
-        SystemClock.sleep(60);
-        touch(downTime, MotionEvent.ACTION_UP, screenPoint.get()[0], screenPoint.get()[1]);
-        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
-    }
-
-    private static void touch(long downTime, int action, float x, float y) {
-        MotionEvent.PointerProperties pointer = new MotionEvent.PointerProperties();
-        pointer.id = 0;
-        pointer.toolType = MotionEvent.TOOL_TYPE_FINGER;
-        MotionEvent.PointerCoords coords = new MotionEvent.PointerCoords();
-        coords.x = x;
-        coords.y = y;
-        coords.pressure = 1;
-        coords.size = 1;
-        MotionEvent event = MotionEvent.obtain(downTime, SystemClock.uptimeMillis(), action, 1,
-            new MotionEvent.PointerProperties[] {pointer}, new MotionEvent.PointerCoords[] {coords},
-            0, 0, 1, 1, 0, 0, InputDevice.SOURCE_TOUCHSCREEN, 0);
-        InstrumentationRegistry.getInstrumentation().sendPointerSync(event);
-        event.recycle();
+        onWebView().withElement(findElement(Locator.CSS_SELECTOR, selector)).perform(webClick());
     }
 
     private static void await(ActivityScenario<MainActivity> activity, String expression) throws Exception {

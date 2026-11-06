@@ -43,7 +43,7 @@ La versión Android 0.1.1 utiliza `versionCode 2`. Incrementar `versionCode` y `
 
 ## Pruebas Android
 
-El workflow [Android APK](../.github/workflows/android.yml) compila y analiza el proyecto con JDK 21. Después inicia un emulador API 35 y ejecuta `NativeGameSmokeTest` en la variante release: comprueba el WebView con el juego empaquetado, zonas seguras, pulsaciones táctiles nativas, Preferences reales, pistas, recuperación tras recrear la actividad y el botón Atrás. Wi-Fi y datos del emulador se desactivan durante la prueba. Conserva informes y una captura del tablero; esa captura se escribe en el área de imágenes del emulador para sobrevivir a la limpieza de los datos de la app al terminar.
+El workflow [Android APK](../.github/workflows/android.yml) compila y analiza el proyecto con JDK 21. Después inicia un emulador API 35 y ejecuta `NativeGameSmokeTest` en la variante release: comprueba el WebView con el juego empaquetado, zonas seguras, interacciones de Espresso-Web, Preferences reales, pistas, recuperación tras recrear la actividad y el botón Atrás. Wi-Fi y datos del emulador se desactivan durante la prueba. Conserva informes y una captura del tablero; esa captura se escribe en el área de imágenes del emulador para sobrevivir a la limpieza de los datos de la app al terminar.
 
 El candidato release y su APK de pruebas se firman para la instrumentación con una clave efímera del runner. Esa clave temporal no se publica ni sirve para las actualizaciones de los usuarios. El instalador descargable utiliza la firma persistente local, comprobada con `apksigner` y `zipalign`, y se publica en Releases. El workflow conserva el candidato sin firmar y los informes, sin claves.
 
