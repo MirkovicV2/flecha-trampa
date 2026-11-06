@@ -13,7 +13,13 @@ export interface PurchasesService {
 
 /** A store adapter can replace this after products and receipt verification exist. */
 export class NoOpPurchasesService implements PurchasesService {
-  async entitlements(): Promise<Entitlements> { return { adsRemoved: false, ownedThemes: ['aurora', 'ember'] }; }
-  async purchase(): Promise<'unavailable'> { return 'unavailable'; }
-  async restore(): Promise<Entitlements> { return this.entitlements(); }
+  async entitlements(): Promise<Entitlements> {
+    return { adsRemoved: false, ownedThemes: ['aurora', 'ember'] };
+  }
+  async purchase(): Promise<'unavailable'> {
+    return 'unavailable';
+  }
+  async restore(): Promise<Entitlements> {
+    return this.entitlements();
+  }
 }

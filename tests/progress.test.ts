@@ -10,13 +10,19 @@ import { solve } from '../src/solver/solver';
 
 class MemoryStorage implements StoragePort {
   readonly data = new Map<string, string>();
-  getItem(key: string): string | null { return this.data.get(key) ?? null; }
-  setItem(key: string, value: string): void { this.data.set(key, value); }
+  getItem(key: string): string | null {
+    return this.data.get(key) ?? null;
+  }
+  setItem(key: string, value: string): void {
+    this.data.set(key, value);
+  }
 }
 
-const classic = (level = 1): PlaySession => newSession('classic', level, `test-${level}`, configForLevel(level));
+const classic = (level = 1): PlaySession =>
+  newSession('classic', level, `test-${level}`, configForLevel(level));
 function win(session: PlaySession): void {
-  for (const id of solve(session.state.board).sequence) session.state = attemptMove(session.state, id).state;
+  for (const id of solve(session.state.board).sequence)
+    session.state = attemptMove(session.state, id).state;
 }
 
 describe('durable progress', () => {
@@ -35,7 +41,9 @@ describe('durable progress', () => {
     const loaded = new ProgressStore(storage);
     expect(loaded.profile).toEqual(store.profile);
     expect(loaded.profile).not.toBe(store.profile);
-    expect(loaded.profile.classicSave!.state.board.arrows.length).toBe(session.state.totalArrows - 1);
+    expect(loaded.profile.classicSave!.state.board.arrows.length).toBe(
+      session.state.totalArrows - 1,
+    );
     expect(isSavedSession(loaded.profile.classicSave)).toBe(true);
   });
 
@@ -67,7 +75,14 @@ describe('durable progress', () => {
   });
 
   it('keeps playing in memory if storage is blocked or full', () => {
-    const denied: StoragePort = { getItem: () => { throw new Error('SecurityError'); }, setItem: () => { throw new Error('QuotaExceededError'); } };
+    const denied: StoragePort = {
+      getItem: () => {
+        throw new Error('SecurityError');
+      },
+      setItem: () => {
+        throw new Error('QuotaExceededError');
+      },
+    };
     const store = new ProgressStore(denied);
     expect(store.available).toBe(false);
     expect(() => store.beginSession(classic())).not.toThrow();
@@ -89,7 +104,11 @@ describe('durable progress', () => {
       store.recordResult(session);
       store.recordResult(session);
     }
-    expect(store.profile).toMatchObject({ level: 4, hints: 4, stats: { played: 3, wins: 3, flawless: 3, totalPlayMs: 6000 } });
+    expect(store.profile).toMatchObject({
+      level: 4,
+      hints: 4,
+      stats: { played: 3, wins: 3, flawless: 3, totalPlayMs: 6000 },
+    });
   });
 
   it('reconciles a final move saved before its result animation', () => {
@@ -132,7 +151,15 @@ describe('durable progress', () => {
     expect(store.consumeHint()).toBe(false);
     expect(store.profile.hints).toBe(0);
     const session = classic();
-    session.state = { ...session.state, board: { ...session.state.board, arrows: session.state.board.arrows.map((arrow, i) => i === 0 ? { ...arrow, direction: arrow.direction === 'up' ? 'down' : 'up' } : arrow) } };
+    session.state = {
+      ...session.state,
+      board: {
+        ...session.state.board,
+        arrows: session.state.board.arrows.map((arrow, i) =>
+          i === 0 ? { ...arrow, direction: arrow.direction === 'up' ? 'down' : 'up' } : arrow,
+        ),
+      },
+    };
     expect(isSavedSession(session)).toBe(false);
   });
 });

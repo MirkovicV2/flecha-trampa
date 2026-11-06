@@ -17,7 +17,12 @@ class BoardScene extends Phaser.Scene {
   private readonly readyCallback: () => void;
   private readonly select: (id: string) => void;
 
-  constructor(board: Board, settings: PlayerSettings, select: (id: string) => void, ready: () => void) {
+  constructor(
+    board: Board,
+    settings: PlayerSettings,
+    select: (id: string) => void,
+    ready: () => void,
+  ) {
     super({ key: 'Board' });
     this.initialBoard = board;
     this.settings = settings;
@@ -29,11 +34,12 @@ class BoardScene extends Phaser.Scene {
     const board = this.initialBoard;
     this.cell = (SIDE - MARGIN * 2) / Math.max(board.width, board.height);
     const grid = this.add.graphics();
-    for (let y = 0; y < board.height; y++) for (let x = 0; x < board.width; x++) {
-      const [cx, cy] = this.position(x, y, board);
-      grid.fillStyle(0x9aa3b8, 0.17);
-      grid.fillCircle(cx, cy, 2.3);
-    }
+    for (let y = 0; y < board.height; y++)
+      for (let x = 0; x < board.width; x++) {
+        const [cx, cy] = this.position(x, y, board);
+        grid.fillStyle(0x9aa3b8, 0.17);
+        grid.fillCircle(cx, cy, 2.3);
+      }
     board.arrows.forEach((arrow) => this.addArrow(arrow, board));
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.pending.forEach((resolve) => resolve());
@@ -43,7 +49,10 @@ class BoardScene extends Phaser.Scene {
   }
 
   private position(x: number, y: number, board: Board): readonly [number, number] {
-    return [(SIDE - board.width * this.cell) / 2 + (x + 0.5) * this.cell, (SIDE - board.height * this.cell) / 2 + (y + 0.5) * this.cell];
+    return [
+      (SIDE - board.width * this.cell) / 2 + (x + 0.5) * this.cell,
+      (SIDE - board.height * this.cell) / 2 + (y + 0.5) * this.cell,
+    ];
   }
 
   private addArrow(arrow: Arrow, board: Board): void {
@@ -67,16 +76,31 @@ class BoardScene extends Phaser.Scene {
     glyph.lineTo(arm * 0.78, -arm * 0.22);
     glyph.strokePath();
     glyph.fillStyle(color);
-    [[0, arm], [0, -arm], [-arm * 0.78, -arm * 0.22], [arm * 0.78, -arm * 0.22]].forEach(([xx, yy]) => glyph.fillCircle(xx!, yy!, thickness / 2));
+    [
+      [0, arm],
+      [0, -arm],
+      [-arm * 0.78, -arm * 0.22],
+      [arm * 0.78, -arm * 0.22],
+    ].forEach(([xx, yy]) => glyph.fillCircle(xx!, yy!, thickness / 2));
     glyph.rotation = ROTATION[arrow.direction];
     const container = this.add.container(x, y, [tile, glyph]);
     container.setSize(size, size);
-    container.setInteractive(new Phaser.Geom.Rectangle(-size / 2, -size / 2, size, size), Phaser.Geom.Rectangle.Contains);
+    container.setInteractive(
+      new Phaser.Geom.Rectangle(-size / 2, -size / 2, size, size),
+      Phaser.Geom.Rectangle.Contains,
+    );
     container.on('pointerdown', () => this.select(arrow.id));
     this.views.set(arrow.id, container);
     if (!this.settings.reducedMotion) {
       container.setAlpha(0).setScale(0.85);
-      this.tweens.add({ targets: container, alpha: 1, scale: 1, duration: 300, delay: (arrow.x + arrow.y) * 15, ease: 'Cubic.Out' });
+      this.tweens.add({
+        targets: container,
+        alpha: 1,
+        scale: 1,
+        duration: 300,
+        delay: (arrow.x + arrow.y) * 15,
+        ease: 'Cubic.Out',
+      });
     }
   }
 
@@ -86,24 +110,58 @@ class BoardScene extends Phaser.Scene {
     if (!view || !arrow) return Promise.resolve();
     this.tweens.killTweensOf(view);
     return new Promise((resolve) => {
-      const done = () => { this.pending.delete(done); resolve(); };
+      const done = () => {
+        this.pending.delete(done);
+        resolve();
+      };
       this.pending.add(done);
       if (result.kind === 'blocked') {
         const [dx, dy] = VECTORS[arrow.direction];
-        this.tweens.add({ targets: view, x: view.x + dx * this.cell * 0.1, y: view.y + dy * this.cell * 0.1, duration: this.settings.reducedMotion ? 30 : 65, yoyo: true, repeat: 1, ease: 'Sine.InOut', onComplete: done });
+        this.tweens.add({
+          targets: view,
+          x: view.x + dx * this.cell * 0.1,
+          y: view.y + dy * this.cell * 0.1,
+          duration: this.settings.reducedMotion ? 30 : 65,
+          yoyo: true,
+          repeat: 1,
+          ease: 'Sine.InOut',
+          onComplete: done,
+        });
         return;
       }
       const [dx, dy] = VECTORS[arrow.direction];
       if (!this.settings.reducedMotion) {
         for (let index = 0; index < 6; index++) {
-          const spark = this.add.circle(view.x, view.y, 2 + index % 3, ARROW_COLORS[this.settings.theme][arrow.direction], 0.75);
-          this.tweens.add({ targets: spark, x: view.x + Math.cos(index * Math.PI / 3) * 35, y: view.y + Math.sin(index * Math.PI / 3) * 35, alpha: 0, scale: 0.2, duration: 400, onComplete: () => spark.destroy() });
+          const spark = this.add.circle(
+            view.x,
+            view.y,
+            2 + (index % 3),
+            ARROW_COLORS[this.settings.theme][arrow.direction],
+            0.75,
+          );
+          this.tweens.add({
+            targets: spark,
+            x: view.x + Math.cos((index * Math.PI) / 3) * 35,
+            y: view.y + Math.sin((index * Math.PI) / 3) * 35,
+            alpha: 0,
+            scale: 0.2,
+            duration: 400,
+            onComplete: () => spark.destroy(),
+          });
         }
       }
       this.tweens.add({
-        targets: view, x: view.x + dx * (SIDE + this.cell), y: view.y + dy * (SIDE + this.cell), alpha: 0,
-        duration: this.settings.reducedMotion ? 50 : 340, ease: 'Cubic.In',
-        onComplete: () => { this.views.delete(arrow.id); view.destroy(); done(); },
+        targets: view,
+        x: view.x + dx * (SIDE + this.cell),
+        y: view.y + dy * (SIDE + this.cell),
+        alpha: 0,
+        duration: this.settings.reducedMotion ? 50 : 340,
+        ease: 'Cubic.In',
+        onComplete: () => {
+          this.views.delete(arrow.id);
+          view.destroy();
+          done();
+        },
       });
     });
   }
@@ -113,7 +171,15 @@ class BoardScene extends Phaser.Scene {
     if (!view) return;
     this.tweens.killTweensOf(view);
     view.setAlpha(1).setScale(1);
-    this.tweens.add({ targets: view, scale: this.settings.reducedMotion ? 1 : 1.12, alpha: 0.5, duration: 450, yoyo: true, repeat: 2 });
+    if (this.settings.reducedMotion) return;
+    this.tweens.add({
+      targets: view,
+      scale: this.settings.reducedMotion ? 1 : 1.12,
+      alpha: 0.5,
+      duration: 450,
+      yoyo: true,
+      repeat: 2,
+    });
   }
 }
 
@@ -122,20 +188,38 @@ export class BoardRenderer {
   private readonly game: Phaser.Game;
   private readonly boardScene: BoardScene;
 
-  constructor(host: HTMLElement, board: Board, settings: PlayerSettings, onSelect: (id: string) => void) {
+  constructor(
+    host: HTMLElement,
+    board: Board,
+    settings: PlayerSettings,
+    onSelect: (id: string) => void,
+  ) {
     let onReady: () => void = () => undefined;
-    this.ready = new Promise<void>((resolve) => { onReady = resolve; });
+    this.ready = new Promise<void>((resolve) => {
+      onReady = resolve;
+    });
     this.boardScene = new BoardScene(board, settings, onSelect, onReady);
     this.game = new Phaser.Game({
-      type: Phaser.AUTO, parent: host, width: SIDE, height: SIDE, transparent: true,
-      scene: [this.boardScene], audio: { noAudio: true },
+      type: Phaser.AUTO,
+      parent: host,
+      width: SIDE,
+      height: SIDE,
+      transparent: true,
+      scene: [this.boardScene],
+      audio: { noAudio: true },
       scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
       render: { antialias: true, powerPreference: 'low-power' },
       banner: false,
     });
   }
 
-  animate(result: MoveResult): Promise<void> { return this.boardScene.animate(result); }
-  hint(id: string): void { this.boardScene.hint(id); }
-  destroy(): void { this.game.destroy(true); }
+  animate(result: MoveResult): Promise<void> {
+    return this.boardScene.animate(result);
+  }
+  hint(id: string): void {
+    this.boardScene.hint(id);
+  }
+  destroy(): void {
+    this.game.destroy(true);
+  }
 }

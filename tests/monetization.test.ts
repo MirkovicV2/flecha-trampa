@@ -23,8 +23,11 @@ describe('future monetization boundaries', () => {
   it('uses a provider receipt once and rejects duplicate or concurrent callbacks', async () => {
     const grant = vi.fn();
     const ads: AdsService = {
-      rewardedAvailable: true, interstitialAvailable: false,
-      showRewardedHint: vi.fn().mockResolvedValue({ status: 'rewarded', receipt: 'unit-test-receipt' }),
+      rewardedAvailable: true,
+      interstitialAvailable: false,
+      showRewardedHint: vi
+        .fn()
+        .mockResolvedValue({ status: 'rewarded', receipt: 'unit-test-receipt' }),
       showInterstitial: vi.fn().mockResolvedValue('unavailable'),
     };
     const service = new MonetizationService(ads);
@@ -37,7 +40,12 @@ describe('future monetization boundaries', () => {
 
   it('does not grant a cancelled or failed rewarded ad', async () => {
     const grant = vi.fn();
-    const ads: AdsService = { rewardedAvailable: true, interstitialAvailable: false, showRewardedHint: vi.fn().mockResolvedValue({ status: 'cancelled' }), showInterstitial: vi.fn().mockResolvedValue('unavailable') };
+    const ads: AdsService = {
+      rewardedAvailable: true,
+      interstitialAvailable: false,
+      showRewardedHint: vi.fn().mockResolvedValue({ status: 'cancelled' }),
+      showInterstitial: vi.fn().mockResolvedValue('unavailable'),
+    };
     expect(await new MonetizationService(ads).rewardedHint(grant)).toBe('cancelled');
     ads.showRewardedHint = vi.fn().mockRejectedValue(new Error('network'));
     expect(await new MonetizationService(ads).rewardedHint(grant)).toBe('failed');
@@ -45,11 +53,17 @@ describe('future monetization boundaries', () => {
   });
 
   it('limits interstitials to one validated transition after a classic victory', async () => {
-    const ads: AdsService = { rewardedAvailable: false, interstitialAvailable: true, showRewardedHint: vi.fn().mockResolvedValue({ status: 'unavailable' }), showInterstitial: vi.fn().mockResolvedValue('displayed') };
+    const ads: AdsService = {
+      rewardedAvailable: false,
+      interstitialAvailable: true,
+      showRewardedHint: vi.fn().mockResolvedValue({ status: 'unavailable' }),
+      showInterstitial: vi.fn().mockResolvedValue('displayed'),
+    };
     const service = new MonetizationService(ads);
     const session = newSession('classic', 1, 'between-levels', configForLevel(1));
     expect(await service.betweenLevels(session)).toBe('skipped');
-    for (const id of solve(session.state.board).sequence) session.state = attemptMove(session.state, id).state;
+    for (const id of solve(session.state.board).sequence)
+      session.state = attemptMove(session.state, id).state;
     expect(await service.betweenLevels(session)).toBe('displayed');
     expect(await service.betweenLevels(session)).toBe('skipped');
     expect(ads.showInterstitial).toHaveBeenCalledOnce();
@@ -57,11 +71,17 @@ describe('future monetization boundaries', () => {
   });
 
   it('respects the remove-ads entitlement', async () => {
-    const ads: AdsService = { rewardedAvailable: false, interstitialAvailable: true, showRewardedHint: vi.fn().mockResolvedValue({ status: 'unavailable' }), showInterstitial: vi.fn().mockResolvedValue('displayed') };
+    const ads: AdsService = {
+      rewardedAvailable: false,
+      interstitialAvailable: true,
+      showRewardedHint: vi.fn().mockResolvedValue({ status: 'unavailable' }),
+      showInterstitial: vi.fn().mockResolvedValue('displayed'),
+    };
     const purchases = new NoOpPurchasesService();
     purchases.entitlements = async () => ({ adsRemoved: true, ownedThemes: ['aurora'] });
     const session = newSession('classic', 1, 'entitlement', configForLevel(1));
-    for (const id of solve(session.state.board).sequence) session.state = attemptMove(session.state, id).state;
+    for (const id of solve(session.state.board).sequence)
+      session.state = attemptMove(session.state, id).state;
     expect(await new MonetizationService(ads, purchases).betweenLevels(session)).toBe('skipped');
     expect(ads.showInterstitial).not.toHaveBeenCalled();
   });
