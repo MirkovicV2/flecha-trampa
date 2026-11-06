@@ -8,6 +8,9 @@ const config: CapacitorConfig = {
   server: { androidScheme: 'https' },
   android: { backgroundColor: '#101218' },
   ios: { contentInset: 'never', backgroundColor: '#101218' },
+  plugins: {
+    SystemBars: { style: 'DARK', insetsHandling: 'css' },
+  },
 };
 
 export default config;
