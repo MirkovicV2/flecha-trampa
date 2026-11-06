@@ -1,12 +1,14 @@
 # FLECHA TRAMPA
 
+**[Descargar APK para Android (v0.1.1)](https://github.com/MirkovicV2/flecha-trampa/releases/download/v0.1.1/flecha-trampa-v0.1.1-android.apk)**
+
 **Piensa la salida.** Juego de puzles para móvil: flechas, tres vidas y el orden justo para despejar el tablero. Versión 0.1.1 para web y Android, con TypeScript estricto, Phaser 3, Vite, Vitest y Capacitor 8.
 
 ## Descargar e instalar la APK
 
-**[Descargar FLECHA TRAMPA v0.1.1 para Android](https://github.com/MirkovicV2/flecha-trampa/releases/download/v0.1.1/flecha-trampa-v0.1.1-android.apk)** · [Ver Release y archivos](https://github.com/MirkovicV2/flecha-trampa/releases/tag/v0.1.1).
+Pulsa **Descargar APK para Android** al principio de este README para descargar directamente el instalador. También puedes [ver la Release y sus archivos](https://github.com/MirkovicV2/flecha-trampa/releases/tag/v0.1.1).
 
-En GitHub Mobile, abrir Releases → v0.1.1 → Assets → `flecha-trampa-v0.1.1-android.apk`. El repositorio es privado: iniciar sesión con la cuenta que tiene acceso. Abrir el archivo descargado y seguir el instalador de Android.
+El enlace directo funciona también desde el README en GitHub Mobile. El repositorio es privado: iniciar sesión con la cuenta que tiene acceso. Abrir el archivo descargado y seguir el instalador de Android.
 
 Requiere Android 7.0 o posterior y Android System WebView actualizado. Es una APK universal de tipo release, firmada para pruebas, con el juego incluido para jugar sin conexión. La misma firma permite actualizar conservando las partidas. El modo clásico y el diario funcionan localmente; compartir retos fuera de la app necesita configurar una URL web pública. No es una publicación de Google Play. Ver [compilación, firma y alcance de las pruebas Android](docs/MOBILE.md).
 
