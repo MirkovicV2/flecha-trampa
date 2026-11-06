@@ -1,0 +1,50 @@
+{
+  "name": "flecha-trampa",
+  "version": "0.1.0",
+  "private": true,
+  "overrides": {
+    "minimatch@>=7.0.0 <=11.0.0": "11.0.5"
+  },
+  "description": "Juego móvil de puzles de flechas desarrollado con TypeScript, Phaser y Capacitor.",
+  "type": "module",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --max-warnings 0",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "check": "npm run lint && npm test && npm run build",
+    "cap:sync": "npm run build && cap sync",
+    "cap:android": "cap open android",
+    "cap:ios": "cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.6.0",
+    "@capacitor/app": "8.1.2",
+    "@capacitor/core": "8.6.0",
+    "@capacitor/haptics": "8.0.2",
+    "@capacitor/ios": "8.6.0",
+    "@capacitor/preferences": "8.0.1",
+    "phaser": "3.90.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.6.0",
+    "@eslint/js": "10.0.1",
+    "@playwright/test": "1.65.0",
+    "@types/node": "24.19.2",
+    "@vitest/coverage-v8": "4.1.12",
+    "eslint": "10.14.0",
+    "globals": "17.14.0",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.72.1",
+    "vite": "8.3.6",
+    "vitest": "4.1.12"
+  }
+}
