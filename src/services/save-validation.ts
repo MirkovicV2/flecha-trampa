@@ -39,6 +39,8 @@ export function decodeProfile(serialized: string | null): PlayerProfile | null {
     if (value.classicSave !== null && !isSavedSession(value.classicSave)) return null;
     if (value.dailySave === undefined) value.dailySave = null;
     if (value.daily === undefined) value.daily = defaultDailyProgress();
+    if (value.sharedSave === undefined) value.sharedSave = null;
+    if (value.sharedSave !== null && !isSavedSession(value.sharedSave, 'shared')) return null;
     if (value.dailySave !== null && !isSavedSession(value.dailySave, 'daily') || !isDailyProgress(value.daily)) return null;
     if (!isRecord(value.settings) || typeof value.settings.sound !== 'boolean' || typeof value.settings.haptics !== 'boolean' || typeof value.settings.reducedMotion !== 'boolean' || !['aurora', 'ember'].includes(String(value.settings.theme))) return null;
     const stats = value.stats;

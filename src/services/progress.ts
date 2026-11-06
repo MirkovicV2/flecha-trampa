@@ -20,6 +20,7 @@ export interface PlayerProfile {
   settings: PlayerSettings;
   classicSave: PlaySession | null;
   dailySave: PlaySession | null;
+  sharedSave: PlaySession | null;
   daily: DailyProgress;
   stats: { played: number; wins: number; flawless: number; totalPlayMs: number; arrowsCleared: number };
 }
@@ -27,7 +28,7 @@ export interface PlayerProfile {
 export function defaultProfile(): PlayerProfile {
   return {
     schema: 1, runId: crypto.randomUUID(), level: 1, hints: 3, tutorialDone: false,
-    settings: { ...DEFAULT_SETTINGS }, classicSave: null, dailySave: null, daily: defaultDailyProgress(),
+    settings: { ...DEFAULT_SETTINGS }, classicSave: null, dailySave: null, sharedSave: null, daily: defaultDailyProgress(),
     stats: { played: 0, wins: 0, flawless: 0, totalPlayMs: 0, arrowsCleared: 0 },
   };
 }
@@ -61,7 +62,7 @@ export class ProgressStore {
     }
     this.profile = loaded ?? defaultProfile();
     // A page can close after the final move was saved and before its animation completed.
-    for (const saved of [this.profile.classicSave, this.profile.dailySave]) {
+    for (const saved of [this.profile.classicSave, this.profile.dailySave, this.profile.sharedSave]) {
       if (saved && saved.state.status !== 'playing' && !saved.recorded) this.recordResult(saved);
     }
   }
@@ -86,6 +87,7 @@ export class ProgressStore {
     }
     if (session.mode === 'classic') this.profile.classicSave = session;
     if (session.mode === 'daily') this.profile.dailySave = session;
+    if (session.mode === 'shared') this.profile.sharedSave = session;
     this.flush();
   }
 

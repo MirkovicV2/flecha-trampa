@@ -4,13 +4,16 @@ import { configForLevel } from '../generator/config';
 import { FeedbackService } from '../services/feedback';
 import { ProgressStore } from '../services/progress';
 import { currentStreak, dailyChallenge, dailyCountdown, utcDate } from '../services/daily';
+import { buildChallengeUrl, createChallenge, readChallengeUrl } from '../services/challenges';
+import type { ChallengeSpec } from '../services/challenges';
+import { ShareService } from '../services/share';
 import { newSession, tutorialSession } from '../services/session';
 import type { PlaySession } from '../services/session';
 import type { BoardRenderer } from '../scenes/BoardScene';
 import { escapeHtml, formatTime } from '../utils/format';
 import { icon } from './icons';
 
-type Screen = 'home' | 'modes' | 'game' | 'stats' | 'daily';
+type Screen = 'home' | 'modes' | 'game' | 'stats' | 'daily' | 'shared';
 type Overlay = 'pause' | 'settings' | 'result' | 'onboarding' | 'hints' | null;
 const DIRECTION_LABEL = { up: 'arriba', right: 'derecha', down: 'abajo', left: 'izquierda' };
 
@@ -28,6 +31,11 @@ export class GameApp {
   private previousFocus: HTMLElement | null = null;
   private visualSettingsDirty = false;
   private displayedDailyDate = utcDate();
+  private challengeSpec: ChallengeSpec | null = null;
+  private pendingShared = false;
+  private readonly shareService = new ShareService();
+  private sharing = false;
+  private manualShareText: string | null = null;
 
   constructor(private readonly root: HTMLElement, private readonly store = new ProgressStore()) {
     root.addEventListener('click', (event) => {
@@ -43,11 +51,14 @@ export class GameApp {
     });
     window.addEventListener('pagehide', () => { this.tick(); this.store.flush(); });
     window.setInterval(() => this.tick(), 250);
+    const incoming = readChallengeUrl(location.href);
+    if (incoming.challenge) { this.challengeSpec = incoming.challenge; this.pendingShared = true; this.screen = 'shared'; }
     this.render();
     if (!this.store.profile.tutorialDone) this.openOverlay('onboarding');
     if (!this.store.available) this.toast('Guardado no disponible: este navegador conservará la partida solo mientras siga abierta.');
     else if (this.store.recovery === 'backup') this.toast('Hemos recuperado la última copia válida de tu progreso.');
     else if (this.store.recovery === 'reset') this.toast('El guardado estaba dañado. Se ha iniciado un nuevo progreso local.');
+    if (incoming.error) this.toast(incoming.error);
   }
 
   private action(action: string, value?: string): void {
@@ -56,6 +67,13 @@ export class GameApp {
       case 'modes': this.go('modes'); break;
       case 'daily': this.go('daily'); break;
       case 'daily-play': this.playDaily(); break;
+      case 'shared': this.go('shared'); break;
+      case 'shared-create': this.createShared(); break;
+      case 'shared-play': this.playShared(); break;
+      case 'shared-reset': this.challengeSpec = null; this.pendingShared = false; history.replaceState(null, '', location.pathname + location.search); this.render(); break;
+      case 'copy-challenge': void this.shareChallenge(true); break;
+      case 'share-challenge': void this.shareChallenge(false); break;
+      case 'share-result': void this.shareResult(); break;
       case 'stats': this.go('stats'); break;
       case 'play': this.playClassic(); break;
       case 'tutorial': this.begin(tutorialSession()); break;
@@ -88,6 +106,69 @@ export class GameApp {
     this.begin(newSession('daily', 1, challenge.seed, challenge.config, challenge.date));
   }
 
+  private createShared(): void {
+    try {
+      const seed = this.root.querySelector<HTMLInputElement>('#challenge-seed')?.value ?? '';
+      const width = Number(this.root.querySelector<HTMLSelectElement>('#challenge-size')?.value);
+      const density = Number(this.root.querySelector<HTMLSelectElement>('#challenge-density')?.value);
+      const complexity = Number(this.root.querySelector<HTMLSelectElement>('#challenge-complexity')?.value);
+      this.challengeSpec = createChallenge(seed, { width, height: width, density, complexity });
+      this.pendingShared = false;
+      this.render();
+    } catch (error) {
+      const feedback = this.root.querySelector('[data-challenge-error]');
+      if (feedback) feedback.textContent = error instanceof Error ? error.message : 'No se pudo crear el reto.';
+    }
+  }
+
+  private playShared(): void {
+    const spec = this.challengeSpec;
+    if (!spec) return;
+    const saved = this.store.profile.sharedSave;
+    this.pendingShared = false;
+    if (saved?.state.status === 'playing' && saved.seed === spec.seed && JSON.stringify(saved.config) === JSON.stringify(spec.config)) { this.begin(saved, false); return; }
+    this.begin(newSession('shared', 1, spec.seed, spec.config));
+  }
+
+  private shareBaseUrl(): string {
+    const configured: unknown = import.meta.env.VITE_PUBLIC_URL;
+    return typeof configured === 'string' && configured.trim() ? configured.trim() : `${location.origin}${location.pathname}`;
+  }
+
+  private async shareChallenge(copyOnly: boolean): Promise<void> {
+    if (!this.challengeSpec || this.sharing) return;
+    this.sharing = true;
+    try {
+      const url = buildChallengeUrl(this.shareBaseUrl(), this.challengeSpec);
+      const outcome = copyOnly ? await this.shareService.copy(url) : await this.shareService.share({ title: 'FLECHA TRAMPA', text: 'El mismo puzle. ¿Encuentras otro camino?', url });
+      if (outcome === 'copied') this.toast('Enlace copiado. El reto ya tiene compañía.');
+      if (outcome === 'shared') this.toast('Reto compartido.');
+      if (outcome === 'manual') {
+        const field = this.root.querySelector<HTMLInputElement>('#challenge-url');
+        field?.focus(); field?.select();
+        this.toast('El navegador no permite copiar. Selecciona el enlace y cópialo manualmente.');
+      }
+    } catch (error) { this.toast(error instanceof Error ? error.message : 'No se pudo compartir.'); }
+    finally { this.sharing = false; }
+  }
+
+  private async shareResult(): Promise<void> {
+    if (!this.session || this.sharing) return;
+    this.sharing = true;
+    const epoch = this.epoch;
+    try {
+      const session = this.session;
+      const url = buildChallengeUrl(this.shareBaseUrl(), createChallenge(session.seed, session.config));
+      const text = `FLECHA TRAMPA · ${session.state.status === 'won' ? 'Camino despejado' : 'La salida sigue ahí'}\nTiempo: ${formatTime(session.elapsedMs)} · Errores: ${session.state.errors}\n¿Aceptas el reto?`;
+      const outcome = await this.shareService.share({ title: 'Mi resultado · FLECHA TRAMPA', text, url });
+      if (epoch !== this.epoch) return;
+      if (outcome === 'copied') this.toast('Resultado y enlace copiados.');
+      if (outcome === 'shared') this.toast('Resultado compartido.');
+      if (outcome === 'manual') { this.manualShareText = `${text}\n${url}`; this.renderOverlay(); this.toast('Selecciona el resultado para copiarlo manualmente.'); }
+    } catch (error) { this.toast(error instanceof Error ? error.message : 'No se pudo compartir.'); }
+    finally { this.sharing = false; }
+  }
+
   private begin(session: PlaySession, count = true): void {
     this.tick();
     this.session = session;
@@ -111,6 +192,8 @@ export class GameApp {
     if (this.busy) return;
     this.tick();
     this.store.flush();
+    if (screen === 'shared' && !this.challengeSpec && this.store.profile.sharedSave) this.challengeSpec = createChallenge(this.store.profile.sharedSave.seed, this.store.profile.sharedSave.config);
+    if (screen === 'home') { this.pendingShared = false; history.replaceState(null, '', location.pathname + location.search); }
     this.screen = screen;
     this.overlay = null;
     this.render();
@@ -164,6 +247,7 @@ export class GameApp {
   private finish(): void {
     const session = this.session;
     if (!session) return;
+    this.manualShareText = null;
     this.store.recordResult(session);
     if (session.state.status === 'won') this.feedback.play('win', this.store.profile.settings);
     this.openOverlay('result');
@@ -215,6 +299,7 @@ export class GameApp {
       case 'modes': return this.modesContent();
       case 'stats': return this.statsContent();
       case 'daily': return this.dailyContent();
+      case 'shared': return this.sharedContent();
       case 'game': return this.gameContent();
     }
   }
@@ -222,11 +307,11 @@ export class GameApp {
   private homeContent(): string {
     const profile = this.store.profile;
     const continuing = profile.classicSave?.state.status === 'playing';
-    return `<section class="home-hero"><div class="hero-copy"><div class="eyebrow"><span class="live-dot"></span> TU PRÓXIMA PEQUEÑA VICTORIA</div><h1>Piensa<br>la <span>salida.</span></h1><p class="hero-description">Cada flecha tiene un camino.<br>El truco es encontrar el orden.</p><button class="primary-button hero-play" data-action="play"><span>${continuing ? 'Continuar partida' : 'Jugar ahora'}<small>CLÁSICO <span>·</span> NIVEL ${String(profile.level).padStart(2, '0')}</small></span>${icon('diagonal')}</button><p class="hero-caption">${icon('heart')} Tres vidas. Cero prisas.</p></div><div class="hero-art" aria-hidden="true"><div class="art-orbit orbit-one"></div><div class="art-orbit orbit-two"></div><div class="art-caption">ENCUENTRA TU CAMINO</div>${['up','right','left','down','right','up','down','left','up'].map((direction, index) => `<div class="art-tile art-${index} direction-${direction}"><span>↑</span></div>`).join('')}<div class="art-tag">${icon('spark')} UN MOVIMIENTO LO CAMBIA TODO</div></div></section><section class="home-lower"><div class="section-heading"><span>Más formas de pensar</span><span class="micro-copy">ELIGE TU RETO</span></div><div class="mode-preview-grid"><button class="mode-preview daily-preview" data-action="daily"><span class="preview-icon">${icon('calendar')}</span><span><small>UNO CADA DÍA</small><strong>El reto de hoy</strong><span>Un nuevo día, una nueva salida.</span></span>${icon('diagonal')}</button><button class="mode-preview share-preview" data-action="modes"><span class="preview-icon">${icon('share')}</span><span><small>MEJOR EN COMPAÑÍA</small><strong>Reta a alguien</strong><span>El mismo puzle. ¿Otro camino?</span></span>${icon('diagonal')}</button></div><div class="home-footnote"><span class="tiny-dots"><i></i><i></i><i></i><i></i></span> Sin cuenta. Sin prisa. Con ingenio.</div></section>`;
+    return `<section class="home-hero"><div class="hero-copy"><div class="eyebrow"><span class="live-dot"></span> TU PRÓXIMA PEQUEÑA VICTORIA</div><h1>Piensa<br>la <span>salida.</span></h1><p class="hero-description">Cada flecha tiene un camino.<br>El truco es encontrar el orden.</p><button class="primary-button hero-play" data-action="play"><span>${continuing ? 'Continuar partida' : 'Jugar ahora'}<small>CLÁSICO <span>·</span> NIVEL ${String(profile.level).padStart(2, '0')}</small></span>${icon('diagonal')}</button><p class="hero-caption">${icon('heart')} Tres vidas. Cero prisas.</p></div><div class="hero-art" aria-hidden="true"><div class="art-orbit orbit-one"></div><div class="art-orbit orbit-two"></div><div class="art-caption">ENCUENTRA TU CAMINO</div>${['up','right','left','down','right','up','down','left','up'].map((direction, index) => `<div class="art-tile art-${index} direction-${direction}"><span>↑</span></div>`).join('')}<div class="art-tag">${icon('spark')} UN MOVIMIENTO LO CAMBIA TODO</div></div></section><section class="home-lower"><div class="section-heading"><span>Más formas de pensar</span><span class="micro-copy">ELIGE TU RETO</span></div><div class="mode-preview-grid"><button class="mode-preview daily-preview" data-action="daily"><span class="preview-icon">${icon('calendar')}</span><span><small>UNO CADA DÍA</small><strong>El reto de hoy</strong><span>Un nuevo día, una nueva salida.</span></span>${icon('diagonal')}</button><button class="mode-preview share-preview" data-action="shared"><span class="preview-icon">${icon('share')}</span><span><small>MEJOR EN COMPAÑÍA</small><strong>Reta a alguien</strong><span>El mismo puzle. ¿Otro camino?</span></span>${icon('diagonal')}</button></div><div class="home-footnote"><span class="tiny-dots"><i></i><i></i><i></i><i></i></span> Sin cuenta. Sin prisa. Con ingenio.</div></section>`;
   }
 
   private modesContent(): string {
-    return `<section class="page-section"><div class="eyebrow">CADA MENTE TIENE SU CAMINO</div><h1 class="page-title">A tu manera.</h1><p class="page-description">Elige cómo quieres poner a prueba tu ingenio.</p><div class="mode-list"><button class="mode-card" data-action="play"><span class="mode-number">01</span><div>${icon('grid')}<h2>Un poco más lejos.</h2><p>Niveles infinitos, dificultad progresiva y tres vidas para encontrar la salida.</p><span class="mode-label">CLÁSICO ${icon('arrow')}</span></div></button><button class="mode-card" data-action="daily"><span class="mode-number">02</span><div>${icon('calendar')}<h2>Una cita con tu ingenio.</h2><p>Un tablero al día, el mismo para todos. Suma pequeñas victorias y mantén tu racha.</p><span class="mode-label">DESAFÍO DIARIO ${icon('arrow')}</span></div></button><div class="mode-card upcoming"><span class="mode-number">03</span><div>${icon('share')}<h2>Comparte el desafío.</h2><p>Los retos reproducibles se incorporarán en la siguiente integración.</p><span class="mode-label">RETOS COMPARTIDOS</span></div></div></div></section>`;
+    return `<section class="page-section"><div class="eyebrow">CADA MENTE TIENE SU CAMINO</div><h1 class="page-title">A tu manera.</h1><p class="page-description">Elige cómo quieres poner a prueba tu ingenio.</p><div class="mode-list"><button class="mode-card" data-action="play"><span class="mode-number">01</span><div>${icon('grid')}<h2>Un poco más lejos.</h2><p>Niveles infinitos, dificultad progresiva y tres vidas para encontrar la salida.</p><span class="mode-label">CLÁSICO ${icon('arrow')}</span></div></button><button class="mode-card" data-action="daily"><span class="mode-number">02</span><div>${icon('calendar')}<h2>Una cita con tu ingenio.</h2><p>Un tablero al día, el mismo para todos. Suma pequeñas victorias y mantén tu racha.</p><span class="mode-label">DESAFÍO DIARIO ${icon('arrow')}</span></div></button><button class="mode-card" data-action="shared"><span class="mode-number">03</span><div>${icon('share')}<h2>Comparte el desafío.</h2><p>Crea un tablero, comparte el enlace y compara caminos. El mismo reto, otra mente.</p><span class="mode-label">RETOS COMPARTIDOS ${icon('arrow')}</span></div></button></div></section>`;
   }
 
   private statsContent(): string {
@@ -250,6 +335,17 @@ export class GameApp {
     if (session?.mode === 'daily') return 'DIARIO · UTC';
     if (session?.mode === 'shared') return 'ENTRE AMIGOS';
     return `NIVEL ${String(session?.level ?? 1).padStart(2, '0')}`;
+  }
+
+  private sharedContent(): string {
+    const spec = this.challengeSpec;
+    if (!spec) return `<section class="page-section shared-page"><div class="eyebrow">UN POCO DE RIVALIDAD SANA</div><h1 class="page-title">Reta a<br>otra mente.</h1><p class="page-description">Crea un puzle que viaje en un enlace. Sin cuentas, sin complicaciones.</p><div class="challenge-form"><label for="challenge-seed">DALE UNA SEMILLA<input class="challenge-input" id="challenge-seed" maxlength="128" value="reto-${crypto.randomUUID().slice(0, 8)}" autocomplete="off" spellcheck="false" /></label><label for="challenge-size">TAMAÑO DEL TABLERO<select id="challenge-size">${[4,5,6,7,8,9,10].map((size) => `<option value="${size}" ${size === 5 ? 'selected' : ''}>${size} × ${size}</option>`).join('')}</select></label><div class="form-columns"><label for="challenge-density">DENSIDAD<select id="challenge-density"><option value="0.55">Ligera · 55 %</option><option value="0.7" selected>Media · 70 %</option><option value="0.85">Alta · 85 %</option></select></label><label for="challenge-complexity">COMPLEJIDAD<select id="challenge-complexity"><option value="0.35">Tranquila</option><option value="0.65" selected>Ingeniosa</option><option value="0.9">Exigente</option></select></label></div><p class="form-error" data-challenge-error role="alert"></p><button class="primary-button" data-action="shared-create">Crear mi reto ${icon('spark')}</button></div><p class="daily-fineprint">Misma semilla y parámetros, mismo tablero. Los resultados se guardan en cada dispositivo; no existe un ranking global.</p></section>`;
+    let url = '';
+    let configError = '';
+    try { url = buildChallengeUrl(this.shareBaseUrl(), spec); } catch (error) { configError = error instanceof Error ? error.message : 'URL no disponible.'; }
+    const isLocal = url ? /^(localhost|127\.0\.0\.1|\[::1\])$/.test(new URL(url).hostname) : false;
+    const continuing = this.store.profile.sharedSave?.seed === spec.seed && this.store.profile.sharedSave.state.status === 'playing';
+    return `<section class="page-section shared-page"><div class="eyebrow">${this.pendingShared ? 'TE HAN INVITADO A PENSAR' : 'TU RETO ESTÁ LISTO'}</div><h1 class="page-title">El mismo reto.<br>Otra mente.</h1><p class="page-description">La salida será la misma. La forma de encontrarla, muy tuya.</p><div class="challenge-ready"><div class="challenge-symbol">${icon('share')}</div><span class="challenge-seed-label">SEMILLA DEL RETO</span><h2>${escapeHtml(spec.seed)}</h2><p>${spec.config.width} × ${spec.config.height} · ${Math.round(spec.config.width * spec.config.height * spec.config.density)} flechas · Complejidad ${Math.round(spec.config.complexity * 100)} %</p><button class="primary-button" data-action="shared-play">${continuing ? 'Continuar este reto' : 'Jugar este reto'} ${icon('play')}</button><div class="share-buttons"><button class="secondary-button" data-action="share-challenge" ${!url ? 'disabled' : ''}>Compartir ${icon('share')}</button><button class="secondary-button" data-action="copy-challenge" ${!url ? 'disabled' : ''}>Copiar enlace ${icon('copy')}</button></div><label class="share-url-label" for="challenge-url">ENLACE REPRODUCIBLE<input id="challenge-url" readonly value="${escapeHtml(url)}" aria-label="Enlace del reto" /></label>${configError ? `<p class="form-error">${escapeHtml(configError)}</p>` : ''}</div><button class="text-button centered" data-action="shared-reset">Crear otro reto ${icon('retry')}</button>${isLocal ? '<p class="daily-fineprint">Este enlace usa la dirección local del juego. Para abrirlo en otro dispositivo, publica el juego y configura su URL pública.</p>' : '<p class="daily-fineprint">Cualquiera con el enlace puede jugar el mismo tablero. No necesita cuenta ni servidor de partidas.</p>'}</section>`;
   }
 
   private gameContent(): string {
@@ -364,9 +460,9 @@ export class GameApp {
     const session = this.session!;
     const won = session.state.status === 'won';
     const tutorial = session.mode === 'tutorial';
-    const nextAction = won ? session.mode === 'daily' ? 'daily' : 'next' : 'restart';
-    const nextLabel = won ? tutorial ? 'Empezar mi aventura' : session.mode === 'daily' ? 'Volver al desafío' : 'Siguiente nivel' : 'Volver a intentarlo';
-    return `<div class="result-burst ${won ? '' : 'defeat'}">${icon(won ? 'spark' : 'retry')}</div><div class="eyebrow">${won ? tutorial ? 'YA TIENES LA CLAVE' : 'CAMINO DESPEJADO' : 'TÓMATE OTRO INTENTO'}</div><h2>${won ? tutorial ? 'Ahora, a<br>tu manera.' : session.state.errors === 0 ? 'Así de<br>impecable.' : 'Una pequeña<br>gran victoria.' : 'La salida<br>sigue ahí.'}</h2><p>${won ? tutorial ? 'Busca caminos libres. Cada flecha que sale abre nuevas posibilidades.' : session.state.errors === 0 ? 'Ni un solo error. A veces, todo encaja.' : 'Has encontrado el orden. Disfruta ese momento.' : 'Tres vidas después, ya conoces mejor el tablero. ¿Lo vuelves a intentar?'}</p><div class="result-stats"><div><strong>${formatTime(session.elapsedMs)}</strong><span>TIEMPO</span></div><div><strong>${session.state.errors}</strong><span>ERRORES</span></div><div><strong>${session.state.totalArrows - session.state.board.arrows.length}</strong><span>FLECHAS</span></div></div>${won && !tutorial && this.store.profile.stats.wins % 3 === 0 ? '<div class="reward-note">+1 pista · Cada victoria abre caminos.</div>' : ''}<button class="primary-button" data-action="${nextAction}">${nextLabel} ${icon(won ? 'arrow' : 'retry')}</button><button class="text-button centered" data-action="home">Volver al inicio</button>`;
+    const nextAction = won ? tutorial && this.pendingShared ? 'shared-play' : session.mode === 'daily' ? 'daily' : session.mode === 'shared' ? 'shared' : 'next' : 'restart';
+    const nextLabel = won ? tutorial ? this.pendingShared ? 'Jugar el reto' : 'Empezar mi aventura' : session.mode === 'daily' ? 'Volver al desafío' : session.mode === 'shared' ? 'Volver al reto' : 'Siguiente nivel' : 'Volver a intentarlo';
+    return `<div class="result-burst ${won ? '' : 'defeat'}">${icon(won ? 'spark' : 'retry')}</div><div class="eyebrow">${won ? tutorial ? 'YA TIENES LA CLAVE' : 'CAMINO DESPEJADO' : 'TÓMATE OTRO INTENTO'}</div><h2>${won ? tutorial ? 'Ahora, a<br>tu manera.' : session.state.errors === 0 ? 'Así de<br>impecable.' : 'Una pequeña<br>gran victoria.' : 'La salida<br>sigue ahí.'}</h2><p>${won ? tutorial ? 'Busca caminos libres. Cada flecha que sale abre nuevas posibilidades.' : session.state.errors === 0 ? 'Ni un solo error. A veces, todo encaja.' : 'Has encontrado el orden. Disfruta ese momento.' : 'Tres vidas después, ya conoces mejor el tablero. ¿Lo vuelves a intentar?'}</p><div class="result-stats"><div><strong>${formatTime(session.elapsedMs)}</strong><span>TIEMPO</span></div><div><strong>${session.state.errors}</strong><span>ERRORES</span></div><div><strong>${session.state.totalArrows - session.state.board.arrows.length}</strong><span>FLECHAS</span></div></div>${won && !tutorial && this.store.profile.stats.wins % 3 === 0 ? '<div class="reward-note">+1 pista · Cada victoria abre caminos.</div>' : ''}<button class="primary-button" data-action="${nextAction}">${nextLabel} ${icon(won ? 'arrow' : 'retry')}</button>${!tutorial ? `<button class="secondary-button" data-action="share-result">Compartir resultado ${icon('share')}</button>` : ''}${this.manualShareText ? `<textarea class="manual-copy" readonly aria-label="Resultado para copiar">${escapeHtml(this.manualShareText)}</textarea>` : ''}<button class="text-button centered" data-action="home">Volver al inicio</button>`;
   }
 
   private handleKey(event: KeyboardEvent): void {

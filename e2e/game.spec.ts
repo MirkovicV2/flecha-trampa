@@ -143,3 +143,37 @@ test('daily challenge resumes and keeps a completed result after reload', async 
   await expect(page.locator('.daily-feature')).toContainText('MEJOR RESULTADO');
   await expect(page.locator('.daily-streak')).toContainText('1 días de racha');
 });
+
+test('a shared link reproduces a board and shares an actual result', async ({ page, context }, testInfo) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await skipTutorial(page);
+  await page.getByRole('button', { name: /Reta a alguien/ }).click();
+  await page.getByLabel('DALE UNA SEMILLA').fill('viernes entre amigos');
+  await page.getByLabel('TAMAÑO DEL TABLERO').selectOption('4');
+  await page.getByRole('combobox', { name: 'DENSIDAD', exact: true }).selectOption('0.55');
+  await page.getByRole('button', { name: 'Crear mi reto' }).click();
+  const url = await page.getByRole('textbox', { name: 'Enlace del reto' }).inputValue();
+  expect(url).toContain('#reto=FT1.');
+  await page.evaluate(() => Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (value: string) => { sessionStorage.setItem('test:copied', value); } } }));
+  await page.getByRole('button', { name: 'Copiar enlace', exact: true }).click();
+  expect(await page.evaluate(() => sessionStorage.getItem('test:copied'))).toBe(url);
+  await page.screenshot({ path: `.artifacts/shared-${testInfo.project.name}.png`, fullPage: true });
+  await page.getByRole('button', { name: 'Jugar este reto' }).click();
+  const original = await readBoard(page);
+  const receiver = await context.newPage();
+  await receiver.emulateMedia({ reducedMotion: 'reduce' });
+  await receiver.goto(url);
+  await expect(receiver.getByRole('heading', { name: 'viernes entre amigos' })).toBeVisible();
+  await receiver.getByRole('button', { name: /Continuar este reto|Jugar este reto/ }).click();
+  expect(await readBoard(receiver)).toEqual(original);
+  await solveCurrent(receiver);
+  await expect(receiver.getByRole('dialog')).toContainText('CAMINO DESPEJADO');
+  await receiver.evaluate(() => {
+    Object.defineProperty(navigator, 'share', { configurable: true, value: undefined });
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (value: string) => { sessionStorage.setItem('test:result', value); } } });
+  });
+  await receiver.getByRole('button', { name: 'Compartir resultado', exact: true }).click();
+  await expect(receiver.locator('.toast')).toContainText('Resultado y enlace copiados');
+  expect(await receiver.evaluate(() => sessionStorage.getItem('test:result'))).toContain('Errores: 0');
+  await receiver.close();
+});
