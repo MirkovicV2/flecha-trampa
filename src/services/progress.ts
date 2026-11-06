@@ -2,6 +2,8 @@ import { DEFAULT_SETTINGS } from '../config/theme';
 import type { PlayerSettings } from '../config/theme';
 import type { PlaySession } from './session';
 import { decodeProfile } from './save-validation';
+import { defaultDailyProgress, updateDaily } from './daily';
+import type { DailyProgress } from './daily';
 
 export const SAVE_KEY = 'flecha-trampa:profile:v1';
 export interface StoragePort {
@@ -17,13 +19,15 @@ export interface PlayerProfile {
   tutorialDone: boolean;
   settings: PlayerSettings;
   classicSave: PlaySession | null;
+  dailySave: PlaySession | null;
+  daily: DailyProgress;
   stats: { played: number; wins: number; flawless: number; totalPlayMs: number; arrowsCleared: number };
 }
 
 export function defaultProfile(): PlayerProfile {
   return {
     schema: 1, runId: crypto.randomUUID(), level: 1, hints: 3, tutorialDone: false,
-    settings: { ...DEFAULT_SETTINGS }, classicSave: null,
+    settings: { ...DEFAULT_SETTINGS }, classicSave: null, dailySave: null, daily: defaultDailyProgress(),
     stats: { played: 0, wins: 0, flawless: 0, totalPlayMs: 0, arrowsCleared: 0 },
   };
 }
@@ -56,9 +60,10 @@ export class ProgressStore {
       } catch { this.available = false; }
     }
     this.profile = loaded ?? defaultProfile();
-    const saved = this.profile.classicSave;
     // A page can close after the final move was saved and before its animation completed.
-    if (saved && saved.state.status !== 'playing' && !saved.recorded) this.recordResult(saved);
+    for (const saved of [this.profile.classicSave, this.profile.dailySave]) {
+      if (saved && saved.state.status !== 'playing' && !saved.recorded) this.recordResult(saved);
+    }
   }
 
   flush(): boolean {
@@ -80,6 +85,7 @@ export class ProgressStore {
       this.profile.stats.played++;
     }
     if (session.mode === 'classic') this.profile.classicSave = session;
+    if (session.mode === 'daily') this.profile.dailySave = session;
     this.flush();
   }
 
@@ -106,6 +112,9 @@ export class ProgressStore {
       if (!session.state.errors) this.profile.stats.flawless++;
       if (this.profile.stats.wins % 3 === 0) this.profile.hints = Math.min(99, this.profile.hints + 1);
       if (session.mode === 'classic') this.profile.level = Math.max(this.profile.level, session.level + 1);
+    }
+    if (session.mode === 'daily' && session.date) {
+      this.profile.daily = updateDaily(this.profile.daily, session.date, { won: session.state.status === 'won', timeMs: session.elapsedMs, errors: session.state.errors });
     }
     this.flush();
   }

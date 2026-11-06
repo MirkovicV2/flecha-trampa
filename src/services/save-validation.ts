@@ -3,10 +3,9 @@ import { GENERATOR_VERSION, isLevelConfig } from '../generator/config';
 import { solve } from '../solver/solver';
 import type { PlayerProfile } from './progress';
 import type { PlaySession } from './session';
+import { defaultDailyProgress, isDailyProgress, isUtcDate } from './daily';
+import { integer, isRecord, nonNegative } from '../utils/validation';
 
-export const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
-export const nonNegative = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= Number.MAX_SAFE_INTEGER;
-export const integer = (value: unknown, min = 0, max = Number.MAX_SAFE_INTEGER): value is number => typeof value === 'number' && Number.isSafeInteger(value) && value >= min && value <= max;
 const text = (value: unknown): value is string => typeof value === 'string' && value.length > 0 && value.length <= 128;
 
 export function isSavedSession(value: unknown, mode: 'classic' | 'daily' | 'shared' = 'classic'): value is PlaySession {
@@ -17,7 +16,7 @@ export function isSavedSession(value: unknown, mode: 'classic' | 'daily' | 'shar
   const { state, initialBoard, config } = value;
   if (config.width !== initialBoard.width || config.height !== initialBoard.height || initialBoard.arrows.length < 1) return false;
   if (currentBoard.width !== initialBoard.width || currentBoard.height !== initialBoard.height) return false;
-  if (value.date !== null && (typeof value.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value.date))) return false;
+  if (value.date !== null && !isUtcDate(value.date) || mode === 'daily' && !isUtcDate(value.date)) return false;
   if (!integer(state.lives, 0, 3) || !integer(state.errors, 0, 3) || state.lives !== 3 - state.errors) return false;
   if (state.totalArrows !== initialBoard.arrows.length || !integer(state.moves)) return false;
   const remaining = currentBoard.arrows.length;
@@ -38,6 +37,9 @@ export function decodeProfile(serialized: string | null): PlayerProfile | null {
     const value: unknown = JSON.parse(serialized);
     if (!isRecord(value) || value.schema !== 1 || !text(value.runId) || !integer(value.level, 1) || !integer(value.hints, 0, 99) || typeof value.tutorialDone !== 'boolean') return null;
     if (value.classicSave !== null && !isSavedSession(value.classicSave)) return null;
+    if (value.dailySave === undefined) value.dailySave = null;
+    if (value.daily === undefined) value.daily = defaultDailyProgress();
+    if (value.dailySave !== null && !isSavedSession(value.dailySave, 'daily') || !isDailyProgress(value.daily)) return null;
     if (!isRecord(value.settings) || typeof value.settings.sound !== 'boolean' || typeof value.settings.haptics !== 'boolean' || typeof value.settings.reducedMotion !== 'boolean' || !['aurora', 'ember'].includes(String(value.settings.theme))) return null;
     const stats = value.stats;
     if (!isRecord(stats) || !integer(stats.played) || !integer(stats.wins) || !integer(stats.flawless) || !integer(stats.arrowsCleared) || !nonNegative(stats.totalPlayMs)) return null;

@@ -118,3 +118,28 @@ test('reload restores the exact board, hints, settings and one counted start', a
   await page.getByRole('button', { name: 'Tu progreso', exact: true }).click();
   await expect(page.locator('.stat-card').filter({ hasText: 'Partidas jugadas' }).locator('strong')).toHaveText('1');
 });
+
+test('daily challenge resumes and keeps a completed result after reload', async ({ page }, testInfo) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await skipTutorial(page);
+  await page.getByRole('button', { name: /El reto de hoy/ }).click();
+  await page.screenshot({ path: `.artifacts/daily-${testInfo.project.name}.png`, fullPage: true });
+  await page.getByRole('button', { name: 'Aceptar el reto' }).click();
+  await expect(page.locator('.level-chip')).toHaveText('DIARIO · UTC');
+  const board = await readBoard(page);
+  const first = solve(board).sequence[0]!;
+  await page.locator(`[data-arrow="${first}"]`).click();
+  await page.reload();
+  await page.getByRole('button', { name: /El reto de hoy/ }).click();
+  await page.getByRole('button', { name: 'Continuar el reto' }).click();
+  await readBoard(page);
+  await expect(page.locator('[data-arrow]')).toHaveCount(board.arrows.length - 1);
+  await solveCurrent(page);
+  await expect(page.getByRole('dialog')).toContainText('CAMINO DESPEJADO');
+  await page.getByRole('button', { name: 'Volver al desafío' }).click();
+  await expect(page.locator('.daily-feature')).toContainText('superado');
+  await page.reload();
+  await page.getByRole('button', { name: /El reto de hoy/ }).click();
+  await expect(page.locator('.daily-feature')).toContainText('MEJOR RESULTADO');
+  await expect(page.locator('.daily-streak')).toContainText('1 días de racha');
+});
