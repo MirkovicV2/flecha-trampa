@@ -43,6 +43,7 @@ public class NativeGameSmokeTest {
             assertEquals("true", evaluate(activity, "window.Capacitor.getPlatform() === 'android'"));
             assertEquals("true", evaluate(activity, "location.origin === 'https://localhost'"));
             click(activity, "[data-action=skip-tutorial]");
+            await(activity, "!document.querySelector('[data-action=skip-tutorial]')");
             click(activity, "[data-action=play]");
             await(activity, "document.querySelectorAll('[data-arrow]').length > 0 && !document.querySelector('.board-loading')");
             await(activity, "!!document.querySelector('canvas')");
@@ -103,17 +104,34 @@ public class NativeGameSmokeTest {
         final float x = (float) point.getDouble("x");
         final float y = (float) point.getDouble("y");
         final float viewport = (float) point.getDouble("viewport");
+        AtomicReference<float[]> screenPoint = new AtomicReference<>();
+        activity.onActivity(instance -> {
+            WebView webView = instance.getBridge().getWebView();
+            int[] origin = new int[2];
+            webView.getLocationOnScreen(origin);
+            float scale = webView.getWidth() / viewport;
+            screenPoint.set(new float[] {origin[0] + x * scale, origin[1] + y * scale});
+        });
         final long downTime = SystemClock.uptimeMillis();
-        activity.onActivity(instance -> touch(instance.getBridge().getWebView(), downTime, MotionEvent.ACTION_DOWN, x, y, viewport));
+        touch(downTime, MotionEvent.ACTION_DOWN, screenPoint.get()[0], screenPoint.get()[1]);
         SystemClock.sleep(60);
-        activity.onActivity(instance -> touch(instance.getBridge().getWebView(), downTime, MotionEvent.ACTION_UP, x, y, viewport));
+        touch(downTime, MotionEvent.ACTION_UP, screenPoint.get()[0], screenPoint.get()[1]);
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
     }
 
-    private static void touch(WebView webView, long downTime, int action, float x, float y, float viewport) {
-        float scale = webView.getWidth() / viewport;
-        MotionEvent event = MotionEvent.obtain(downTime, SystemClock.uptimeMillis(), action, x * scale, y * scale, 0);
-        event.setSource(InputDevice.SOURCE_TOUCHSCREEN);
-        webView.dispatchTouchEvent(event);
+    private static void touch(long downTime, int action, float x, float y) {
+        MotionEvent.PointerProperties pointer = new MotionEvent.PointerProperties();
+        pointer.id = 0;
+        pointer.toolType = MotionEvent.TOOL_TYPE_FINGER;
+        MotionEvent.PointerCoords coords = new MotionEvent.PointerCoords();
+        coords.x = x;
+        coords.y = y;
+        coords.pressure = 1;
+        coords.size = 1;
+        MotionEvent event = MotionEvent.obtain(downTime, SystemClock.uptimeMillis(), action, 1,
+            new MotionEvent.PointerProperties[] {pointer}, new MotionEvent.PointerCoords[] {coords},
+            0, 0, 1, 1, 0, 0, InputDevice.SOURCE_TOUCHSCREEN, 0);
+        InstrumentationRegistry.getInstrumentation().sendPointerSync(event);
         event.recycle();
     }
 
@@ -123,7 +141,7 @@ public class NativeGameSmokeTest {
             if ("true".equals(evaluate(activity, expression))) return;
             SystemClock.sleep(100);
         }
-        fail("WebView did not become ready: " + expression);
+        fail("WebView did not become ready: " + expression + "; UI: " + evaluate(activity, "document.body.innerText.slice(0, 1800)"));
     }
 
     private static String evaluate(ActivityScenario<MainActivity> activity, String expression) throws Exception {
