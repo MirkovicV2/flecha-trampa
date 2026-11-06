@@ -3,15 +3,22 @@ package com.flechatrampa.game;
 import static org.junit.Assert.*;
 
 import android.content.Context;
+import android.content.ContentValues;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
+import android.net.Uri;
+import android.os.Environment;
 import android.os.SystemClock;
+import android.provider.MediaStore;
+import android.view.InputDevice;
 import android.view.KeyEvent;
+import android.view.MotionEvent;
+import android.webkit.WebView;
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
+import androidx.test.filters.SdkSuppress;
 import androidx.test.platform.app.InstrumentationRegistry;
-import java.io.File;
-import java.io.FileOutputStream;
+import java.io.OutputStream;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -21,6 +28,7 @@ import org.junit.runner.RunWith;
 
 /** Runs the bundled game through the real WebView, Preferences and Android back button. */
 @RunWith(AndroidJUnit4.class)
+@SdkSuppress(minSdkVersion = 29)
 public class NativeGameSmokeTest {
     private static final String SAVE_KEY = "flecha-trampa:profile:v1";
 
@@ -52,12 +60,24 @@ public class NativeGameSmokeTest {
             assertEquals(1, saved.getJSONObject("stats").getInt("played"));
             String arrows = saved.getJSONObject("classicSave").getJSONObject("state").getJSONObject("board").getJSONArray("arrows").toString();
 
+            // Shared media survives the test runner's automatic removal of app data.
             Bitmap screenshot = InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot();
             assertNotNull(screenshot);
-            try (FileOutputStream output = new FileOutputStream(new File(context.getExternalFilesDir(null), "native-smoke.png"))) {
+            ContentValues image = new ContentValues();
+            image.put(MediaStore.Images.Media.DISPLAY_NAME, "native-smoke.png");
+            image.put(MediaStore.Images.Media.MIME_TYPE, "image/png");
+            image.put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/FlechaTrampaTest");
+            image.put(MediaStore.Images.Media.IS_PENDING, 1);
+            Uri imageUri = context.getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, image);
+            assertNotNull(imageUri);
+            try (OutputStream output = context.getContentResolver().openOutputStream(imageUri)) {
+                assertNotNull(output);
                 assertTrue(screenshot.compress(Bitmap.CompressFormat.PNG, 100, output));
             }
             screenshot.recycle();
+            image.clear();
+            image.put(MediaStore.Images.Media.IS_PENDING, 0);
+            context.getContentResolver().update(imageUri, image, null, null);
 
             InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
             await(activity, "!!document.querySelector('[data-action=resume]')");
@@ -78,8 +98,23 @@ public class NativeGameSmokeTest {
     }
 
     private static void click(ActivityScenario<MainActivity> activity, String selector) throws Exception {
-        await(activity, "!!document.querySelector(" + JSONObject.quote(selector) + ")");
-        evaluate(activity, "document.querySelector(" + JSONObject.quote(selector) + ").click(); true");
+        await(activity, "!!document.querySelector(" + JSONObject.quote(selector) + ") && !document.querySelector(" + JSONObject.quote(selector) + ").disabled");
+        JSONObject point = new JSONObject(evaluate(activity, "(() => { const e = document.querySelector(" + JSONObject.quote(selector) + "); let r = e.getBoundingClientRect(); if (r.top < 0 || r.bottom > innerHeight) { e.scrollIntoView({block: 'center'}); r = e.getBoundingClientRect(); } return {x: r.left + r.width / 2, y: r.top + r.height / 2, viewport: innerWidth}; })()"));
+        final float x = (float) point.getDouble("x");
+        final float y = (float) point.getDouble("y");
+        final float viewport = (float) point.getDouble("viewport");
+        final long downTime = SystemClock.uptimeMillis();
+        activity.onActivity(instance -> touch(instance.getBridge().getWebView(), downTime, MotionEvent.ACTION_DOWN, x, y, viewport));
+        SystemClock.sleep(60);
+        activity.onActivity(instance -> touch(instance.getBridge().getWebView(), downTime, MotionEvent.ACTION_UP, x, y, viewport));
+    }
+
+    private static void touch(WebView webView, long downTime, int action, float x, float y, float viewport) {
+        float scale = webView.getWidth() / viewport;
+        MotionEvent event = MotionEvent.obtain(downTime, SystemClock.uptimeMillis(), action, x * scale, y * scale, 0);
+        event.setSource(InputDevice.SOURCE_TOUCHSCREEN);
+        webView.dispatchTouchEvent(event);
+        event.recycle();
     }
 
     private static void await(ActivityScenario<MainActivity> activity, String expression) throws Exception {

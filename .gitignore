@@ -32,3 +32,5 @@ id_rsa*
 id_ed25519*
 *.mobileprovision
 credentials*.json
+__pycache__/
+*.py[cod]

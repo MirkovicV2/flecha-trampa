@@ -1,8 +1,22 @@
 apply plugin: 'com.android.application'
 
+def ciTestKeyStore = System.getenv('FLECHA_CI_TEST_KEYSTORE')
+
 android {
     namespace = "com.flechatrampa.game"
     compileSdk = rootProject.ext.compileSdkVersion
+    testBuildType = ciTestKeyStore ? 'release' : 'debug'
+    if (ciTestKeyStore) {
+        signingConfigs {
+            ciSmoke {
+                storeFile file(ciTestKeyStore)
+                storeType 'PKCS12'
+                storePassword System.getenv('FLECHA_CI_TEST_PASSWORD')
+                keyAlias 'smoke'
+                keyPassword System.getenv('FLECHA_CI_TEST_PASSWORD')
+            }
+        }
+    }
     defaultConfig {
         applicationId "com.flechatrampa.game"
         minSdkVersion rootProject.ext.minSdkVersion
@@ -18,6 +32,7 @@ android {
     }
     buildTypes {
         release {
+            if (ciTestKeyStore) { signingConfig signingConfigs.ciSmoke }
             debuggable false
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'

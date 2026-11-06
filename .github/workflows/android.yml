@@ -40,6 +40,14 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+      - name: Prepare ephemeral signing for release instrumentation
+        run: |
+          export FLECHA_CI_TEST_PASSWORD="$(openssl rand -hex 32)"
+          echo "::add-mask::$FLECHA_CI_TEST_PASSWORD"
+          keytool -genkeypair -noprompt -keystore "$RUNNER_TEMP/android-smoke.p12" -storetype PKCS12 -alias smoke -keyalg RSA -keysize 2048 -validity 2 -dname "CN=FlechaTrampa CI Only" -storepass:env FLECHA_CI_TEST_PASSWORD -keypass:env FLECHA_CI_TEST_PASSWORD
+          cp android/app/build/outputs/apk/release/app-release-unsigned.apk "$RUNNER_TEMP/flecha-release-unsigned.apk"
+          echo "FLECHA_CI_TEST_KEYSTORE=$RUNNER_TEMP/android-smoke.p12" >> "$GITHUB_ENV"
+          echo "FLECHA_CI_TEST_PASSWORD=$FLECHA_CI_TEST_PASSWORD" >> "$GITHUB_ENV"
       - name: Test native launch, save, activity recreation and Android back
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
@@ -52,14 +60,14 @@ jobs:
           script: |
             adb shell svc wifi disable
             adb shell svc data disable
-            ./android/gradlew --project-dir android --no-daemon --max-workers=2 :app:connectedDebugAndroidTest
+            ./android/gradlew --project-dir android --no-daemon --max-workers=2 :app:connectedReleaseAndroidTest
             mkdir -p .artifacts/android-smoke
-            adb pull /sdcard/Android/data/com.flechatrampa.game/files/native-smoke.png .artifacts/android-smoke/native-smoke.png
+            adb pull /sdcard/Pictures/FlechaTrampaTest/native-smoke.png .artifacts/android-smoke/native-release.png
       - name: Retain unsigned release candidate
         uses: actions/upload-artifact@v7
         with:
           name: android-unsigned-${{ github.sha }}
-          path: android/app/build/outputs/apk/release/app-release-unsigned.apk
+          path: ${{ runner.temp }}/flecha-release-unsigned.apk
           if-no-files-found: error
           retention-days: 14
       - name: Retain Android reports and screenshot
@@ -72,4 +80,5 @@ jobs:
             android/app/build/outputs/androidTest-results/
             .artifacts/android-smoke/
           if-no-files-found: ignore
+          include-hidden-files: true
           retention-days: 14
