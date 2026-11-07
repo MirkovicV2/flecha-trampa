@@ -7,6 +7,7 @@ export interface AdsService {
   readonly rewardedAvailable: boolean;
   readonly interstitialAvailable: boolean;
   showRewardedHint(): Promise<RewardedAdResult>;
+  showRewarded?(placement: 'hint' | 'energy'): Promise<RewardedAdResult>;
   showInterstitial(placement: 'between-levels'): Promise<InterstitialResult>;
 }
 
@@ -15,6 +16,9 @@ export class NoOpAdsService implements AdsService {
   readonly rewardedAvailable = false;
   readonly interstitialAvailable = false;
   async showRewardedHint(): Promise<RewardedAdResult> {
+    return { status: 'unavailable' };
+  }
+  async showRewarded(): Promise<RewardedAdResult> {
     return { status: 'unavailable' };
   }
   async showInterstitial(): Promise<InterstitialResult> {

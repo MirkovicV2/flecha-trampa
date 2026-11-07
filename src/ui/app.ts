@@ -14,9 +14,19 @@ import type { PlaySession } from '../services/session';
 import type { BoardRenderer } from '../scenes/BoardScene';
 import { escapeHtml, formatTime } from '../utils/format';
 import { icon } from './icons';
+import { BoardInput } from './board-input';
+import { advanceCombo, COMBO_WINDOW_MS, emptyCombo } from '../core/combo';
+import { rewardsContent, themesContent, chestContent, rewardLabel } from './rewards';
+import { isThemeName } from '../config/theme';
+import { isSkinId } from '../config/collection';
+import type { SkinId } from '../config/collection';
+import { PASS_TIERS } from '../config/pass';
+import { energyWaitMs, regenerateEnergy } from '../services/energy';
+import type { ChestDrop } from '../services/economy';
 
-type Screen = 'home' | 'modes' | 'game' | 'stats' | 'daily' | 'shared';
-type Overlay = 'pause' | 'settings' | 'result' | 'onboarding' | 'hints' | 'conflict' | null;
+type Screen = 'home' | 'modes' | 'game' | 'stats' | 'daily' | 'shared' | 'rewards';
+type Overlay =
+  'pause' | 'settings' | 'result' | 'onboarding' | 'hints' | 'conflict' | 'energy' | 'chest' | null;
 const DIRECTION_LABEL = { up: 'arriba', right: 'derecha', down: 'abajo', left: 'izquierda' };
 
 export class GameApp {
@@ -40,6 +50,13 @@ export class GameApp {
   private manualShareText: string | null = null;
   private readonly monetization = new MonetizationService();
   private pendingArrowFocus: string | null = null;
+  private readonly blockedArrows = new Set<string>();
+  private combo = emptyCombo();
+  private rewardsTab: 'pass' | 'collection' = 'pass';
+  private chestDrop: ChestDrop | null = null;
+  private energyReturn: Overlay = null;
+  private pendingEnergySession: PlaySession | null = null;
+  private purchasing = false;
 
   constructor(
     private readonly root: HTMLElement,
@@ -54,10 +71,12 @@ export class GameApp {
       const target = (event.target as Element).closest<HTMLElement>('[data-action], [data-arrow]');
       if (!target || (target instanceof HTMLButtonElement && target.disabled)) return;
       if (target.dataset.arrow) {
-        void this.selectArrow(target.dataset.arrow);
         return;
       }
       this.action(target.dataset.action ?? '', target.dataset.value);
+    });
+    new BoardInput(root, (id) => {
+      void this.selectArrow(id);
     });
     root.addEventListener('keydown', (event) => this.handleKey(event));
     document.addEventListener('visibilitychange', () => {
@@ -95,7 +114,9 @@ export class GameApp {
         if (
           this.overlay === 'settings' ||
           this.overlay === 'hints' ||
-          this.overlay === 'onboarding'
+          this.overlay === 'onboarding' ||
+          this.overlay === 'energy' ||
+          this.overlay === 'chest'
         )
           this.closeOverlay();
         else if (this.overlay || (this.screen !== 'home' && this.screen !== 'game'))
@@ -114,6 +135,7 @@ export class GameApp {
     else if (this.store.recovery === 'reset')
       this.toast('El guardado estaba dañado. Se ha iniciado un nuevo progreso local.');
     if (incoming.error) this.toast(incoming.error);
+    void this.refreshPurchases();
   }
 
   private action(action: string, value?: string): void {
@@ -161,6 +183,57 @@ export class GameApp {
       case 'stats':
         this.go('stats');
         break;
+      case 'rewards':
+      case 'pass':
+      case 'collection':
+        this.rewardsTab = action === 'collection' ? 'collection' : 'pass';
+        this.go('rewards');
+        break;
+      case 'energy':
+        this.energyReturn = this.overlay;
+        this.openOverlay('energy');
+        break;
+      case 'practice':
+        this.practice();
+        break;
+      case 'retry-energy':
+        if (this.pendingEnergySession) this.begin(this.pendingEnergySession);
+        break;
+      case 'claim-reward': {
+        const match = /^(free|premium):([1-9]|10)$/.exec(value ?? '');
+        if (!match) break;
+        const track = match[1] as 'free' | 'premium';
+        const tier = Number(match[2]);
+        if (this.store.claimPassReward(tier, track)) {
+          this.render();
+          this.toast(`Recogido: ${rewardLabel(PASS_TIERS[tier - 1]![track])}.`);
+        }
+        break;
+      }
+      case 'open-chest':
+        if (!this.chestDrop) {
+          this.chestDrop = this.store.openChest();
+          if (this.chestDrop) this.openOverlay('chest');
+        }
+        break;
+      case 'skin':
+        if (isSkinId(value)) this.equipSkin(value);
+        break;
+      case 'craft-skin':
+        if (isSkinId(value) && this.store.craftSkin(value)) this.equipSkin(value);
+        break;
+      case 'equip-drop':
+        if (this.chestDrop) this.equipSkin(this.chestDrop.skin);
+        break;
+      case 'buy-pass':
+        void this.purchasePass();
+        break;
+      case 'restore-purchases':
+        void this.refreshPurchases(true);
+        break;
+      case 'rewarded-energy':
+        void this.rewardedEnergy();
+        break;
       case 'play':
         this.playClassic();
         break;
@@ -196,14 +269,29 @@ export class GameApp {
       case 'hint':
         this.hint();
         break;
+      case 'zoom-board': {
+        const viewport = this.root.querySelector('.board-viewport');
+        const zoomed = viewport?.classList.toggle('zoomed') ?? false;
+        const button = this.root.querySelector('[data-action="zoom-board"]');
+        button?.setAttribute('aria-pressed', String(zoomed));
+        if (button) button.textContent = zoomed ? 'Ver tablero completo' : 'Ampliar tablero';
+        break;
+      }
       case 'toggle':
         this.toggleSetting(value);
         break;
       case 'theme':
-        this.store.profile.settings.theme = value === 'ember' ? 'ember' : 'aurora';
+        if (
+          !isThemeName(value) ||
+          !this.store.profile.economy.collection.ownedThemes.includes(value)
+        )
+          break;
+        this.store.profile.settings.theme = value;
+        document.documentElement.dataset.theme = value;
         this.visualSettingsDirty = true;
         this.store.flush();
-        this.renderOverlay();
+        if (this.screen === 'rewards') this.render();
+        else this.renderOverlay();
         break;
       default:
         break;
@@ -227,6 +315,8 @@ export class GameApp {
         level,
         `classic:${this.store.profile.runId}:${level}`,
         configForLevel(level),
+        null,
+        this.store.hasPremium ? 4 : 3,
       ),
     );
   }
@@ -369,11 +459,20 @@ export class GameApp {
 
   private begin(session: PlaySession, count = true): void {
     this.tick();
+    if ((count || !session.counted) && !this.store.beginSession(session)) {
+      if (!this.store.conflicted) {
+        this.pendingEnergySession = session;
+        if (this.overlay !== 'energy') this.energyReturn = this.overlay;
+        this.openOverlay('energy');
+      }
+      return;
+    }
     this.session = session;
-    if (count || !session.counted) this.store.beginSession(session);
+    this.pendingEnergySession = null;
     this.screen = 'game';
     this.overlay = null;
     this.busy = false;
+    this.combo = emptyCombo();
     this.lastTick = performance.now();
     this.store.flush();
     this.render();
@@ -387,8 +486,127 @@ export class GameApp {
       return;
     }
     this.begin(
-      newSession(previous.mode, previous.level, previous.seed, previous.config, previous.date),
+      newSession(
+        previous.mode,
+        previous.level,
+        previous.seed,
+        previous.config,
+        previous.date,
+        this.store.hasPremium ? 4 : 3,
+      ),
     );
+  }
+
+  private practice(): void {
+    const target = this.pendingEnergySession ?? this.session;
+    const level = target?.level ?? this.store.profile.level;
+    const seed = target?.seed ?? `practice:${this.store.profile.runId}:${level}`;
+    const config = target?.config ?? configForLevel(level);
+    this.challengeSpec = createChallenge(seed, config);
+    this.begin(newSession('shared', level, seed, config));
+  }
+
+  private equipSkin(id: SkinId): void {
+    if (!this.store.profile.economy.collection.ownedSkins.includes(id)) return;
+    this.store.profile.settings.skin = id;
+    this.visualSettingsDirty = true;
+    this.store.flush();
+    if (this.overlay === 'chest') this.closeOverlay();
+    else this.render();
+    this.toast('Skin equipada. La verás en tu próxima partida.');
+  }
+
+  private energyMarkup(): string {
+    const energy = regenerateEnergy(
+      this.store.profile.economy.energy,
+      Date.now(),
+      this.store.energyCapacity,
+    );
+    return `<button class="energy-chip" data-action="energy" aria-label="Energía: ${energy.amount} de ${this.store.energyCapacity}">${icon('energy')}<span data-energy-amount>${energy.amount}/${this.store.energyCapacity}</span></button>`;
+  }
+
+  private updateEnergy(): void {
+    const now = Date.now();
+    const energy = regenerateEnergy(
+      this.store.profile.economy.energy,
+      now,
+      this.store.energyCapacity,
+    );
+    const wait = energyWaitMs(energy, now, this.store.energyCapacity);
+    this.root.querySelectorAll('[data-energy-amount]').forEach((element) => {
+      const value = `${energy.amount}/${this.store.energyCapacity}`;
+      if (element.textContent !== value) element.textContent = value;
+    });
+    this.root.querySelectorAll('[data-energy-wait]').forEach((element) => {
+      element.textContent = wait ? formatTime(wait) : '';
+    });
+    this.root
+      .querySelector('[data-action="energy"]')
+      ?.setAttribute('aria-label', `Energía: ${energy.amount} de ${this.store.energyCapacity}`);
+  }
+
+  private async refreshPurchases(restore = false): Promise<void> {
+    if (restore && this.purchasing) return;
+    if (restore) this.purchasing = true;
+    const epoch = this.epoch;
+    try {
+      const rights = restore
+        ? await this.monetization.purchases.restore()
+        : await this.monetization.purchases.entitlements();
+      this.store.applyEntitlements(rights);
+      if (epoch !== this.epoch) return;
+      if (this.screen === 'rewards') this.render();
+      else this.updateEnergy();
+      if (restore)
+        this.toast(
+          this.store.hasPremium || rights.adsRemoved
+            ? 'Compras verificadas y restauradas.'
+            : 'No hay compras disponibles para restaurar en esta versión.',
+        );
+    } catch {
+      if (restore) this.toast('No se pudieron verificar las compras. Inténtalo más tarde.');
+    } finally {
+      if (restore) this.purchasing = false;
+    }
+  }
+
+  private async purchasePass(): Promise<void> {
+    if (!this.monetization.purchases.available || this.purchasing) return;
+    this.purchasing = true;
+    try {
+      const result = await this.monetization.purchases.purchase('battle-pass');
+      if (result === 'purchased') {
+        await this.refreshPurchases();
+        this.toast(
+          this.store.hasPremium
+            ? 'Pase Plus verificado y activado.'
+            : 'La tienda aún no ha confirmado el pase. Prueba Restaurar compras.',
+        );
+      } else if (result === 'unavailable') this.toast('El Pase Plus aún no está disponible.');
+    } catch {
+      this.toast('La compra no se pudo completar.');
+    } finally {
+      this.purchasing = false;
+    }
+  }
+
+  private async rewardedEnergy(): Promise<void> {
+    if (this.busy || this.overlay !== 'energy') return;
+    this.busy = true;
+    const result = await this.monetization.rewardedEnergy(() => {
+      const energy = regenerateEnergy(
+        this.store.profile.economy.energy,
+        Date.now(),
+        this.store.energyCapacity,
+      );
+      this.store.profile.economy.energy = { ...energy, amount: Math.min(99, energy.amount + 1) };
+      this.store.flush();
+    });
+    this.busy = false;
+    if (result === 'granted') {
+      this.renderOverlay();
+      this.toast('+1 carga de energía.');
+    } else if (result !== 'cancelled') this.toast('La recompensa no está disponible.');
   }
 
   private go(screen: Screen): void {
@@ -411,6 +629,7 @@ export class GameApp {
   }
 
   private pause(): void {
+    this.combo = { ...this.combo, count: 0, lastMoveAt: 0 };
     if (this.screen === 'game' && this.session?.state.status === 'playing' && !this.overlay)
       this.openOverlay('pause');
   }
@@ -419,6 +638,11 @@ export class GameApp {
     const now = performance.now();
     const delta = Math.max(0, Math.min(now - this.lastTick, 1500));
     this.lastTick = now;
+    this.updateEnergy();
+    if (this.combo.count && now - this.combo.lastMoveAt > COMBO_WINDOW_MS) {
+      this.combo = { ...this.combo, count: 0 };
+      this.updateCombo();
+    }
     if (this.screen === 'daily') {
       if (this.displayedDailyDate !== utcDate()) {
         this.render();
@@ -446,30 +670,49 @@ export class GameApp {
 
   private async selectArrow(id: string): Promise<void> {
     const session = this.session;
-    if (!session || this.screen !== 'game' || this.overlay || this.busy || !this.renderer) return;
+    if (
+      !session ||
+      this.screen !== 'game' ||
+      this.overlay ||
+      this.busy ||
+      !this.renderer ||
+      this.blockedArrows.has(id)
+    )
+      return;
     const result = attemptMove(session.state, id);
     if (result.kind === 'ignored') return;
     this.tick();
-    this.busy = true;
+    if (result.kind === 'blocked') this.blockedArrows.add(id);
+    this.combo = advanceCombo(this.combo, result.kind === 'removed', performance.now());
     this.pendingArrowFocus =
       document.activeElement instanceof HTMLElement && document.activeElement.dataset.arrow
         ? id
         : null;
     const epoch = this.epoch;
     session.state = result.state;
-    if (result.kind === 'removed' && session.mode !== 'tutorial')
+    if (result.kind === 'removed' && session.mode !== 'tutorial') {
       this.store.profile.stats.arrowsCleared++;
+      this.store.profile.stats.bestCombo = Math.max(
+        this.store.profile.stats.bestCombo,
+        this.combo.best,
+      );
+    }
     if (session.state.status !== 'playing') this.store.recordResult(session);
     this.store.flush();
-    this.feedback.play(result.kind === 'removed' ? 'tap' : 'blocked', this.store.profile.settings);
+    this.feedback.play(
+      result.kind === 'removed' ? 'tap' : 'blocked',
+      this.store.profile.settings,
+      this.combo.count,
+    );
     this.updateHud();
+    this.updateCombo();
     if (result.kind === 'blocked') this.toast('Camino bloqueado. Busca qué flecha sale primero.');
-    await this.renderer.animate(result);
+    await this.renderer.animate(result, this.combo.count);
     if (epoch !== this.epoch) return;
+    this.blockedArrows.delete(id);
     if (this.store.conflicted) return;
-    this.busy = false;
     this.updateHud();
-    if (session.state.status !== 'playing') {
+    if (result.state.status !== 'playing') {
       this.finish();
       return;
     }
@@ -523,8 +766,10 @@ export class GameApp {
 
   private render(): void {
     this.epoch++;
+    this.blockedArrows.clear();
     this.renderer?.destroy();
     this.renderer = null;
+    document.documentElement.dataset.theme = this.store.profile.settings.theme;
     document.documentElement.dataset.motion = this.store.profile.settings.reducedMotion
       ? 'reduced'
       : 'full';
@@ -535,7 +780,7 @@ export class GameApp {
 
   private header(): string {
     const game = this.screen === 'game';
-    return `<header class="topbar"><button class="brand" data-action="${game ? 'pause' : 'home'}" aria-label="${game ? 'Pausar partida' : 'Ir al inicio'}"><span class="brand-mark">${icon('arrow')}</span><span>FLECHA<span class="brand-light">TRAMPA</span></span></button><div class="topbar-actions">${game ? `<span class="level-chip">${this.sessionLabel()}</span><button class="icon-button" data-action="pause" aria-label="Pausar">${icon('pause')}</button>` : `<span class="edition">UN RETO. TU RITMO.</span><button class="icon-button" data-action="settings" aria-label="Abrir ajustes">${icon('settings')}</button>`}</div></header>`;
+    return `<header class="topbar"><button class="brand" data-action="${game ? 'pause' : 'home'}" aria-label="${game ? 'Pausar partida' : 'Ir al inicio'}"><span class="brand-mark">${icon('arrow')}</span><span>FLECHA<span class="brand-light">TRAMPA</span></span></button><div class="topbar-actions">${this.energyMarkup()}${game ? `<span class="level-chip">${this.sessionLabel()}</span><button class="icon-button" data-action="pause" aria-label="Pausar">${icon('pause')}</button>` : `<span class="edition">UN RETO. TU RITMO.</span><button class="icon-button" data-action="settings" aria-label="Abrir ajustes">${icon('settings')}</button>`}</div></header>`;
   }
 
   private content(): string {
@@ -552,13 +797,20 @@ export class GameApp {
         return this.sharedContent();
       case 'game':
         return this.gameContent();
+      case 'rewards':
+        return rewardsContent(
+          this.store.profile,
+          this.store.hasPremium,
+          this.rewardsTab,
+          !!this.monetization.purchases.available && !this.purchasing,
+        );
     }
   }
 
   private homeContent(): string {
     const profile = this.store.profile;
     const continuing = profile.classicSave?.state.status === 'playing';
-    return `<section class="home-hero"><div class="hero-copy"><div class="eyebrow"><span class="live-dot"></span> TU PRÓXIMA PEQUEÑA VICTORIA</div><h1>Piensa<br>la <span>salida.</span></h1><p class="hero-description">Cada flecha tiene un camino.<br>El truco es encontrar el orden.</p><button class="primary-button hero-play" data-action="play"><span>${continuing ? 'Continuar partida' : 'Jugar ahora'}<small>CLÁSICO <span>·</span> NIVEL ${String(profile.level).padStart(2, '0')}</small></span>${icon('diagonal')}</button><p class="hero-caption">${icon('heart')} Tres vidas. Cero prisas.</p></div><div class="hero-art" aria-hidden="true"><div class="art-orbit orbit-one"></div><div class="art-orbit orbit-two"></div><div class="art-caption">ENCUENTRA TU CAMINO</div>${['up', 'right', 'left', 'down', 'right', 'up', 'down', 'left', 'up'].map((direction, index) => `<div class="art-tile art-${index} direction-${direction}"><span>↑</span></div>`).join('')}<div class="art-tag">${icon('spark')} UN MOVIMIENTO LO CAMBIA TODO</div></div></section><section class="home-lower"><div class="section-heading"><span>Más formas de pensar</span><span class="micro-copy">ELIGE TU RETO</span></div><div class="mode-preview-grid"><button class="mode-preview daily-preview" data-action="daily"><span class="preview-icon">${icon('calendar')}</span><span><small>UNO CADA DÍA</small><strong>El reto de hoy</strong><span>Un nuevo día, una nueva salida.</span></span>${icon('diagonal')}</button><button class="mode-preview share-preview" data-action="shared"><span class="preview-icon">${icon('share')}</span><span><small>MEJOR EN COMPAÑÍA</small><strong>Reta a alguien</strong><span>El mismo puzle. ¿Otro camino?</span></span>${icon('diagonal')}</button></div><div class="home-footnote"><span class="tiny-dots"><i></i><i></i><i></i><i></i></span> Sin cuenta. Sin prisa. Con ingenio.</div></section>`;
+    return `<section class="home-hero"><div class="hero-copy"><div class="eyebrow"><span class="live-dot"></span> TU PRÓXIMA PEQUEÑA VICTORIA</div><h1>Piensa<br>la <span>salida.</span></h1><p class="hero-description">Cada flecha tiene un camino.<br>El truco es encontrar el orden.</p><button class="primary-button hero-play" data-action="play"><span>${continuing ? 'Continuar partida' : 'Jugar ahora'}<small>CLÁSICO <span>·</span> NIVEL ${String(profile.level).padStart(2, '0')}</small></span>${icon('diagonal')}</button><p class="hero-caption">${icon('heart')} ${this.store.hasPremium || profile.economy.collection.lifeTokens > 0 ? 'Cuatro' : 'Tres'} vidas. Cero prisas.</p>${profile.economy.collection.lifeTokens ? `<p class="bonus-life-note">${profile.economy.collection.lifeTokens} reservas de vida extra: una por nuevo intento clásico; continuar es gratis.</p>` : ''}</div><div class="hero-art" aria-hidden="true"><div class="art-orbit orbit-one"></div><div class="art-orbit orbit-two"></div><div class="art-caption">ENCUENTRA TU CAMINO</div>${['up', 'right', 'left', 'down', 'right', 'up', 'down', 'left', 'up'].map((direction, index) => `<div class="art-tile art-${index} direction-${direction}"><span>↑</span></div>`).join('')}<div class="art-tag">${icon('spark')} UN MOVIMIENTO LO CAMBIA TODO</div></div></section><section class="home-lower"><div class="section-heading"><span>Más formas de pensar</span><span class="micro-copy">ELIGE TU RETO</span></div><div class="mode-preview-grid"><button class="mode-preview daily-preview" data-action="daily"><span class="preview-icon">${icon('calendar')}</span><span><small>UNO CADA DÍA</small><strong>El reto de hoy</strong><span>Un nuevo día, una nueva salida.</span></span>${icon('diagonal')}</button><button class="mode-preview share-preview" data-action="shared"><span class="preview-icon">${icon('share')}</span><span><small>MEJOR EN COMPAÑÍA</small><strong>Reta a alguien</strong><span>El mismo puzle. ¿Otro camino?</span></span>${icon('diagonal')}</button></div><div class="rewards-shortcuts"><button data-action="pass">${icon('gift')}<span>Pase de temporada<small>${profile.economy.pass.xp} XP · Recompensas gratuitas</small></span>${icon('arrow')}</button><button data-action="collection">${icon('chest')}<span>Tu colección<small>${profile.economy.collection.chests} cofres · Skins y temas</small></span>${icon('arrow')}</button></div><div class="home-footnote"><span class="tiny-dots"><i></i><i></i><i></i><i></i></span> Sin cuenta. Sin prisa. Con ingenio.</div></section>`;
   }
 
   private modesContent(): string {
@@ -574,9 +826,10 @@ export class GameApp {
       [formatTime(stats.totalPlayMs), 'Tiempo de juego', 'clock'],
       [stats.arrowsCleared, 'Flechas liberadas', 'arrow'],
       [hints, 'Pistas disponibles', 'spark'],
+      [stats.bestCombo, 'Mejor combo', 'energy'],
       [currentStreak(this.store.profile.daily), 'Racha diaria', 'flame'],
       [this.store.profile.daily.bestStreak, 'Mejor racha', 'calendar'],
-      [this.store.profile.daily.completedDays, 'D?as completados', 'check'],
+      [this.store.profile.daily.completedDays, 'Días completados', 'check'],
     ]
       .map(
         ([value, label, glyph]) =>
@@ -631,7 +884,7 @@ export class GameApp {
   private gameContent(): string {
     const session = this.session!;
     const tutorial = session.mode === 'tutorial';
-    return `<section class="game-layout"><div class="game-intro"><div class="eyebrow">${tutorial ? 'APRENDER HACIENDO' : session.mode === 'classic' ? 'MODO CLÁSICO' : session.mode === 'daily' ? 'DESAFÍO DIARIO' : 'RETO COMPARTIDO'}</div><h1 class="game-title">${tutorial ? 'Todo tiene<br> un orden.' : 'Una flecha.<br> Un paso más.'}</h1><p class="game-description">Observa el tablero. Libera los caminos.<br>La siguiente salida está ahí.</p><div class="desktop-tip">${icon('help')}<p>Una flecha solo puede salir si no hay otra en su trayectoria. Cada intento bloqueado cuesta una vida.</p></div></div><div class="play-area"><div class="game-hud"><div class="lives" role="img" aria-label="3 vidas" data-lives></div><span class="game-timer">${icon('clock')}<span data-timer>${formatTime(session.elapsedMs)}</span></span></div><div class="board-frame"><div class="board-corner corner-tl"></div><div class="board-corner corner-br"></div><div class="board-host" aria-hidden="true"></div><div class="board-controls" role="group" aria-label="Tablero de flechas"></div><div class="board-loading">Preparando tu camino…</div></div><div class="board-progress"><span>FLECHAS LIBERADAS</span><strong data-counter></strong><div class="progress-track"><i data-progress></i></div></div><div class="tutorial-instruction" ${tutorial ? '' : 'hidden'}></div><div class="game-tools"><button class="hint-button" data-action="hint">${icon('spark')}<span>Una pista</span><span class="hint-count" data-hints>${this.store.profile.hints}</span></button><button class="text-button" data-action="pause">Tomar un respiro ${icon('pause')}</button></div><p class="board-caption">${icon('arrow')} Toca una flecha para liberarla.</p></div></section>`;
+    return `<section class="game-layout"><div class="game-intro"><div class="eyebrow">${tutorial ? 'APRENDER HACIENDO' : session.mode === 'classic' ? 'MODO CLÁSICO' : session.mode === 'daily' ? 'DESAFÍO DIARIO' : 'RETO COMPARTIDO'}</div><h1 class="game-title">${tutorial ? 'Todo tiene<br> un orden.' : 'Una flecha.<br> Un paso más.'}</h1><p class="game-description">Observa el tablero. Libera los caminos.<br>La siguiente salida está ahí.</p><div class="desktop-tip">${icon('help')}<p>Una flecha solo puede salir si no hay otra en su trayectoria. Cada intento bloqueado cuesta una vida.</p></div></div><div class="play-area">${session.lifeTokenSpent ? `<p class="bonus-life-note">${icon('heart')} Vida extra del pase · 4 vidas en este intento</p>` : ''}<div class="game-hud"><div class="lives" role="img" aria-label="3 vidas" data-lives></div><span class="game-timer">${icon('clock')}<span data-timer>${formatTime(session.elapsedMs)}</span></span></div><div class="board-viewport"><div class="board-frame"><div class="board-corner corner-tl"></div><div class="board-corner corner-br"></div><div class="board-host" aria-hidden="true"></div><div class="board-controls" role="group" aria-label="Tablero de flechas"></div><div class="board-loading">Preparando tu camino…</div></div></div><div class="board-feedback"><strong class="combo-badge" data-combo hidden></strong><button class="text-button zoom-button" data-action="zoom-board" aria-pressed="false">Ampliar tablero</button></div><div class="board-progress"><span>FLECHAS LIBERADAS</span><strong data-counter></strong><div class="progress-track"><i data-progress></i></div></div><div class="tutorial-instruction" ${tutorial ? '' : 'hidden'}></div><div class="game-tools"><button class="hint-button" data-action="hint">${icon('spark')}<span>Una pista</span><span class="hint-count" data-hints>${this.store.profile.hints}</span></button><button class="text-button" data-action="pause">Tomar un respiro ${icon('pause')}</button></div><p class="board-caption">${icon('arrow')} Toca una flecha para liberarla.</p></div></section>`;
   }
 
   private async mountBoard(): Promise<void> {
@@ -643,19 +896,12 @@ export class GameApp {
     try {
       const { BoardRenderer } = await import('../scenes/BoardScene');
       if (epoch !== this.epoch || !host.isConnected) return;
-      this.renderer = new BoardRenderer(
-        host,
-        session.state.board,
-        {
-          ...this.store.profile.settings,
-          reducedMotion:
-            this.store.profile.settings.reducedMotion ||
-            matchMedia('(prefers-reduced-motion: reduce)').matches,
-        },
-        (id) => {
-          void this.selectArrow(id);
-        },
-      );
+      this.renderer = new BoardRenderer(host, session.state.board, {
+        ...this.store.profile.settings,
+        reducedMotion:
+          this.store.profile.settings.reducedMotion ||
+          matchMedia('(prefers-reduced-motion: reduce)').matches,
+      });
       await this.renderer.ready;
       if (epoch !== this.epoch) return;
       this.busy = false;
@@ -677,7 +923,7 @@ export class GameApp {
     if (!session) return;
     const lives = this.root.querySelector('[data-lives]');
     if (lives) {
-      lives.innerHTML = [0, 1, 2]
+      lives.innerHTML = Array.from({ length: session.state.initialLives ?? 3 }, (_, index) => index)
         .map(
           (index) =>
             `<span class="${index < session.state.lives ? 'heart-full' : 'heart-empty'}">${icon('heart')}</span>`,
@@ -696,12 +942,39 @@ export class GameApp {
     if (controls) {
       const board = session.state.board;
       const cell = 664 / Math.max(board.width, board.height);
-      controls.innerHTML = board.arrows
-        .map(
-          (arrow) =>
-            `<button class="board-cell" data-arrow="${escapeHtml(arrow.id)}" data-x="${arrow.x}" data-y="${arrow.y}" data-direction="${arrow.direction}" aria-label="Flecha ${DIRECTION_LABEL[arrow.direction]}, fila ${arrow.y + 1}, columna ${arrow.x + 1}" style="left:${(((720 - board.width * cell) / 2 + arrow.x * cell) / 720) * 100}%;top:${(((720 - board.height * cell) / 2 + arrow.y * cell) / 720) * 100}%;width:${(cell / 720) * 100}%;height:${(cell / 720) * 100}%" ${this.busy || this.overlay ? 'disabled' : ''}></button>`,
-        )
-        .join('');
+      const ids = new Set(board.arrows.map((arrow) => arrow.id));
+      const existing = new Map(
+        [...controls.querySelectorAll<HTMLButtonElement>('[data-arrow]')].map((button) => [
+          button.dataset.arrow!,
+          button,
+        ]),
+      );
+      for (const [id, button] of existing) if (!ids.has(id)) button.remove();
+      for (const arrow of board.arrows) {
+        let button = existing.get(arrow.id);
+        if (!button) {
+          button = document.createElement('button');
+          button.className = 'board-cell';
+          Object.assign(button.dataset, {
+            arrow: arrow.id,
+            x: String(arrow.x),
+            y: String(arrow.y),
+            direction: arrow.direction,
+          });
+          button.setAttribute(
+            'aria-label',
+            `Flecha ${DIRECTION_LABEL[arrow.direction]}, fila ${arrow.y + 1}, columna ${arrow.x + 1}`,
+          );
+          Object.assign(button.style, {
+            left: `${(((720 - board.width * cell) / 2 + arrow.x * cell) / 720) * 100}%`,
+            top: `${(((720 - board.height * cell) / 2 + arrow.y * cell) / 720) * 100}%`,
+            width: `${(cell / 720) * 100}%`,
+            height: `${(cell / 720) * 100}%`,
+          });
+          controls.append(button);
+        }
+        button.disabled = this.busy || !!this.overlay || this.blockedArrows.has(arrow.id);
+      }
     }
     this.root
       .querySelectorAll<HTMLButtonElement>('[data-action="pause"], [data-action="hint"]')
@@ -715,6 +988,20 @@ export class GameApp {
       next?.focus({ preventScroll: true });
       this.pendingArrowFocus = null;
     }
+  }
+
+  private updateCombo(): void {
+    const badge = this.root.querySelector<HTMLElement>('[data-combo]');
+    if (!badge) return;
+    badge.hidden = this.combo.count < 2;
+    badge.textContent = `COMBO ×${this.combo.count}`;
+    badge.dataset.intensity = String(Math.min(5, this.combo.count));
+    if (
+      !this.store.profile.settings.reducedMotion &&
+      !matchMedia('(prefers-reduced-motion: reduce)').matches &&
+      this.combo.count >= 2
+    )
+      badge.animate([{ transform: 'scale(1.2)' }, { transform: 'scale(1)' }], { duration: 180 });
   }
 
   private highlightTutorial(): void {
@@ -744,12 +1031,13 @@ export class GameApp {
       ['home', 'home', 'Inicio'],
       ['modes', 'grid', 'Modos'],
       ['stats', 'chart', 'Tu progreso'],
+      ['rewards', 'gift', 'Recompensas'],
     ]
       .map(
         ([screen, glyph, label]) =>
           `<button data-action="${screen}" class="nav-item ${activeScreen === screen ? 'active' : ''}" ${activeScreen === screen ? 'aria-current="page"' : ''}>${icon(glyph!)}<span>${label}</span></button>`,
       )
-      .join('')}<span class="nav-signature">FLECHA TRAMPA <small>v0.1</small></span></nav>`;
+      .join('')}<span class="nav-signature">FLECHA TRAMPA <small>v0.2</small></span></nav>`;
   }
 
   private openOverlay(overlay: Overlay): void {
@@ -763,6 +1051,19 @@ export class GameApp {
   }
 
   private closeOverlay(): void {
+    if (this.overlay === 'chest') {
+      this.chestDrop = null;
+      this.overlay = null;
+      this.render();
+      return;
+    }
+    if (this.overlay === 'energy') {
+      this.overlay = this.energyReturn;
+      this.energyReturn = null;
+      this.renderOverlay();
+      if (this.screen === 'game') this.updateHud();
+      return;
+    }
     if (this.overlay === 'settings' && this.screen === 'game') this.overlay = 'pause';
     else this.overlay = null;
     this.lastTick = performance.now();
@@ -813,22 +1114,22 @@ export class GameApp {
         )
         .join(
           '',
-        )}</div><div class="theme-heading">PALETA DE FLECHAS</div><div class="theme-options">${[
-        ['aurora', 'Aurora'],
-        ['ember', 'Atardecer'],
-      ]
-        .map(
-          ([name, label]) =>
-            `<button data-action="theme" data-value="${name}" class="theme-option ${settings.theme === name ? 'selected' : ''}" aria-pressed="${settings.theme === name}"><span class="theme-swatches ${name}"><i></i><i></i><i></i><i></i></span>${label}${settings.theme === name ? icon('check') : ''}</button>`,
-        )
-        .join(
-          '',
-        )}</div><button class="text-button centered" data-action="tutorial">${icon('help')} Repetir tutorial</button><p class="settings-footer">FLECHA TRAMPA · v0.1.0<br>Tu progreso se queda en este dispositivo.</p>`;
+        )}</div><div class="theme-heading">PALETA DE FLECHAS</div>${themesContent(this.store.profile)}<button class="text-button centered" data-action="collection">Ver skins y cofres ${icon('chest')}</button><button class="text-button centered" data-action="tutorial">${icon('help')} Repetir tutorial</button><p class="settings-footer">FLECHA TRAMPA · v0.2.0<br>Tu progreso se queda en este dispositivo.</p>`;
     }
     if (this.overlay === 'hints')
       content = `${close}<div class="modal-symbol lavender">${icon('spark')}</div><h2>Tu ingenio<br>también recarga.</h2><p>No te quedan pistas. Cada tres victorias conseguirás una nueva. ${this.monetization.ads.rewardedAvailable ? 'Puedes obtener otra viendo un anuncio recompensado.' : 'Los anuncios recompensados todavía no están disponibles.'}</p>${this.monetization.ads.rewardedAvailable ? `<button class="secondary-button" data-action="rewarded-hint">Ver anuncio por una pista ${icon('spark')}</button>` : ''}<button class="primary-button" data-action="close-overlay">Seguir pensando ${icon('arrow')}</button>`;
     if (this.overlay === 'result') content = this.resultContent();
+    if (this.overlay === 'chest' && this.chestDrop) content = chestContent(this.chestDrop);
+    if (this.overlay === 'energy') {
+      const current = regenerateEnergy(
+        this.store.profile.economy.energy,
+        Date.now(),
+        this.store.energyCapacity,
+      );
+      content = `${close}<div class="modal-symbol lime">${icon('energy')}</div><div class="eyebrow">TU ENERGÍA</div><h2>${current.amount ? 'Listo para<br>otro intento.' : 'Recarga y<br>vuelve a volar.'}</h2><strong class="energy-total" data-energy-amount>${current.amount} / ${this.store.energyCapacity}</strong><p>Una carga por nueva partida clásica o diaria. Al ganar la recuperas. Continuar un guardado es gratis.</p><p class="energy-next">${current.amount >= this.store.energyCapacity ? 'Energía completa' : 'Próxima carga en'} <strong data-energy-wait></strong></p><p class="fine-print">Una carga cada 10 minutos, también con la app cerrada. Las bonificaciones pueden superar el límite.</p>${this.monetization.ads.rewardedAvailable ? '<button class="secondary-button" data-action="rewarded-energy">Ver anuncio por energía</button>' : ''}${this.pendingEnergySession ? '<button class="primary-button" data-action="retry-energy">Volver a intentar</button>' : ''}<button class="secondary-button" data-action="pass">Ver recompensas del pase</button><button class="text-button centered" data-action="practice">Practicar sin energía</button>`;
+    }
     layer.innerHTML = `<div class="modal-backdrop"><section class="modal-card ${this.overlay === 'result' ? 'result-card' : ''}" role="dialog" aria-modal="true" aria-label="${this.overlay === 'settings' ? 'Ajustes' : this.overlay === 'result' ? 'Resultado de la partida' : this.overlay === 'pause' ? 'Partida en pausa' : 'FLECHA TRAMPA'}">${content}</section></div>`;
+    this.updateEnergy();
     window.requestAnimationFrame(() => {
       const match = focused?.action
         ? [...layer.querySelectorAll<HTMLElement>('button')].find(
@@ -864,12 +1165,18 @@ export class GameApp {
             ? 'Volver al reto'
             : 'Siguiente nivel'
       : 'Volver a intentarlo';
-    return `<div class="result-burst ${won ? '' : 'defeat'}">${icon(won ? 'spark' : 'retry')}</div><div class="eyebrow">${won ? (tutorial ? 'YA TIENES LA CLAVE' : 'CAMINO DESPEJADO') : 'TÓMATE OTRO INTENTO'}</div><h2>${won ? (tutorial ? 'Ahora, a<br>tu manera.' : session.state.errors === 0 ? 'Así de<br>impecable.' : 'Una pequeña<br>gran victoria.') : 'La salida<br>sigue ahí.'}</h2><p>${won ? (tutorial ? 'Busca caminos libres. Cada flecha que sale abre nuevas posibilidades.' : session.state.errors === 0 ? 'Ni un solo error. A veces, todo encaja.' : 'Has encontrado el orden. Disfruta ese momento.') : 'Tres vidas después, ya conoces mejor el tablero. ¿Lo vuelves a intentar?'}</p><div class="result-stats"><div><strong>${formatTime(session.elapsedMs)}</strong><span>TIEMPO</span></div><div><strong>${session.state.errors}</strong><span>ERRORES</span></div><div><strong>${session.state.totalArrows - session.state.board.arrows.length}</strong><span>FLECHAS</span></div></div>${won && !tutorial && this.store.profile.stats.wins % 3 === 0 ? '<div class="reward-note">+1 pista · Cada victoria abre caminos.</div>' : ''}<button class="primary-button" data-action="${nextAction}">${nextLabel} ${icon(won ? 'arrow' : 'retry')}</button>${!tutorial ? `<button class="secondary-button" data-action="share-result">Compartir resultado ${icon('share')}</button>` : ''}${this.manualShareText ? `<textarea class="manual-copy" readonly aria-label="Resultado para copiar">${escapeHtml(this.manualShareText)}</textarea>` : ''}<button class="text-button centered" data-action="home">Volver al inicio</button>`;
+    return `<div class="result-burst ${won ? '' : 'defeat'}">${icon(won ? 'spark' : 'retry')}</div><div class="eyebrow">${won ? (tutorial ? 'YA TIENES LA CLAVE' : 'CAMINO DESPEJADO') : 'TÓMATE OTRO INTENTO'}</div><h2>${won ? (tutorial ? 'Ahora, a<br>tu manera.' : session.state.errors === 0 ? 'Así de<br>impecable.' : 'Una pequeña<br>gran victoria.') : 'La salida<br>sigue ahí.'}</h2><p>${won ? (tutorial ? 'Busca caminos libres. Cada flecha que sale abre nuevas posibilidades.' : session.state.errors === 0 ? 'Ni un solo error. A veces, todo encaja.' : 'Has encontrado el orden. Disfruta ese momento.') : 'Ya conoces mejor el tablero. ¿Lo vuelves a intentar?'}</p><div class="result-stats"><div><strong>${formatTime(session.elapsedMs)}</strong><span>TIEMPO</span></div><div><strong>${session.state.errors}</strong><span>ERRORES</span></div><div><strong>${session.state.totalArrows - session.state.board.arrows.length}</strong><span>FLECHAS</span></div></div>${won && !tutorial && this.store.profile.stats.wins % 3 === 0 ? '<div class="reward-note">+1 pista · Cada victoria abre caminos.</div>' : ''}${session.rewardXp ? `<div class="reward-note">+${session.rewardXp} XP para el pase${session.energySpent ? ' · Energía recuperada' : ''}</div>` : ''}<button class="primary-button" data-action="${nextAction}">${nextLabel} ${icon(won ? 'arrow' : 'retry')}</button>${!tutorial ? `<button class="secondary-button" data-action="share-result">Compartir resultado ${icon('share')}</button>` : ''}${this.manualShareText ? `<textarea class="manual-copy" readonly aria-label="Resultado para copiar">${escapeHtml(this.manualShareText)}</textarea>` : ''}<button class="text-button centered" data-action="home">Volver al inicio</button>`;
   }
 
   private handleKey(event: KeyboardEvent): void {
     if (event.key === 'Escape') {
-      if (this.overlay === 'settings' || this.overlay === 'hints') this.closeOverlay();
+      if (
+        this.overlay === 'settings' ||
+        this.overlay === 'hints' ||
+        this.overlay === 'chest' ||
+        this.overlay === 'energy'
+      )
+        this.closeOverlay();
       else if (this.overlay === 'pause') this.closeOverlay();
       else this.pause();
     }

@@ -10,6 +10,7 @@ async function skipTutorial(page: Page): Promise<void> {
 }
 
 async function readBoard(page: Page): Promise<Board> {
+  await expect(page.locator('[data-arrow]').first()).toBeVisible();
   await expect(page.locator('.board-loading')).toHaveCount(0);
   const arrows = await page.locator('[data-arrow]').evaluateAll((buttons) =>
     buttons.map((button) => {
@@ -285,4 +286,183 @@ test('portrait layouts keep a dense board inside the viewport', async ({ page },
     await page.getByRole('button', { name: 'Pausar', exact: true }).click();
     await page.getByRole('button', { name: 'Volver al inicio', exact: true }).click();
   }
+});
+
+test.describe('finger input', () => {
+  test.use({ hasTouch: true });
+
+  test('accepts several real taps while arrows are flying and keeps a combo', async ({ page }) => {
+    await skipTutorial(page);
+    await page.getByRole('button', { name: /Jugar ahora/ }).click();
+    const board = await readBoard(page);
+    const sequence = solve(board).sequence.slice(0, 3);
+    const untouched = board.arrows.find((arrow) => !sequence.includes(arrow.id))!;
+    const stable = await page.locator(`[data-arrow="${untouched.id}"]`).elementHandle();
+    const points = await page.locator('[data-arrow]').evaluateAll((buttons) =>
+      buttons.map((button) => {
+        const rect = button.getBoundingClientRect();
+        return {
+          id: (button as HTMLElement).dataset.arrow,
+          x: rect.x + rect.width / 2,
+          y: rect.y + rect.height / 2,
+        };
+      }),
+    );
+    for (const id of sequence) {
+      const point = points.find((item) => item.id === id)!;
+      await page.touchscreen.tap(point.x, point.y);
+    }
+    await expect(page.locator('[data-arrow]')).toHaveCount(board.arrows.length - 3);
+    await expect(page.locator('[data-lives]')).toHaveAttribute('aria-label', '3 vidas');
+    await expect(page.locator('[data-combo]')).toHaveText('COMBO ×3');
+    expect(await stable!.evaluate((button) => button.isConnected)).toBe(true);
+  });
+
+  test('scrolling a finger over an arrow never consumes a move and zoom enlarges targets', async ({
+    page,
+  }) => {
+    await skipTutorial(page);
+    await page.getByRole('button', { name: /Jugar ahora/ }).click();
+    const board = await readBoard(page);
+    const box = (await page.locator('[data-arrow]').first().boundingBox())!;
+    const cdp = await page.context().newCDPSession(page);
+    const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [point] });
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchMove',
+      touchPoints: [{ x: point.x, y: point.y - 50 }],
+    });
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await expect(page.locator('[data-arrow]')).toHaveCount(board.arrows.length);
+    await expect(page.locator('[data-lives]')).toHaveAttribute('aria-label', '3 vidas');
+    await page.getByRole('button', { name: 'Ampliar tablero' }).click();
+    await expect(page.getByRole('button', { name: 'Ver tablero completo' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    const enlarged = (await page.locator('[data-arrow]').first().boundingBox())!;
+    expect(enlarged.width).toBeGreaterThanOrEqual(44);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    await cdp.detach();
+  });
+});
+
+test('a classic win refunds energy, earns pass XP and claims a reward only once', async ({
+  page,
+}, testInfo) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await skipTutorial(page);
+  await expect(page.locator('[data-energy-amount]')).toHaveText('5/5');
+  await page.getByRole('button', { name: /Jugar ahora/ }).click();
+  await readBoard(page);
+  await expect(page.locator('[data-energy-amount]')).toHaveText('4/5');
+  await solveCurrent(page);
+  await expect(page.getByRole('dialog')).toContainText('+125 XP');
+  await page.getByRole('button', { name: 'Volver al inicio', exact: true }).click();
+  await page.getByRole('button', { name: 'Recompensas', exact: true }).click();
+  await expect(page.locator('[data-pass-xp]')).toHaveText('125 XP');
+  await expect(
+    page.getByRole('button', { name: 'Recoger Plus nivel 1', exact: true }),
+  ).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Pase Plus · Próximamente' })).toBeDisabled();
+  await page.getByRole('button', { name: 'Recoger gratis nivel 1', exact: true }).click();
+  await expect(page.locator('[data-energy-amount]')).toHaveText('7/5');
+  await expect(
+    page.getByRole('button', { name: 'Recogido gratis nivel 1', exact: true }),
+  ).toBeDisabled();
+  await page.screenshot({ path: `.artifacts/pass-${testInfo.project.name}.png`, fullPage: true });
+  await page.reload();
+  await page.getByRole('button', { name: 'Recompensas', exact: true }).click();
+  await expect(page.locator('[data-pass-xp]')).toHaveText('125 XP');
+  await expect(page.locator('[data-energy-amount]')).toHaveText('7/5');
+  await expect(
+    page.getByRole('button', { name: 'Recogido gratis nivel 1', exact: true }),
+  ).toBeDisabled();
+  await page.getByRole('button', { name: 'Restaurar compras' }).click();
+  await expect(page.locator('.toast')).toContainText('No hay compras');
+});
+
+test('opens an earned chest, equips an actual skin and persists a full visual theme', async ({
+  page,
+}, testInfo) => {
+  await skipTutorial(page);
+  await page.getByRole('button', { name: 'Recompensas', exact: true }).click();
+  await page.getByRole('button', { name: 'Colección', exact: true }).click();
+  await expect(page.locator('.chest-odds')).toContainText('60%');
+  await page.getByRole('button', { name: 'Abrir cofre', exact: true }).click();
+  await expect(page.getByRole('dialog')).toContainText('NUEVA SKIN');
+  await page.screenshot({ path: `.artifacts/chest-${testInfo.project.name}.png`, fullPage: true });
+  await page.getByRole('button', { name: 'Equipar skin', exact: true }).click();
+  await expect(page.locator('[data-action="open-chest"]')).toBeDisabled();
+  const equipped = await page.locator('.skin-card.selected button').getAttribute('data-value');
+  expect(equipped).not.toBe('classic');
+  await page.getByRole('button', { name: 'Neón', exact: true }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'neon');
+  await page.screenshot({
+    path: `.artifacts/collection-${testInfo.project.name}.png`,
+    fullPage: true,
+  });
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'neon');
+  await page.getByRole('button', { name: 'Recompensas', exact: true }).click();
+  await page.getByRole('button', { name: 'Colección', exact: true }).click();
+  await expect(page.locator('.skin-card.selected button')).toHaveAttribute('data-value', equipped!);
+  await expect(page.locator('[data-action="open-chest"]')).toBeDisabled();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test('empty energy prevents charging a new game but permits free practice', async ({ page }) => {
+  await skipTutorial(page);
+  await page.evaluate(() => {
+    const key = 'flecha-trampa:profile:v1';
+    const profile = JSON.parse(localStorage.getItem(key)!);
+    profile.economy.energy = { amount: 0, updatedAt: Date.now() };
+    localStorage.setItem(key, JSON.stringify(profile));
+  });
+  await page.reload();
+  await page.getByRole('button', { name: /Jugar ahora/ }).click();
+  await expect(page.getByRole('dialog')).toContainText('Recarga');
+  await expect(page.locator('[data-energy-wait]')).toHaveText(/0[9]:[0-5][0-9]|10:00/);
+  await page.getByRole('button', { name: 'Volver a intentar', exact: true }).click();
+  await expect(page.getByRole('dialog')).toContainText('Recarga');
+  await page.getByRole('button', { name: 'Practicar sin energía', exact: true }).click();
+  await readBoard(page);
+  await expect(page.locator('.level-chip')).toHaveText('ENTRE AMIGOS');
+  await expect(page.locator('[data-energy-amount]')).toHaveText('0/5');
+  await expect(page.locator('[data-lives]')).toHaveAttribute('aria-label', '3 vidas');
+});
+
+test('free pass extra lives persist and are used only on a new classic attempt', async ({
+  page,
+}, testInfo) => {
+  await skipTutorial(page);
+  await page.evaluate(() => {
+    const key = 'flecha-trampa:profile:v1';
+    const profile = JSON.parse(localStorage.getItem(key)!);
+    profile.economy.pass.xp = 400;
+    localStorage.setItem(key, JSON.stringify(profile));
+  });
+  await page.reload();
+  await page.getByRole('button', { name: 'Recompensas', exact: true }).click();
+  await page.getByRole('button', { name: 'Recoger gratis nivel 4', exact: true }).click();
+  await expect(page.locator('.toast')).toContainText('2 vidas extra');
+  await page.getByRole('button', { name: 'Inicio', exact: true }).click();
+  await page.getByRole('button', { name: /Jugar ahora/ }).click();
+  await readBoard(page);
+  await expect(page.locator('[data-lives]')).toHaveAttribute('aria-label', '4 vidas');
+  await page.screenshot({
+    path: `.artifacts/extra-life-${testInfo.project.name}.png`,
+    fullPage: true,
+  });
+  await page.reload();
+  await page.getByRole('button', { name: /Continuar partida/ }).click();
+  await readBoard(page);
+  await expect(page.locator('[data-lives]')).toHaveAttribute('aria-label', '4 vidas');
+  const tokens = await page.evaluate(
+    () =>
+      JSON.parse(localStorage.getItem('flecha-trampa:profile:v1')!).economy.collection.lifeTokens,
+  );
+  expect(tokens).toBe(1);
 });

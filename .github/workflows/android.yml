@@ -2,7 +2,7 @@ name: Android APK
 on:
   workflow_dispatch:
   push:
-    branches: [main, develop, feature/android-apk]
+    branches: [main, develop, 'feature/**']
   pull_request:
     branches: [main, develop]
 permissions:
@@ -78,6 +78,7 @@ jobs:
           path: |
             android/app/build/reports/
             android/app/build/outputs/androidTest-results/
+            android/app/build/outputs/connected_android_test_additional_output/
             .artifacts/android-smoke/
           if-no-files-found: ignore
           include-hidden-files: true

@@ -3,11 +3,13 @@ import type { Board, GameState, MoveResult } from './types';
 
 export const INITIAL_LIVES = 3;
 
-export function createGame(board: Board): GameState {
+export function createGame(board: Board, initialLives: 3 | 4 = INITIAL_LIVES): GameState {
   assertBoard(board);
+  if (initialLives !== 3 && initialLives !== 4) throw new Error('Número de vidas inválido.');
   return {
     board: { ...board, arrows: board.arrows.map((arrow) => ({ ...arrow })) },
-    lives: INITIAL_LIVES,
+    initialLives,
+    lives: initialLives,
     errors: 0,
     moves: 0,
     totalArrows: board.arrows.length,

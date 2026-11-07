@@ -6,7 +6,7 @@ import type { PlayerSettings } from '../config/theme';
 export class FeedbackService {
   private context: AudioContext | null = null;
 
-  play(kind: 'tap' | 'blocked' | 'win', settings: PlayerSettings): void {
+  play(kind: 'tap' | 'blocked' | 'win', settings: PlayerSettings, combo = 0): void {
     if (settings.haptics) {
       if (Capacitor.isNativePlatform()) {
         void Haptics.impact({
@@ -32,7 +32,8 @@ export class FeedbackService {
         const gain = context.createGain();
         const time = context.currentTime + index * 0.075;
         oscillator.type = kind === 'blocked' ? 'triangle' : 'sine';
-        oscillator.frequency.value = frequency;
+        oscillator.frequency.value =
+          frequency * (kind === 'tap' ? 1 + Math.min(combo, 10) * 0.045 : 1);
         gain.gain.setValueAtTime(0, time);
         gain.gain.linearRampToValueAtTime(0.055, time + 0.01);
         gain.gain.exponentialRampToValueAtTime(0.001, time + 0.2);
