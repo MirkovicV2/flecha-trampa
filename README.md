@@ -1,12 +1,12 @@
 # FLECHA TRAMPA
 
-**[Descargar APK para Android (v0.3.0)](https://github.com/MirkovicV2/flecha-trampa/releases/download/v0.3.0/flecha-trampa-v0.3.0-android.apk)**
+**[Descargar APK para Android (v0.4.0)](https://github.com/MirkovicV2/flecha-trampa/releases/download/v0.4.0/flecha-trampa-v0.4.0-android.apk)**
 
-**Piensa la salida.** Juego de puzles para móvil: flechas, tres vidas y el orden justo para despejar el tablero. Versión 0.3.0 para web y Android, con TypeScript estricto, Phaser 3, Vite, Vitest y Capacitor 8.
+**Encuentra la salida.** Juego de puzles para móvil: flechas, tres vidas y el orden justo para despejar el tablero. Versión 0.4.0 para web y Android, con TypeScript estricto, Phaser 3, Vite, Vitest y Capacitor 8.
 
 ## Descargar e instalar la APK
 
-Pulsa **Descargar APK para Android** al principio de este README para descargar directamente el instalador. También puedes [ver la Release y sus archivos](https://github.com/MirkovicV2/flecha-trampa/releases/tag/v0.3.0).
+Pulsa **Descargar APK para Android** al principio de este README para descargar directamente el instalador. También puedes [ver la Release y sus archivos](https://github.com/MirkovicV2/flecha-trampa/releases/tag/v0.4.0).
 
 El enlace directo funciona también desde el README en GitHub Mobile. El repositorio es privado: iniciar sesión con la cuenta que tiene acceso. Abrir el archivo descargado y seguir el instalador de Android.
 
@@ -14,20 +14,25 @@ Requiere Android 7.0 o posterior y Android System WebView actualizado. Es una AP
 
 ## Novedades de esta versión
 
-Seis escenarios originales de Navidad, Halloween, sakura, neón, océano y festival de faroles, con vistas previas y desbloqueo gratuito por sellos. Son independientes de la skin y la paleta de las flechas. Los combos ahora escalan hasta Frenesí, Imparable y Leyenda, con medidor, estelas, ondas y partículas, manteniendo estables los controles táctiles.
+Cofres con precinto animado, carrusel de piezas, clics sincronizados, frenado y revelación según rareza. El premio se guarda antes de animar: saltar, girar el móvil, pulsar Atrás o cerrar no repite el sorteo ni pierde la pieza. No hay llaves ni venta de cofres.
+
+Ocho flechas redibujadas con siluetas, biseles y materiales propios. Colección con fichas, filtros e inspector que permite probar cada firma de movimiento: ecos, descargas, píxeles, cristal, órbitas, oro y plasma. El mismo dibujo aparece en la colección, la portada y el tablero. Ver [diseño, animación y garantías de los cofres](docs/COSMETICS.md).
+
+Nueva identidad de taller con tipografías locales de licencia libre. Los fondos de Navidad, Halloween, sakura, neón, océano y faroles incorporan nieve, pétalos, burbujas y otros ambientes. Siguen desbloqueándose gratis por sellos, sin gastar ni dar energía. Los combos conservan Frenesí, Imparable y Leyenda y sus controles táctiles estables.
 
 Hay anuncios locales y compra del Pase Plus **de prueba, sin cobro**, para revisar el flujo completo. La compra de 0,00 € activa cuatro vidas clásicas, capacidad de ocho cargas y omisión de intersticiales; cancelar no activa nada y Restaurar compras conserva la prueba. Los anuncios recompensados solo dan la recompensa local al completarlos y recogerla. No se solicitan tarjetas ni hay anunciantes o SDK de tienda. Ver [fondos y eventos](docs/EVENTS.md), [economía](docs/ECONOMY.md) y [límites del simulador](docs/MONETIZATION.md).
 
 ## Probar las novedades
 
-1. Inicio → **Navidad. Halloween. Tu mundo.**, o Recompensas → **Fondos y eventos**. Tienes un sello de bienvenida para desbloquear Navidad; puedes previsualizar todos los demás.
-2. Recompensas → Pase de temporada → **Probar Pase Plus · 0 €**. Cancelar, activar y restaurar funcionan. Ajustes → **Restablecer pase de prueba** permite repetir el flujo.
-3. Pulsa el contador de energía → **Ver anuncio de prueba por energía**. Espera los cuatro segundos y recoge la recompensa; cerrar antes no otorga nada.
-4. Encadena flechas válidas en menos de 1,8 segundos. Usa retos compartidos para practicar sin energía. Activa el sonido en Ajustes si quieres escuchar la progresión del combo.
+1. Recompensas → **Colección** → **Abrir cofre**. Activa su botón de sonido para escuchar precinto, tarjetas y revelación. Si ya gastaste el cofre de bienvenida, el nivel 2 del pase gratuito concede otro y los niveles 5 y 9 conceden dos cada uno.
+2. Pulsa la lupa de cualquier skin → **Probar animación**. Puedes inspeccionarlas todas aunque aún no sean tuyas; solo equipar o crear requiere propiedad o fragmentos.
+3. Inicio → **Navidad. Halloween. Tu mundo.**, o Recompensas → **Fondos y eventos**. Un sello de bienvenida permite desbloquear Navidad; puedes previsualizar todos los demás.
+4. Recompensas → Pase de temporada → **Probar Pase Plus · 0 €**. Cancelar, activar y restaurar funcionan. Ajustes → **Restablecer pase de prueba** permite repetir el flujo.
+5. Pulsa energía → **Ver anuncio de prueba por energía**. Espera cuatro segundos y recoge; cerrar antes no otorga nada. Encadena flechas válidas en menos de 1,8 segundos para probar los combos.
 
 ## Estado de GitHub
 
-Repositorio privado verificado: [MirkovicV2/flecha-trampa](https://github.com/MirkovicV2/flecha-trampa). `main`, `develop` y las ramas de funcionalidad están publicadas. `v0.1.0` conserva el MVP web original y `v0.3.0` identifica la versión con APK Android. La cuenta activa se comprobó con `gh auth status` y `gh api user`. La protección remota de `main` no está activa: GitHub exige Pro para habilitarla en este repositorio privado. Ver [estado y comprobaciones de GitHub](docs/REMOTE_STATUS.md).
+Repositorio privado verificado: [MirkovicV2/flecha-trampa](https://github.com/MirkovicV2/flecha-trampa). `main`, `develop` y las ramas de funcionalidad están publicadas. `v0.1.0` conserva el MVP web original y `v0.4.0` identifica la versión con el nuevo taller y cofres animados. La cuenta activa se comprobó con `gh auth status` y `gh api user`. La protección remota de `main` no está activa: GitHub exige Pro para habilitarla en este repositorio privado. Ver [estado y comprobaciones de GitHub](docs/REMOTE_STATUS.md).
 
 ## Inicio rápido en este ordenador
 
@@ -90,7 +95,7 @@ Cada flecha ocupa una celda y sale en línea recta según su orientación. Si su
 
 No hay límite de tiempo. El cronómetro excluye pausas y segundo plano. Las pistas destacan una flecha válida del tablero actual, sin moverla automáticamente. Las direcciones se distinguen por su forma y orientación, además del color.
 
-El primer inicio ofrece un tutorial interactivo. Desde Ajustes se puede repetir el tutorial, activar sonido o vibración, reducir movimiento y elegir paleta. Hay pantallas de inicio, modos, partida, pausa, ajustes, progreso, victoria y derrota. La interfaz respeta zonas seguras y orientación vertical. Iconos, dibujos y sonidos son originales; no se descargan fuentes ni recursos visuales de terceros.
+El primer inicio ofrece un tutorial interactivo. Desde Ajustes se puede repetir el tutorial, activar sonido o vibración, reducir movimiento y elegir paleta. Hay pantallas de inicio, modos, partida, pausa, ajustes, progreso, victoria y derrota. La interfaz respeta zonas seguras y orientación vertical. Iconos, dibujos y sonidos son originales; las tipografías Barlow Condensed y Manrope se distribuyen con sus licencias OFL y sin descargas durante el juego.
 
 ## Modos
 
