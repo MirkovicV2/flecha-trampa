@@ -255,7 +255,9 @@ public class NativeGameSmokeTest {
                 latch.countDown();
             });
         });
-        assertTrue("No JavaScript result from native WebView", latch.await(10, TimeUnit.SECONDS));
+        // The cold software-rendered emulator logged 1109 skipped frames during startup.
+        // Match the bounded 30s native click/readiness budget; still require the real result.
+        assertTrue("No JavaScript result within 30s: " + expression.substring(0, Math.min(120, expression.length())), latch.await(30, TimeUnit.SECONDS));
         return result.get();
     }
 }
