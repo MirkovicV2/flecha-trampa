@@ -14,6 +14,7 @@ import android.os.Environment;
 import android.os.SystemClock;
 import android.provider.MediaStore;
 import android.view.KeyEvent;
+import android.util.Log;
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.espresso.web.webdriver.Locator;
@@ -151,11 +152,17 @@ public class NativeGameSmokeTest {
     }
 
     private static void click(ActivityScenario<MainActivity> activity, String selector) throws Exception {
+        Log.i("FlechaSmoke", "Click: " + selector);
         await(activity, "!!document.querySelector(" + JSONObject.quote(selector) + ") && !document.querySelector(" + JSONObject.quote(selector) + ").disabled");
         // A cold WebView on the software-rendered CI emulator can exceed Espresso's 10s default.
         // Keep a bounded wait; every click is still followed by observable UI/native-save assertions.
-        onWebView().withTimeout(30, TimeUnit.SECONDS)
-            .withElement(findElement(Locator.CSS_SELECTOR, selector)).perform(webClick());
+        try {
+            onWebView().withTimeout(30, TimeUnit.SECONDS)
+                .withElement(findElement(Locator.CSS_SELECTOR, selector)).perform(webClick());
+        } catch (RuntimeException | AssertionError failure) {
+            Log.e("FlechaSmoke", "Click failed: " + selector, failure);
+            throw failure;
+        }
     }
 
     private static void await(ActivityScenario<MainActivity> activity, String expression) throws Exception {

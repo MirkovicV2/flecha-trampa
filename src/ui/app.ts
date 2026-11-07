@@ -120,6 +120,8 @@ export class GameApp {
         this.store.flush();
       }
       this.lastTick = performance.now();
+      // Run after Phaser's own visibility listener, which can wake its frame loop.
+      queueMicrotask(() => this.renderer?.setPaused(this.overlay !== null || document.hidden));
     });
     window.addEventListener('pagehide', () => {
       this.tick();
@@ -1024,6 +1026,7 @@ export class GameApp {
       });
       await this.renderer.ready;
       if (epoch !== this.epoch) return;
+      this.renderer.setPaused(this.overlay !== null || document.hidden);
       this.busy = false;
       this.visualSettingsDirty = false;
       this.root.querySelector('.board-loading')?.remove();
@@ -1223,6 +1226,7 @@ export class GameApp {
   }
 
   private renderOverlay(): void {
+    this.renderer?.setPaused(this.overlay !== null || document.hidden);
     const layer = this.root.querySelector<HTMLElement>('.overlay-layer');
     if (!layer) return;
     const focused =

@@ -115,6 +115,31 @@ test('home and settings fit portrait screens and all navigation works', async ({
   );
 });
 
+test('pausing in-flight arrows resumes rendering and still completes the level', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await skipTutorial(page);
+  await page.getByRole('button', { name: /Jugar ahora/ }).click();
+  const board = await readBoard(page);
+  const first = solve(board).sequence.slice(0, 2);
+  await page.evaluate((ids) => {
+    for (const id of ids)
+      document.querySelector<HTMLButtonElement>(`[data-arrow="${id}"]`)!.click();
+    document.querySelector<HTMLButtonElement>('[data-action="pause"]')!.click();
+  }, first);
+  await expect(page.getByRole('dialog')).toContainText('Un pequeño');
+  await expect(page.locator('[data-arrow]')).toHaveCount(board.arrows.length - 2);
+  await page.getByRole('button', { name: 'Continuar', exact: true }).click();
+  await solveCurrent(page);
+  await expect(page.getByRole('dialog')).toContainText('CAMINO DESPEJADO');
+  await page.getByRole('button', { name: 'Volver al inicio', exact: true }).click();
+  await page.getByRole('button', { name: /Jugar ahora/ }).click();
+  await readBoard(page);
+  expect(errors).toEqual([]);
+});
+
 test('reload restores the exact board, hints, settings and one counted start', async ({ page }) => {
   await skipTutorial(page);
   await page.getByRole('button', { name: /Jugar ahora/ }).click();
