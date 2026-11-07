@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "runId": "06000000-0000-4000-8000-000000000001",
+  "level": 1,
+  "hints": 3,
+  "tutorialDone": true,
+  "settings": {
+    "sound": false,
+    "haptics": true,
+    "reducedMotion": false,
+    "theme": "aurora",
+    "skin": "classic",
+    "world": "void"
+  },
+  "classicSave": null,
+  "dailySave": null,
+  "sharedSave": null,
+  "economy": {
+    "energy": { "amount": 5, "updatedAt": 0 },
+    "pass": { "season": "S1-CAMINOS", "xp": 4000, "claimed": [] },
+    "collection": {
+      "ownedSkins": ["classic"],
+      "ownedThemes": ["aurora", "ember", "arctic", "neon"],
+      "shards": 0,
+      "chests": 1,
+      "lifeTokens": 0,
+      "opened": 0,
+      "sinceEpic": 0
+    }
+  },
+  "events": { "stamps": 1, "earned": 1, "ownedWorlds": ["void"] },
+  "stats": {
+    "played": 0,
+    "wins": 0,
+    "flawless": 0,
+    "totalPlayMs": 0,
+    "arrowsCleared": 0,
+    "bestCombo": 0,
+    "mastered": 0
+  }
+}

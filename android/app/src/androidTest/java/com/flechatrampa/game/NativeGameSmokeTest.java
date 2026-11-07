@@ -18,12 +18,16 @@ import android.provider.MediaStore;
 import android.view.KeyEvent;
 import android.view.WindowManager;
 import android.util.Log;
+import android.webkit.WebStorage;
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.espresso.web.webdriver.Locator;
 import androidx.test.filters.SdkSuppress;
 import androidx.test.platform.app.InstrumentationRegistry;
 import java.io.OutputStream;
+import java.io.InputStream;
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -41,6 +45,8 @@ public class NativeGameSmokeTest {
     public void bundledGameKeepsNativeSaveAcrossActivityRecreation() throws Exception {
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         SharedPreferences preferences = context.getSharedPreferences("CapacitorStorage", Context.MODE_PRIVATE);
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> WebStorage.getInstance().deleteAllData());
         assertTrue(preferences.edit().clear().commit());
 
         try (ActivityScenario<MainActivity> activity = ActivityScenario.launch(MainActivity.class)) {
@@ -138,22 +144,24 @@ public class NativeGameSmokeTest {
     public void shapedChallengeAndRouteInspectionSurviveNativeRecreation() throws Exception {
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         SharedPreferences preferences = context.getSharedPreferences("CapacitorStorage", Context.MODE_PRIVATE);
-        assertTrue(preferences.edit().clear().commit());
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> WebStorage.getInstance().deleteAllData());
+        // Seed before launching: changing Preferences under a live Activity races
+        // its lifecycle save and can replace the fixture with the previous profile.
+        JSONObject fixture;
+        try (InputStream input = InstrumentationRegistry.getInstrumentation().getContext().getAssets().open("season-profile.json")) {
+            ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+            byte[] buffer = new byte[4096];
+            for (int count; (count = input.read(buffer)) != -1;) bytes.write(buffer, 0, count);
+            fixture = new JSONObject(bytes.toString(StandardCharsets.UTF_8.name()));
+        }
+        fixture.getJSONObject("economy").getJSONObject("energy").put("updatedAt", System.currentTimeMillis());
+        assertTrue(preferences.edit().clear().putString(SAVE_KEY, fixture.toString()).commit());
         try (ActivityScenario<MainActivity> activity = ActivityScenario.launch(MainActivity.class)) {
             prepareWindow(activity);
-            await(activity, "!!document.querySelector('[data-action=skip-tutorial]')");
-            click(activity, "[data-action=skip-tutorial]");
-            // Fixture XP only: claim the real new reward through the bundled UI.
-            // No test hooks or synthetic rewards are added to the production app.
-            await(activity, "!!document.querySelector('.hero-play')");
-            long seedDeadline = SystemClock.elapsedRealtime() + 15000;
-            while (SystemClock.elapsedRealtime() < seedDeadline && !preferences.contains(SAVE_KEY)) SystemClock.sleep(100);
-            JSONObject fixture = profile(preferences);
-            fixture.getJSONObject("economy").getJSONObject("pass").put("xp", 4000);
-            assertTrue(preferences.edit().putString(SAVE_KEY, fixture.toString()).commit());
-            activity.recreate();
             await(activity, "!!document.querySelector('.hero-play')");
             click(activity, "[data-action=rewards]");
+            await(activity, "document.querySelector('[data-pass-xp]').textContent === '4000 XP'");
             await(activity, "document.querySelectorAll('[data-action=claim-reward]').length === 80");
             click(activity, "[data-action=claim-reward][data-value='free:40']");
             await(activity, "document.querySelector('[data-action=claim-reward][data-value=\"free:40\"]').disabled");
