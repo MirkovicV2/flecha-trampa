@@ -1,5 +1,21 @@
 # Validación del juego
 
+## Versión 0.3.0 — 7 de noviembre de 2026
+
+En Windows se han completado lint, formato, TypeScript estricto y Vite build; las 92 pruebas Vitest de 11 archivos son correctas. Las 44 pruebas Playwright de móvil y escritorio pasan contra la compilación de producción. Tras aclarar los sellos faltantes en una vista previa bloqueada, se repitieron los dos recorridos de escenarios, también correctos.
+
+El primer recorrido nativo agotó 240 segundos al pasar por pausa y cerrar ActivityScenario. Se ha detenido el bucle de Phaser detrás de los modales y se reactiva al continuar; destruir una escena dormida procesa también su frame de limpieza. Tras esta corrección pasan seis comprobaciones de pausa, animaciones en curso y conflicto entre pestañas. Una sonda de navegador mide cero callbacks RAF durante 700 ms en pausa y 26 callbacks durante los 500 ms posteriores a continuar. La suite ampliada contiene ahora 46 casos de navegador.
+
+La cobertura nueva incluye migración y persistencia de fondos, sellos por primeras victorias sin explotación por reintentos, desbloqueo sin cambios de energía, previsualización de los seis eventos, compra de prueba cancelada/activada/restaurada/restablecida, anuncios completados y cancelados, limpieza al salir de primer plano y ausencia de recompensas prematuras. Se comprueban las cuatro vidas clásicas y la omisión de intersticiales con Plus de prueba. Los combos se prueban con diez extracciones simultáneas, máximo de 72 partículas DOM, geometría táctil constante, pausa y reducción de movimiento.
+
+La [validación remota final](https://github.com/MirkovicV2/flecha-trampa/actions/runs/42338601293), sobre `75ab59b008e155bf94d59b148f827f26e56cafcc`, terminó correctamente: 92 pruebas Vitest y las 46 pruebas de navegador contra producción. La [prueba Android final](https://github.com/MirkovicV2/flecha-trampa/actions/runs/42338601274) también terminó con `success`: 1 caso nativo, 0 fallos, 0 errores y 0 omisiones, en 112,515 segundos. Incluye guardado, recreación de actividad, Atrás, skin, paleta Neón, fondo navideño y Pase Plus de prueba, con red desactivada.
+
+La compilación y lint Android locales son correctos. La APK release 0.3.0 (`versionCode 4`) está firmada con el mismo certificado de 0.2.0, con firma v2/v3, alineación de 16 KB y depuración desactivada. Se han comparado por SHA-256 los 11 archivos de `dist/` con sus copias dentro de la APK: coinciden. Hash del instalador: `8f327db86e0005663883a2d359bd8d40fd50939ba26201e1162c40cb67c12a78`.
+
+Se descargó también el candidato Android sin firmar del workflow final y se compararon sus 11 archivos web con los de la APK firmada localmente: son idénticos. La captura nativa final muestra el tablero renderizado con la skin equipada, Neón, Navidad y el contador 4/8 del pase restaurado. Los commits posteriores de documentación se comparan con el árbol validado para evitar cambios de código sin probar.
+
+Se revisaron visualmente la galería, Navidad en partida, la vista previa Halloween, la pantalla de compra de prueba y el estado Imparable en móvil. Las capturas están en `.artifacts/`. Las simulaciones no constituyen pruebas de SDKs publicitarios, cobros o facturación real. No se ha validado esta versión en un teléfono físico o iOS.
+
 ## Versión 0.2.0 — 7 de noviembre de 2026
 
 83 pruebas Vitest correctas, lint y compilación web correctos. Se comprobaron los 30 recorridos previos de navegador y cuatro comprobaciones posteriores de cofres/temas y vidas extra, sin fallos. La suite ampliada contiene 32 casos de navegador entre móvil y escritorio. Incluye eventos táctiles reales, arrastres, combos durante animaciones, energía agotada, recompensas únicas, persistencia de skins y cuatro vidas gratuitas al continuar.

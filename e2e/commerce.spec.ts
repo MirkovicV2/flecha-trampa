@@ -71,6 +71,8 @@ test('sandbox checkout cancels, activates, restores, grants four classic lives a
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await setup(page);
   await page.getByRole('button', { name: 'Recompensas', exact: true }).click();
+  await page.getByRole('button', { name: 'Restaurar compras' }).click();
+  await expect(page.getByRole('button', { name: 'Probar Pase Plus · 0 €' })).toBeEnabled();
   await page.getByRole('button', { name: 'Probar Pase Plus · 0 €' }).click();
   await expect(page.locator('.commerce-card')).toContainText('COMPRA DE PRUEBA');
   await expect(page.locator('.commerce-card input')).toHaveCount(0);
@@ -102,6 +104,7 @@ test('sandbox checkout cancels, activates, restores, grants four classic lives a
   await expect(page.locator('.commerce-card')).toHaveCount(0);
   await page.getByRole('button', { name: 'Pausar', exact: true }).click();
   await page.getByRole('button', { name: 'Volver al inicio', exact: true }).click();
+  await page.getByRole('button', { name: 'Recompensas', exact: true }).click();
   await page.getByRole('button', { name: 'Abrir ajustes' }).click();
   await page.getByRole('button', { name: 'Restablecer pase de prueba' }).click();
   await page.getByRole('button', { name: 'Cerrar', exact: true }).click();

@@ -14,6 +14,7 @@ import android.os.Environment;
 import android.os.SystemClock;
 import android.provider.MediaStore;
 import android.view.KeyEvent;
+import android.util.Log;
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.espresso.web.webdriver.Locator;
@@ -33,7 +34,7 @@ import org.junit.runner.RunWith;
 public class NativeGameSmokeTest {
     private static final String SAVE_KEY = "flecha-trampa:profile:v1";
 
-    @Test(timeout = 180000)
+    @Test(timeout = 240000)
     public void bundledGameKeepsNativeSaveAcrossActivityRecreation() throws Exception {
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         SharedPreferences preferences = context.getSharedPreferences("CapacitorStorage", Context.MODE_PRIVATE);
@@ -93,16 +94,34 @@ public class NativeGameSmokeTest {
             assertNotEquals("classic", skin);
             assertEquals(0, cosmetics.getJSONObject("economy").getJSONObject("collection").getInt("chests"));
             assertEquals("neon", cosmetics.getJSONObject("settings").getString("theme"));
+
+            click(activity, ".rewards-tabs [data-action=worlds]");
+            click(activity, "[data-action=unlock-world][data-value=christmas]");
+            await(activity, "document.documentElement.dataset.world === 'christmas'");
+            click(activity, ".rewards-tabs [data-action=pass]");
+            click(activity, "[data-action=buy-pass]");
+            await(activity, "!!document.querySelector('.commerce-card') && document.querySelector('.commerce-card').innerText.includes('COMPRA DE PRUEBA')");
+            click(activity, "[data-preview-confirm]");
+            await(activity, "!document.querySelector('.commerce-card') && document.querySelector('.premium-summary').innerText.includes('Pase Plus de prueba activo')");
+            assertEquals("true", evaluate(activity, "document.querySelector('[data-energy-amount]').textContent === '4/8'"));
             activity.recreate();
             await(activity, "!!document.querySelector('[data-action=play]')");
             click(activity, "[data-action=play]");
             await(activity, "document.querySelectorAll('[data-arrow]').length > 0 && !document.querySelector('.board-loading')");
             assertEquals("true", evaluate(activity, "document.documentElement.dataset.theme === 'neon'"));
+            assertEquals("true", evaluate(activity, "document.documentElement.dataset.world === 'christmas'"));
+            await(activity, "document.querySelector('[data-energy-amount]').textContent === '4/8'");
             JSONObject finalSave = profile(preferences);
             assertEquals(skin, finalSave.getJSONObject("settings").getString("skin"));
             assertEquals(4, finalSave.getJSONObject("economy").getJSONObject("energy").getInt("amount"));
             assertEquals(1, finalSave.getJSONObject("stats").getInt("played"));
+            assertEquals("christmas", finalSave.getJSONObject("settings").getString("world"));
+            assertEquals(0, finalSave.getJSONObject("events").getInt("stamps"));
             assertEquals(arrows, finalSave.getJSONObject("classicSave").getJSONObject("state").getJSONObject("board").getJSONArray("arrows").toString());
+            // Give Phaser and the compositor two frames after the async scene becomes ready.
+            evaluate(activity, "requestAnimationFrame(() => requestAnimationFrame(() => { window.__nativePaintReady = true; })); true");
+            await(activity, "window.__nativePaintReady === true");
+            SystemClock.sleep(300);
             capture(context);
         }
     }
@@ -133,11 +152,17 @@ public class NativeGameSmokeTest {
     }
 
     private static void click(ActivityScenario<MainActivity> activity, String selector) throws Exception {
+        Log.i("FlechaSmoke", "Click: " + selector);
         await(activity, "!!document.querySelector(" + JSONObject.quote(selector) + ") && !document.querySelector(" + JSONObject.quote(selector) + ").disabled");
         // A cold WebView on the software-rendered CI emulator can exceed Espresso's 10s default.
         // Keep a bounded wait; every click is still followed by observable UI/native-save assertions.
-        onWebView().withTimeout(30, TimeUnit.SECONDS)
-            .withElement(findElement(Locator.CSS_SELECTOR, selector)).perform(webClick());
+        try {
+            onWebView().withTimeout(30, TimeUnit.SECONDS)
+                .withElement(findElement(Locator.CSS_SELECTOR, selector)).perform(webClick());
+        } catch (RuntimeException | AssertionError failure) {
+            Log.e("FlechaSmoke", "Click failed: " + selector, failure);
+            throw failure;
+        }
     }
 
     private static void await(ActivityScenario<MainActivity> activity, String expression) throws Exception {

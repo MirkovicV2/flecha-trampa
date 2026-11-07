@@ -270,6 +270,9 @@ export class BoardRenderer {
   readonly ready: Promise<void>;
   private readonly game: Phaser.Game;
   private readonly boardScene: BoardScene;
+  private booted = false;
+  private paused = false;
+  private destroyed = false;
 
   constructor(host: HTMLElement, board: Board, settings: PlayerSettings) {
     let onReady: () => void = () => undefined;
@@ -290,6 +293,18 @@ export class BoardRenderer {
       render: { antialias: true, powerPreference: 'low-power' },
       banner: false,
     });
+    void this.ready.then(() => {
+      this.booted = true;
+      if (!this.destroyed) this.setPaused(this.paused);
+    });
+  }
+
+  /** Static overlays do not need a WebGL frame loop behind their backdrop blur. */
+  setPaused(paused: boolean): void {
+    this.paused = paused;
+    if (!this.booted || this.destroyed) return;
+    if (paused) this.game.loop.sleep();
+    else this.game.loop.wake();
   }
 
   animate(result: MoveResult, combo = 0): Promise<void> {
@@ -299,6 +314,9 @@ export class BoardRenderer {
     this.boardScene.hint(id);
   }
   destroy(): void {
+    this.destroyed = true;
     this.game.destroy(true);
+    // Phaser processes pendingDestroy on a frame; a sleeping game still needs that frame.
+    if (this.booted && !this.game.loop.running) this.game.loop.wake();
   }
 }

@@ -18,11 +18,13 @@ test('previews every event, unlocks a free background and restores it without ch
     await page.getByRole('button', { name: `Vista previa de ${name}`, exact: true }).click();
     await expect(page.getByRole('dialog').getByRole('heading', { name })).toBeVisible();
     await expect(page.locator('.world-preview-art .world-svg')).toBeVisible();
-    if (name === 'Medianoche encantada')
+    if (name === 'Medianoche encantada') {
+      await expect(page.getByRole('button', { name: 'Te faltan 2 sellos' })).toBeDisabled();
       await page.screenshot({
         path: `.artifacts/world-halloween-${testInfo.project.name}.png`,
         fullPage: true,
       });
+    }
     await page.getByRole('button', { name: 'Volver a los fondos' }).click();
   }
   await page
