@@ -4,6 +4,7 @@ export type RewardedAdResult =
 export type InterstitialResult = 'displayed' | 'unavailable' | 'skipped' | 'failed';
 
 export interface AdsService {
+  readonly preview?: boolean;
   readonly rewardedAvailable: boolean;
   readonly interstitialAvailable: boolean;
   showRewardedHint(): Promise<RewardedAdResult>;

@@ -7,6 +7,8 @@ export interface Entitlements {
   readonly battlePassSeason?: string;
 }
 export interface PurchasesService {
+  readonly preview?: boolean;
+  resetPreview?(): Promise<void>;
   readonly available?: boolean;
   entitlements(): Promise<Entitlements>;
   purchase(product: Product): Promise<'unavailable' | 'cancelled' | 'purchased'>;

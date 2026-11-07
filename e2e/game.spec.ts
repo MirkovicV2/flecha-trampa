@@ -83,6 +83,8 @@ test('hints identify a legal move and pause freezes the timer', async ({ page })
   await solveCurrent(page);
   await expect(page.getByRole('dialog')).toContainText('CAMINO DESPEJADO');
   await page.getByRole('button', { name: 'Siguiente nivel' }).click();
+  await expect(page.locator('.commerce-card')).toContainText('Intersticial de prueba');
+  await page.getByRole('button', { name: 'Cerrar vista previa', exact: true }).click();
   await expect(page.locator('.level-chip')).toContainText('NIVEL 02');
 });
 
@@ -366,7 +368,7 @@ test('a classic win refunds energy, earns pass XP and claims a reward only once'
   await expect(
     page.getByRole('button', { name: 'Recoger Plus nivel 1', exact: true }),
   ).toBeDisabled();
-  await expect(page.getByRole('button', { name: 'Pase Plus · Próximamente' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Probar Pase Plus · 0 €' })).toBeEnabled();
   await page.getByRole('button', { name: 'Recoger gratis nivel 1', exact: true }).click();
   await expect(page.locator('[data-energy-amount]')).toHaveText('7/5');
   await expect(

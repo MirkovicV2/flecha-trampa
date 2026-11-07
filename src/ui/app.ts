@@ -27,6 +27,9 @@ import { isWorldId } from '../config/worlds';
 import type { WorldId } from '../config/worlds';
 import { worldArt } from './world-art';
 import { worldPreview } from './worlds';
+import { CommercePreviewView } from './commerce-preview';
+import { PreviewAdsService, PreviewPurchasesService } from '../services/preview-commerce';
+import { PREVIEW_PURCHASE_KEY } from '../services/preview-commerce';
 
 type Screen = 'home' | 'modes' | 'game' | 'stats' | 'daily' | 'shared' | 'rewards';
 type Overlay =
@@ -61,7 +64,9 @@ export class GameApp {
   private readonly shareService = new ShareService();
   private sharing = false;
   private manualShareText: string | null = null;
-  private readonly monetization = new MonetizationService();
+  private readonly monetization: MonetizationService;
+  private readonly commerceView: CommercePreviewView;
+  private readonly commercePreview: boolean;
   private pendingArrowFocus: string | null = null;
   private readonly blockedArrows = new Set<string>();
   private combo = emptyCombo();
@@ -76,7 +81,18 @@ export class GameApp {
     private readonly root: HTMLElement,
     private readonly store = new ProgressStore(),
   ) {
-    store.onConflict = () => this.openOverlay('conflict');
+    this.commerceView = new CommercePreviewView(root);
+    this.commercePreview = (import.meta.env.VITE_MONETIZATION_MODE ?? 'preview') === 'preview';
+    this.monetization = this.commercePreview
+      ? new MonetizationService(
+          new PreviewAdsService(this.commerceView),
+          new PreviewPurchasesService(this.commerceView),
+        )
+      : new MonetizationService();
+    store.onConflict = () => {
+      this.commerceView.cancel();
+      this.openOverlay('conflict');
+    };
     store.onError = () =>
       this.toast(
         'No se pudo guardar. Tu partida sigue abierta, pero revisa el almacenamiento del dispositivo.',
@@ -107,6 +123,7 @@ export class GameApp {
     });
     window.addEventListener('storage', (event) => {
       if (event.key === SAVE_KEY || event.key === null) this.store.detectConflict();
+      if (event.key === PREVIEW_PURCHASE_KEY || event.key === null) void this.refreshPurchases();
     });
     window.setInterval(() => this.tick(), 250);
     const incoming = readChallengeUrl(location.href);
@@ -118,12 +135,17 @@ export class GameApp {
     this.render();
     bindNativeLifecycle(
       () => {
+        this.commerceView.cancel();
         this.tick();
         this.pause();
         this.store.flush();
         void this.store.whenIdle();
       },
       () => {
+        if (this.commerceView.active) {
+          this.commerceView.cancel();
+          return;
+        }
         if (this.overlay === 'conflict') return;
         if (
           this.overlay === 'settings' ||
@@ -154,6 +176,7 @@ export class GameApp {
   }
 
   private action(action: string, value?: string): void {
+    if (this.commerceView.active) return;
     if (this.store.conflicted && action !== 'reload') return;
     switch (action) {
       case 'reload':
@@ -269,6 +292,9 @@ export class GameApp {
         break;
       case 'restore-purchases':
         void this.refreshPurchases(true);
+        break;
+      case 'reset-preview':
+        if (!this.purchasing && this.commercePreview) void this.resetPreview();
         break;
       case 'rewarded-energy':
         void this.rewardedEnergy();
@@ -599,7 +625,9 @@ export class GameApp {
       if (restore)
         this.toast(
           this.store.hasPremium || rights.adsRemoved
-            ? 'Compras verificadas y restauradas.'
+            ? this.commercePreview
+              ? 'Pase de prueba restaurado. Sin cobro real.'
+              : 'Compras verificadas y restauradas.'
             : 'No hay compras disponibles para restaurar en esta versión.',
         );
     } catch {
@@ -618,12 +646,30 @@ export class GameApp {
         await this.refreshPurchases();
         this.toast(
           this.store.hasPremium
-            ? 'Pase Plus verificado y activado.'
+            ? this.commercePreview
+              ? 'Pase Plus de prueba activado. No se ha cobrado nada.'
+              : 'Pase Plus verificado y activado.'
             : 'La tienda aún no ha confirmado el pase. Prueba Restaurar compras.',
         );
       } else if (result === 'unavailable') this.toast('El Pase Plus aún no está disponible.');
+      else if (result === 'cancelled' && this.commercePreview)
+        this.toast('Compra de prueba cancelada. No se ha cobrado nada.');
     } catch {
       this.toast('La compra no se pudo completar.');
+    } finally {
+      this.purchasing = false;
+    }
+  }
+
+  private async resetPreview(): Promise<void> {
+    this.purchasing = true;
+    try {
+      await this.monetization.purchases.resetPreview?.();
+      await this.refreshPurchases();
+      this.renderOverlay();
+      this.toast('Pase de prueba restablecido. Los intersticiales vuelven a estar activos.');
+    } catch {
+      this.toast('No se pudo restablecer la prueba.');
     } finally {
       this.purchasing = false;
     }
@@ -813,7 +859,7 @@ export class GameApp {
     document.documentElement.dataset.motion = this.store.profile.settings.reducedMotion
       ? 'reduced'
       : 'full';
-    this.root.innerHTML = `<div class="world-backdrop" aria-hidden="true">${worldArt(this.store.profile.settings.world)}</div><div class="app-shell ${this.screen === 'game' ? 'is-playing' : ''}">${this.header()}<main id="main-content">${this.content()}</main>${this.screen !== 'game' ? this.nav() : ''}<div class="overlay-layer"></div><div class="toast" role="status" aria-live="polite"></div></div>`;
+    this.root.innerHTML = `<div class="world-backdrop" aria-hidden="true">${worldArt(this.store.profile.settings.world)}</div><div class="app-shell ${this.screen === 'game' ? 'is-playing' : ''}">${this.header()}${this.commercePreview ? '<div class="preview-notice" role="note">ANUNCIOS Y COMPRAS DE PRUEBA <span>· SIN COBRO</span></div>' : ''}<main id="main-content">${this.content()}</main>${this.screen !== 'game' ? this.nav() : ''}<div class="overlay-layer"></div><div class="toast" role="status" aria-live="polite"></div></div>`;
     if (this.screen === 'game') void this.mountBoard();
     this.renderOverlay();
   }
@@ -843,6 +889,7 @@ export class GameApp {
           this.store.hasPremium,
           this.rewardsTab,
           !!this.monetization.purchases.available && !this.purchasing,
+          this.commercePreview,
         );
     }
   }
@@ -1154,10 +1201,10 @@ export class GameApp {
         )
         .join(
           '',
-        )}</div><button class="secondary-button" data-action="worlds">Fondos y eventos ${icon('gift')}</button><div class="theme-heading">PALETA DE FLECHAS</div>${themesContent(this.store.profile)}<button class="text-button centered" data-action="collection">Ver skins y cofres ${icon('chest')}</button><button class="text-button centered" data-action="tutorial">${icon('help')} Repetir tutorial</button><p class="settings-footer">FLECHA TRAMPA · v0.2.0<br>Tu progreso se queda en este dispositivo.</p>`;
+        )}</div><button class="secondary-button" data-action="worlds">Fondos y eventos ${icon('gift')}</button><div class="theme-heading">PALETA DE FLECHAS</div>${themesContent(this.store.profile)}<button class="text-button centered" data-action="collection">Ver skins y cofres ${icon('chest')}</button><button class="text-button centered" data-action="tutorial">${icon('help')} Repetir tutorial</button>${this.commercePreview ? '<div class="preview-settings"><strong>Monetización de prueba</strong><p>Anuncios locales y pase sin cobro. Puedes restablecer el pase para volver a probar la compra y los intersticiales.</p><button class="secondary-button" data-action="reset-preview">Restablecer pase de prueba</button></div>' : ''}<p class="settings-footer">FLECHA TRAMPA · v0.2.0<br>Tu progreso se queda en este dispositivo.</p>`;
     }
     if (this.overlay === 'hints')
-      content = `${close}<div class="modal-symbol lavender">${icon('spark')}</div><h2>Tu ingenio<br>también recarga.</h2><p>No te quedan pistas. Cada tres victorias conseguirás una nueva. ${this.monetization.ads.rewardedAvailable ? 'Puedes obtener otra viendo un anuncio recompensado.' : 'Los anuncios recompensados todavía no están disponibles.'}</p>${this.monetization.ads.rewardedAvailable ? `<button class="secondary-button" data-action="rewarded-hint">Ver anuncio por una pista ${icon('spark')}</button>` : ''}<button class="primary-button" data-action="close-overlay">Seguir pensando ${icon('arrow')}</button>`;
+      content = `${close}<div class="modal-symbol lavender">${icon('spark')}</div><h2>Tu ingenio<br>también recarga.</h2><p>No te quedan pistas. Cada tres victorias conseguirás una nueva. ${this.monetization.ads.rewardedAvailable ? (this.commercePreview ? 'Puedes probar un anuncio recompensado sin publicidad real.' : 'Puedes obtener otra viendo un anuncio recompensado.') : 'Los anuncios recompensados todavía no están disponibles.'}</p>${this.monetization.ads.rewardedAvailable ? `<button class="secondary-button" data-action="rewarded-hint">${this.commercePreview ? 'Ver anuncio de prueba por una pista' : 'Ver anuncio por una pista'} ${icon('spark')}</button>` : ''}<button class="primary-button" data-action="close-overlay">Seguir pensando ${icon('arrow')}</button>`;
     if (this.overlay === 'result') content = this.resultContent();
     if (this.overlay === 'world-preview')
       content = worldPreview(this.store.profile, this.previewWorld);
@@ -1168,7 +1215,7 @@ export class GameApp {
         Date.now(),
         this.store.energyCapacity,
       );
-      content = `${close}<div class="modal-symbol lime">${icon('energy')}</div><div class="eyebrow">TU ENERGÍA</div><h2>${current.amount ? 'Listo para<br>otro intento.' : 'Recarga y<br>vuelve a volar.'}</h2><strong class="energy-total" data-energy-amount>${current.amount} / ${this.store.energyCapacity}</strong><p>Una carga por nueva partida clásica o diaria. Al ganar la recuperas. Continuar un guardado es gratis.</p><p class="energy-next">${current.amount >= this.store.energyCapacity ? 'Energía completa' : 'Próxima carga en'} <strong data-energy-wait></strong></p><p class="fine-print">Una carga cada 10 minutos, también con la app cerrada. Las bonificaciones pueden superar el límite.</p>${this.monetization.ads.rewardedAvailable ? '<button class="secondary-button" data-action="rewarded-energy">Ver anuncio por energía</button>' : ''}${this.pendingEnergySession ? '<button class="primary-button" data-action="retry-energy">Volver a intentar</button>' : ''}<button class="secondary-button" data-action="pass">Ver recompensas del pase</button><button class="text-button centered" data-action="practice">Practicar sin energía</button>`;
+      content = `${close}<div class="modal-symbol lime">${icon('energy')}</div><div class="eyebrow">TU ENERGÍA</div><h2>${current.amount ? 'Listo para<br>otro intento.' : 'Recarga y<br>vuelve a volar.'}</h2><strong class="energy-total" data-energy-amount>${current.amount} / ${this.store.energyCapacity}</strong><p>Una carga por nueva partida clásica o diaria. Al ganar la recuperas. Continuar un guardado es gratis.</p><p class="energy-next">${current.amount >= this.store.energyCapacity ? 'Energía completa' : 'Próxima carga en'} <strong data-energy-wait></strong></p><p class="fine-print">Una carga cada 10 minutos, también con la app cerrada. Las bonificaciones pueden superar el límite.</p>${this.monetization.ads.rewardedAvailable ? `<button class="secondary-button" data-action="rewarded-energy">${this.commercePreview ? 'Ver anuncio de prueba por energía' : 'Ver anuncio por energía'}</button>` : ''}${this.pendingEnergySession ? '<button class="primary-button" data-action="retry-energy">Volver a intentar</button>' : ''}<button class="secondary-button" data-action="pass">Ver recompensas del pase</button><button class="text-button centered" data-action="practice">Practicar sin energía</button>`;
     }
     layer.innerHTML = `<div class="modal-backdrop"><section class="modal-card ${this.overlay === 'result' ? 'result-card' : ''}" role="dialog" aria-modal="true" aria-label="${this.overlay === 'settings' ? 'Ajustes' : this.overlay === 'result' ? 'Resultado de la partida' : this.overlay === 'pause' ? 'Partida en pausa' : 'FLECHA TRAMPA'}">${content}</section></div>`;
     this.updateEnergy();

@@ -20,7 +20,7 @@ La ruta gratuita entrega energía, cofres, fragmentos, los temas Medianoche y So
 
 Las dos reservas del nivel 4 añaden una cuarta vida a los siguientes dos intentos clásicos nuevos, una por intento. No se consumen por continuar ni al intentar iniciar sin energía. Diario y retos compartidos siempre mantienen tres vidas. Con Pase Plus activo no se consumen estas reservas.
 
-La segunda ruta y las ventajas de Pase Plus están preparadas: ocho cargas máximas de regeneración, cuatro vidas en cada intento clásico y omisión de intersticiales. Solo se activan con el derecho de temporada confirmado por `PurchasesService`; no se guarda una bandera local para simular una compra. `NoOpPurchasesService` mantiene la compra desactivada y Restaurar compras explica que no hay compras disponibles. No hay precios inventados, cobros ni anuncios reales.
+La segunda ruta y las ventajas de Pase Plus incluyen ocho cargas máximas de regeneración, cuatro vidas en cada intento clásico y omisión de intersticiales. La distribución interna ofrece un adaptador de prueba con pantalla de compra de 0,00 €, cancelación y restauración, siempre etiquetado sin cobro. Sus derechos se guardan aparte y no acreditan compras reales. Con `VITE_MONETIZATION_MODE=disabled`, los adaptadores NoOp mantienen anuncios y compra desactivados. Ver los límites y la configuración en [monetización](MONETIZATION.md).
 
 ## Cofres y skins
 
@@ -38,6 +38,8 @@ Si nueve aperturas seguidas no dan épica o legendaria, la décima garantiza una
 La selección usa `crypto.getRandomValues`. La rareza se elige primero y luego una skin de esa rareza de manera uniforme. Original se entrega al inicio y no aparece en cofres. Hay ocho skins: Original, Doble filo, Voltaje, Arcade, Prisma, Órbita, Corona solar y Supernova. Los duplicados conceden fragmentos para crear directamente una skin concreta, sin otra tirada aleatoria. La apertura consume el cofre y guarda el resultado antes de mostrar la animación.
 
 Aurora, Atardecer, Glaciar y Neón son temas gratuitos. Medianoche y Solar se consiguen en los niveles 3 y 8 de la ruta gratuita. Cambian paleta, fondo y tablero. Las skins cambian el dibujo vectorial de las flechas; todas conservan una punta y una dirección reconocibles.
+
+Los escenarios de Navidad, Halloween, sakura, arcade, océano y faroles son una colección independiente de esos colores y de las skins. Se ganan con sellos gratuitos por progreso y no gastan ni otorgan energía. Se pueden previsualizar antes de desbloquearlos. Ver [fondos y eventos](EVENTS.md).
 
 ## Combos y entrada táctil
 
