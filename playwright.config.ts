@@ -12,6 +12,7 @@ export default defineConfig({
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     actionTimeout: 10000,
+    launchOptions: { args: process.platform === 'win32' ? ['--disable-gpu'] : [] },
   },
   projects: [
     { name: 'mobile', use: { ...devices['Pixel 5'], viewport: { width: 393, height: 851 } } },

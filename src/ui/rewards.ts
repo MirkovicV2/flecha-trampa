@@ -7,20 +7,11 @@ import type { PlayerProfile } from '../services/progress';
 import type { ChestDrop } from '../services/economy';
 import { icon } from './icons';
 import { worldGallery } from './worlds';
+import { arrowArt, supplyCase } from './arrow-art';
+import { ARROW_DESIGNS } from '../config/arrow-designs';
 
 export function skinPreview(id: SkinId): string {
-  const shape = SKINS.find((skin) => skin.id === id)!.shape;
-  const extra: Record<typeof shape, string> = {
-    classic: '',
-    double: '<path d="m18 32 6-6 6 6"/>',
-    bolt: '<path d="m17 30 5-7-2 7 6-3"/>',
-    pixel: '<path d="M14 20v-6h6m8 0h6v6M21 34h6"/>',
-    diamond: '<path d="m24 21 6 6-6 6-6-6Z"/>',
-    orbit: '<circle cx="24" cy="25" r="8"/>',
-    royal: '<path d="m13 21-2-7 7 3m12 0 7-3-2 7M19 38h10"/>',
-    nova: '<path d="m12 25 4-3m16 0 4 3M15 34l3-3m12 0 3 3M24 6v3"/>',
-  };
-  return `<svg class="skin-preview" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M24 35V13m-9 9 9-9 9 9"/>${extra[shape]}</svg>`;
+  return arrowArt(id);
 }
 
 export function themeSwatches(theme: keyof typeof ARROW_COLORS): string {
@@ -73,7 +64,9 @@ export function themesContent(profile: PlayerProfile): string {
 
 function collectionContent(profile: PlayerProfile): string {
   const collection = profile.economy.collection;
-  return `<section class="chest-vault"><div class="chest-art" aria-hidden="true">${icon('chest')}</div><div><div class="eyebrow">TU BOTÍN, TU ESTILO</div><h2>${collection.chests} ${collection.chests === 1 ? 'cofre disponible' : 'cofres disponibles'}</h2><p>Un cofre de bienvenida y más en el pase gratuito. Los cofres se consiguen jugando; no se venden.</p><button class="primary-button" data-action="open-chest" ${collection.chests < 1 ? 'disabled' : ''}>Abrir cofre ${icon('spark')}</button></div></section><div class="chest-odds">${Object.entries(
+  const equipped = SKINS.find((skin) => skin.id === profile.settings.skin)!;
+  const design = ARROW_DESIGNS[equipped.id];
+  return `<div class="collection-masthead"><div><span class="studio-kicker">FLECHA TRAMPA / ATELIER 01</span><h2>Elige tu firma.</h2><p>Ocho piezas. Ocho formas de salir.</p></div><span class="collection-count"><strong>${String(collection.ownedSkins.length).padStart(2, '0')}</strong><small>/ 08 EN COLECCIÓN</small></span></div><section class="equipped-showcase rarity-${equipped.rarity}"><div class="showcase-drawing"><span class="drawing-coordinate top">${design.serial}</span><div class="skin-plinth">${skinPreview(equipped.id)}</div><span class="drawing-coordinate bottom">${design.workshop}</span></div><div class="showcase-copy"><span class="studio-kicker">TU PIEZA EQUIPADA</span><h2>${equipped.name}</h2><span class="finish-label">${design.finish}</span><p>${design.description}</p><button class="text-button" data-action="preview-skin" data-value="${equipped.id}">Inspeccionar y probar ${icon('diagonal')}</button></div></section><section class="chest-vault"><div class="chest-art" aria-hidden="true">${supplyCase()}</div><div><div class="studio-kicker">SUMINISTRO 01 · CONSEGUIDO JUGANDO</div><h2>${collection.chests} ${collection.chests === 1 ? 'cofre disponible' : 'cofres disponibles'}</h2><p>Una pieza de la colección en cada apertura. Sin llaves, sin compras.</p><button class="primary-button" data-action="open-chest" ${collection.chests < 1 ? 'disabled' : ''}>Abrir cofre ${icon('arrow')}</button></div></section><div class="chest-odds">${Object.entries(
     RARITY_CHANCES,
   )
     .map(
@@ -82,15 +75,25 @@ function collectionContent(profile: PlayerProfile): string {
     )
     .join(
       '',
-    )}</div><p class="fine-print">Probabilidades base por apertura. Garantía: épica o legendaria en un máximo de ${10 - collection.sinceEpic} aperturas. Los duplicados se convierten en fragmentos.</p><div class="section-heading"><h2>Skins de flechas</h2><span class="shard-balance">${icon('spark')} ${collection.shards} fragmentos</span></div><div class="skin-grid">${SKINS.map(
+    )}</div><p class="fine-print chest-disclosure">Probabilidades por apertura · Épica o superior en un máximo de ${10 - collection.sinceEpic} cofres. Duplicados → fragmentos. La animación no modifica el premio.</p><div class="section-heading"><h2>Skins de flechas</h2><span class="shard-balance">${icon('spark')} ${collection.shards} fragmentos</span></div><div class="collection-filter" role="group" aria-label="Filtrar skins"><button data-action="filter-skins" data-value="all" aria-pressed="true">Todas <span>08</span></button><button data-action="filter-skins" data-value="owned" aria-pressed="false">En propiedad <span>${String(collection.ownedSkins.length).padStart(2, '0')}</span></button><button data-action="filter-skins" data-value="legendary" aria-pressed="false">Legendarias <span>02</span></button></div><div class="skin-grid">${SKINS.map(
     (skin) => {
       const owned = collection.ownedSkins.includes(skin.id);
       const selected = profile.settings.skin === skin.id;
-      return `<article class="skin-card rarity-${skin.rarity} ${selected ? 'selected' : ''}">${skinPreview(skin.id)}<span class="eyebrow">${RARITY_LABELS[skin.rarity]}</span><h3>${skin.name}</h3><button class="secondary-button" data-action="${owned ? 'skin' : 'craft-skin'}" data-value="${skin.id}" ${selected || (!owned && collection.shards < SKIN_COST[skin.rarity]) ? 'disabled' : ''}>${selected ? 'Equipada' : owned ? 'Equipar' : `Crear · ${SKIN_COST[skin.rarity]} fragmentos`}</button></article>`;
+      const die = ARROW_DESIGNS[skin.id];
+      return `<article class="skin-card rarity-${skin.rarity} ${selected ? 'selected' : ''}" data-collection-skin="${skin.id}" data-owned="${owned}" data-rarity="${skin.rarity}"><div class="skin-card-top"><span>${die.serial}</span><span class="skin-ownership">${selected ? 'EN USO' : owned ? 'EN PROPIEDAD' : 'POR DESCUBRIR'}</span></div><div class="skin-card-art" aria-hidden="true">${skinPreview(skin.id)}<span class="art-finish-line"></span></div><div class="skin-card-copy"><span class="eyebrow">${RARITY_LABELS[skin.rarity]}</span><h3>${skin.name}</h3><span class="skin-finish">${die.finish}</span></div><div class="skin-card-actions"><button class="secondary-button skin-equip" data-action="${owned ? 'skin' : 'craft-skin'}" data-value="${skin.id}" ${selected || (!owned && collection.shards < SKIN_COST[skin.rarity]) ? 'disabled' : ''}>${selected ? 'Equipada' : owned ? 'Equipar' : `Crear · ${SKIN_COST[skin.rarity]}`}</button></div><button class="skin-inspect" data-action="preview-skin" data-value="${skin.id}" aria-label="Inspeccionar ${skin.name}">${icon('zoom')}</button></article>`;
     },
   ).join(
     '',
   )}</div><p class="bonus-life-note">${icon('heart')} ${collection.lifeTokens} reservas de vida extra. Cada reserva añade una cuarta vida al siguiente intento clásico. Se consiguen en el nivel 4 del pase gratuito.</p><h2 class="collection-themes-title">Temas del juego</h2>${themesContent(profile)}`;
+}
+
+export function skinInspector(profile: PlayerProfile, id: SkinId): string {
+  const skin = SKINS.find((item) => item.id === id)!;
+  const design = ARROW_DESIGNS[id];
+  const owned = profile.economy.collection.ownedSkins.includes(id);
+  const selected = profile.settings.skin === id;
+  const affordable = profile.economy.collection.shards >= SKIN_COST[skin.rarity];
+  return `<div class="skin-inspector rarity-${skin.rarity}"><div class="inspector-top"><span class="studio-kicker">${design.workshop}</span><button class="icon-button" data-action="close-overlay" aria-label="Cerrar inspector">${icon('close')}</button></div><div class="inspector-stage" data-inspector-stage="${design.exit}"><div class="inspector-crosshair"></div><span class="inspector-serial">${design.serial}</span><div class="inspector-glyph">${skinPreview(id)}</div><div class="inspector-trail" aria-hidden="true"></div><span class="inspector-scale">ESCALA 1:1 / DISEÑO ORIGINAL</span></div><div class="inspector-heading"><span class="rarity-label">${RARITY_LABELS[skin.rarity]}</span><h2>${skin.name}</h2><p>${design.finish}</p></div><p class="inspector-description">${design.description}</p><div class="inspector-spec"><span>FIRMA DE MOVIMIENTO</span><strong>${design.effect}</strong></div><button class="secondary-button" data-action="preview-skin-motion">${icon('play')} Probar animación</button><div class="inspector-directions" aria-label="Las cuatro direcciones">${(['up', 'right', 'down', 'left'] as const).map((direction) => `<span>${arrowArt(id, direction)}</span>`).join('')}</div><button class="primary-button" data-action="${owned ? 'skin' : 'craft-skin'}" data-value="${id}" ${selected || (!owned && !affordable) ? 'disabled' : ''}>${selected ? 'Equipada' : owned ? `Equipar ${skin.name}` : affordable ? `Crear · ${SKIN_COST[skin.rarity]} fragmentos` : `Necesitas ${SKIN_COST[skin.rarity]} fragmentos`}</button><p class="inspector-note">Solo cambia la apariencia. Todas las piezas conservan las mismas reglas.</p></div>`;
 }
 
 export function rewardsContent(
@@ -100,10 +103,11 @@ export function rewardsContent(
   purchasesAvailable: boolean,
   preview = false,
 ): string {
-  return `<section class="page-section rewards-page"><div class="eyebrow">JUEGA. DESBLOQUEA. HAZLO TUYO.</div><h1 class="page-title">Tu siguiente<br>recompensa.</h1><div class="rewards-tabs" role="group" aria-label="Recompensas"><button data-action="pass" class="${tab === 'pass' ? 'selected' : ''}" aria-pressed="${tab === 'pass'}">Pase de temporada</button><button data-action="worlds" class="${tab === 'worlds' ? 'selected' : ''}" aria-pressed="${tab === 'worlds'}">Fondos y eventos</button><button data-action="collection" class="${tab === 'collection' ? 'selected' : ''}" aria-pressed="${tab === 'collection'}">Colección</button></div>${tab === 'pass' ? passContent(profile, premium, purchasesAvailable, preview) : tab === 'worlds' ? worldGallery(profile) : collectionContent(profile)}</section>`;
+  return `<section class="page-section rewards-page"><div class="eyebrow">${tab === 'collection' ? 'TALLER DE FLECHAS / SERIE 01' : tab === 'worlds' ? 'ESCENARIOS / EDICIONES DE EVENTO' : 'TEMPORADA 01 / CAMINOS'}</div><h1 class="page-title">${tab === 'collection' ? 'Tu colección.' : tab === 'worlds' ? 'Elige tu mundo.' : 'Pase de temporada.'}</h1><div class="rewards-tabs" role="group" aria-label="Recompensas"><button data-action="pass" class="${tab === 'pass' ? 'selected' : ''}" aria-pressed="${tab === 'pass'}">Pase de temporada</button><button data-action="worlds" class="${tab === 'worlds' ? 'selected' : ''}" aria-pressed="${tab === 'worlds'}">Fondos y eventos</button><button data-action="collection" class="${tab === 'collection' ? 'selected' : ''}" aria-pressed="${tab === 'collection'}">Colección</button></div>${tab === 'pass' ? passContent(profile, premium, purchasesAvailable, preview) : tab === 'worlds' ? worldGallery(profile) : collectionContent(profile)}</section>`;
 }
 
 export function chestContent(drop: ChestDrop): string {
   const skin = SKINS.find((item) => item.id === drop.skin)!;
-  return `<div class="chest-reveal rarity-${skin.rarity}"><div class="eyebrow">${drop.duplicate ? 'DUPLICADO · COMPENSACIÓN' : 'NUEVA SKIN'}</div>${skinPreview(skin.id)}<span class="rarity-label">${RARITY_LABELS[skin.rarity]}</span><h2>${skin.name}</h2><p>${drop.duplicate ? `Ya la tienes: +${drop.shards} fragmentos para crear la skin que elijas.` : 'Ya forma parte de tu colección. Todas las direcciones siguen siendo reconocibles.'}</p><button class="primary-button" data-action="equip-drop">Equipar skin ${icon('check')}</button><button class="text-button centered" data-action="close-overlay">Volver a la colección</button></div>`;
+  const design = ARROW_DESIGNS[skin.id];
+  return `<div class="chest-reveal rarity-${skin.rarity}"><div class="drop-kicker"><span class="eyebrow">${drop.duplicate ? 'DUPLICADO · COMPENSACIÓN' : 'NUEVA SKIN'}</span><span>${design.serial}</span></div><div class="drop-display"><div class="drop-halo" aria-hidden="true"></div><span class="drop-workshop">${design.workshop}</span>${skinPreview(skin.id)}<span class="drop-edition">SERIE 01 / DISEÑO ORIGINAL</span></div><div class="drop-details"><span class="rarity-label">${RARITY_LABELS[skin.rarity]}</span><h2>${skin.name}</h2><span class="drop-finish">${design.finish}</span><p>${drop.duplicate ? `Ya forma parte de tu colección. Recibes ${drop.shards} fragmentos para crear otra pieza.` : 'Ya es tuya. Equípala para llevar su diseño y su firma de movimiento al tablero.'}</p>${drop.duplicate ? `<div class="duplicate-reward">${icon('spark')}<strong>+${drop.shards}</strong><span>FRAGMENTOS</span></div>` : `<div class="drop-effect"><span>FIRMA DE MOVIMIENTO</span><strong>${design.effect}</strong></div>`}<button class="primary-button" data-action="equip-drop">Equipar skin ${icon('check')}</button><button class="text-button centered" data-action="close-overlay">Volver a la colección</button><span class="drop-saved">${icon('check')} Guardada en tu colección</span></div></div>`;
 }

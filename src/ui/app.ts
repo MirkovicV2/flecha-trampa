@@ -16,7 +16,7 @@ import { escapeHtml, formatTime } from '../utils/format';
 import { icon } from './icons';
 import { BoardInput } from './board-input';
 import { advanceCombo, COMBO_WINDOW_MS, emptyCombo } from '../core/combo';
-import { rewardsContent, themesContent, chestContent, rewardLabel } from './rewards';
+import { rewardsContent, themesContent, rewardLabel, skinInspector } from './rewards';
 import { isThemeName } from '../config/theme';
 import { isSkinId } from '../config/collection';
 import type { SkinId } from '../config/collection';
@@ -32,6 +32,9 @@ import { PreviewAdsService, PreviewPurchasesService } from '../services/preview-
 import { PREVIEW_PURCHASE_KEY } from '../services/preview-commerce';
 import { comboStage } from '../config/combos';
 import { ComboEffects } from './combo-effects';
+import { SkinMotionPreview } from './skin-motion';
+import { ChestOpening, chestOpeningContent } from './chest-opening';
+import { homeScreen } from './home';
 
 type Screen = 'home' | 'modes' | 'game' | 'stats' | 'daily' | 'shared' | 'rewards';
 type Overlay =
@@ -44,6 +47,7 @@ type Overlay =
   | 'energy'
   | 'chest'
   | 'world-preview'
+  | 'skin-preview'
   | null;
 const DIRECTION_LABEL = { up: 'arriba', right: 'derecha', down: 'abajo', left: 'izquierda' };
 
@@ -76,6 +80,9 @@ export class GameApp {
   private rewardsTab: 'pass' | 'collection' | 'worlds' = 'pass';
   private previewWorld: WorldId = 'christmas';
   private chestDrop: ChestDrop | null = null;
+  private chestOpening: ChestOpening | null = null;
+  private previewSkin: SkinId = 'classic';
+  private readonly skinMotion = new SkinMotionPreview();
   private energyReturn: Overlay = null;
   private pendingEnergySession: PlaySession | null = null;
   private purchasing = false;
@@ -115,15 +122,25 @@ export class GameApp {
     root.addEventListener('keydown', (event) => this.handleKey(event));
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
+        this.chestOpening?.skip(true);
+        this.skinMotion.clear();
+        this.feedback.stopChest();
         this.tick();
         this.pause();
         this.store.flush();
       }
       this.lastTick = performance.now();
       // Run after Phaser's own visibility listener, which can wake its frame loop.
-      queueMicrotask(() => this.renderer?.setPaused(this.overlay !== null || document.hidden));
+      queueMicrotask(() => {
+        this.renderer?.setPaused(this.overlay !== null || document.hidden);
+        document.documentElement.dataset.effectsPaused = String(
+          this.overlay !== null || document.hidden,
+        );
+      });
     });
     window.addEventListener('pagehide', () => {
+      this.chestOpening?.skip(true);
+      this.feedback.stopChest();
       this.tick();
       this.store.flush();
     });
@@ -142,6 +159,8 @@ export class GameApp {
     bindNativeLifecycle(
       () => {
         this.commerceView.cancel();
+        this.chestOpening?.skip(true);
+        this.feedback.stopChest();
         this.tick();
         this.pause();
         this.store.flush();
@@ -159,6 +178,7 @@ export class GameApp {
           this.overlay === 'onboarding' ||
           this.overlay === 'energy' ||
           this.overlay === 'chest' ||
+          this.overlay === 'skin-preview' ||
           this.overlay === 'world-preview'
         )
           this.closeOverlay();
@@ -183,6 +203,11 @@ export class GameApp {
 
   private action(action: string, value?: string): void {
     if (this.commerceView.active) return;
+    if (
+      this.overlay === 'chest' &&
+      !['skip-chest', 'chest-sound', 'equip-drop', 'close-overlay', 'reload'].includes(action)
+    )
+      return;
     if (this.store.conflicted && action !== 'reload') return;
     switch (action) {
       case 'reload':
@@ -284,14 +309,53 @@ export class GameApp {
           if (this.chestDrop) this.openOverlay('chest');
         }
         break;
+      case 'skip-chest':
+        this.chestOpening?.skip();
+        break;
+      case 'chest-sound':
+        this.store.profile.settings.sound = !this.store.profile.settings.sound;
+        this.store.flush();
+        this.chestOpening?.updateSound();
+        break;
       case 'skin':
         if (isSkinId(value)) this.equipSkin(value);
+        break;
+      case 'preview-skin':
+        if (isSkinId(value)) {
+          this.previewSkin = value;
+          this.openOverlay('skin-preview');
+        }
+        break;
+      case 'preview-skin-motion':
+        this.skinMotion.play(
+          this.root,
+          this.previewSkin,
+          this.store.profile.settings.reducedMotion ||
+            matchMedia('(prefers-reduced-motion: reduce)').matches,
+        );
+        break;
+      case 'filter-skins':
+        if (!['all', 'owned', 'legendary'].includes(value ?? '')) break;
+        this.root.querySelectorAll<HTMLElement>('[data-collection-skin]').forEach((card) => {
+          card.hidden =
+            value === 'owned'
+              ? card.dataset.owned !== 'true'
+              : value === 'legendary'
+                ? card.dataset.rarity !== 'legendary'
+                : false;
+        });
+        this.root.querySelectorAll('[data-action="filter-skins"]').forEach((button) => {
+          button.setAttribute(
+            'aria-pressed',
+            String((button as HTMLElement).dataset.value === value),
+          );
+        });
         break;
       case 'craft-skin':
         if (isSkinId(value) && this.store.craftSkin(value)) this.equipSkin(value);
         break;
       case 'equip-drop':
-        if (this.chestDrop) this.equipSkin(this.chestDrop.skin);
+        if (this.chestDrop && this.chestOpening?.revealed) this.equipSkin(this.chestDrop.skin);
         break;
       case 'buy-pass':
         void this.purchasePass();
@@ -547,6 +611,7 @@ export class GameApp {
     this.lastTick = performance.now();
     this.store.flush();
     this.render();
+    window.scrollTo({ top: 0, behavior: 'instant' });
   }
 
   private restart(): void {
@@ -583,8 +648,11 @@ export class GameApp {
     this.visualSettingsDirty = true;
     this.store.flush();
     if (this.overlay === 'chest') this.closeOverlay();
-    else this.render();
-    this.toast('Skin equipada. La verás en tu próxima partida.');
+    else {
+      if (this.overlay === 'skin-preview') this.overlay = null;
+      this.render();
+    }
+    this.toast('Skin equipada. Tu diseño y su animación ya están activos.');
   }
 
   private energyMarkup(): string {
@@ -884,6 +952,8 @@ export class GameApp {
   }
 
   private render(): void {
+    this.disposeChest();
+    this.skinMotion.clear();
     this.effects.clear();
     this.epoch++;
     this.blockedArrows.clear();
@@ -930,9 +1000,7 @@ export class GameApp {
   }
 
   private homeContent(): string {
-    const profile = this.store.profile;
-    const continuing = profile.classicSave?.state.status === 'playing';
-    return `<section class="home-hero"><div class="hero-copy"><div class="eyebrow"><span class="live-dot"></span> TU PRÓXIMA PEQUEÑA VICTORIA</div><h1>Piensa<br>la <span>salida.</span></h1><p class="hero-description">Cada flecha tiene un camino.<br>El truco es encontrar el orden.</p><button class="primary-button hero-play" data-action="play"><span>${continuing ? 'Continuar partida' : 'Jugar ahora'}<small>CLÁSICO <span>·</span> NIVEL ${String(profile.level).padStart(2, '0')}</small></span>${icon('diagonal')}</button><p class="hero-caption">${icon('heart')} ${this.store.hasPremium || profile.economy.collection.lifeTokens > 0 ? 'Cuatro' : 'Tres'} vidas. Cero prisas.</p>${profile.economy.collection.lifeTokens ? `<p class="bonus-life-note">${profile.economy.collection.lifeTokens} reservas de vida extra: una por nuevo intento clásico; continuar es gratis.</p>` : ''}</div><div class="hero-art" aria-hidden="true"><div class="art-orbit orbit-one"></div><div class="art-orbit orbit-two"></div><div class="art-caption">ENCUENTRA TU CAMINO</div>${['up', 'right', 'left', 'down', 'right', 'up', 'down', 'left', 'up'].map((direction, index) => `<div class="art-tile art-${index} direction-${direction}"><span>↑</span></div>`).join('')}<div class="art-tag">${icon('spark')} UN MOVIMIENTO LO CAMBIA TODO</div></div></section><section class="home-lower"><div class="section-heading"><span>Más formas de pensar</span><span class="micro-copy">ELIGE TU RETO</span></div><div class="mode-preview-grid"><button class="mode-preview daily-preview" data-action="daily"><span class="preview-icon">${icon('calendar')}</span><span><small>UNO CADA DÍA</small><strong>El reto de hoy</strong><span>Un nuevo día, una nueva salida.</span></span>${icon('diagonal')}</button><button class="mode-preview share-preview" data-action="shared"><span class="preview-icon">${icon('share')}</span><span><small>MEJOR EN COMPAÑÍA</small><strong>Reta a alguien</strong><span>El mismo puzle. ¿Otro camino?</span></span>${icon('diagonal')}</button></div><button class="world-shortcut" data-action="worlds">${icon('gift')}<span><strong>Navidad. Halloween. Tu mundo.</strong><small>Fondos de evento gratis ? ${profile.events.stamps} sellos disponibles</small></span>${icon('arrow')}</button><div class="rewards-shortcuts"><button data-action="pass">${icon('gift')}<span>Pase de temporada<small>${profile.economy.pass.xp} XP · Recompensas gratuitas</small></span>${icon('arrow')}</button><button data-action="collection">${icon('chest')}<span>Tu colección<small>${profile.economy.collection.chests} cofres · Skins y temas</small></span>${icon('arrow')}</button></div><div class="home-footnote"><span class="tiny-dots"><i></i><i></i><i></i><i></i></span> Sin cuenta. Sin prisa. Con ingenio.</div></section>`;
+    return homeScreen(this.store.profile, this.store.hasPremium);
   }
 
   private modesContent(): string {
@@ -1006,7 +1074,7 @@ export class GameApp {
   private gameContent(): string {
     const session = this.session!;
     const tutorial = session.mode === 'tutorial';
-    return `<section class="game-layout"><div class="game-intro"><div class="eyebrow">${tutorial ? 'APRENDER HACIENDO' : session.mode === 'classic' ? 'MODO CLÁSICO' : session.mode === 'daily' ? 'DESAFÍO DIARIO' : 'RETO COMPARTIDO'}</div><h1 class="game-title">${tutorial ? 'Todo tiene<br> un orden.' : 'Una flecha.<br> Un paso más.'}</h1><p class="game-description">Observa el tablero. Libera los caminos.<br>La siguiente salida está ahí.</p><div class="desktop-tip">${icon('help')}<p>Una flecha solo puede salir si no hay otra en su trayectoria. Cada intento bloqueado cuesta una vida.</p></div></div><div class="play-area">${session.lifeTokenSpent ? `<p class="bonus-life-note">${icon('heart')} Vida extra del pase · 4 vidas en este intento</p>` : ''}<div class="game-hud"><div class="lives" role="img" aria-label="3 vidas" data-lives></div><span class="game-timer">${icon('clock')}<span data-timer>${formatTime(session.elapsedMs)}</span></span></div><div class="frenzy-console" data-tier="idle"><span class="frenzy-symbol" aria-hidden="true">ϟ</span><div class="frenzy-copy"><small>COMBO · 1,8 SEGUNDOS</small><strong data-frenzy-title>ENCUENTRA EL RITMO</strong></div><div class="frenzy-timer" role="progressbar" aria-label="Tiempo para continuar el combo" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i data-frenzy-fill></i></div><span class="frenzy-count" data-frenzy-count>—</span></div><div class="board-viewport"><div class="board-frame"><div class="board-corner corner-tl"></div><div class="board-corner corner-br"></div><div class="board-host" aria-hidden="true"></div><div class="board-controls" role="group" aria-label="Tablero de flechas"></div><div class="board-loading">Preparando tu camino…</div></div></div><div class="board-feedback"><strong class="combo-badge" data-combo hidden></strong><button class="text-button zoom-button" data-action="zoom-board" aria-pressed="false">Ampliar tablero</button></div><div class="board-progress"><span>FLECHAS LIBERADAS</span><strong data-counter></strong><div class="progress-track"><i data-progress></i></div></div><div class="tutorial-instruction" ${tutorial ? '' : 'hidden'}></div><div class="game-tools"><button class="hint-button" data-action="hint">${icon('spark')}<span>Una pista</span><span class="hint-count" data-hints>${this.store.profile.hints}</span></button><button class="text-button" data-action="pause">Tomar un respiro ${icon('pause')}</button></div><p class="board-caption">${icon('arrow')} Toca una flecha para liberarla.</p></div></section>`;
+    return `<section class="game-layout"><div class="game-intro"><div class="eyebrow">${tutorial ? 'APRENDER HACIENDO' : session.mode === 'classic' ? 'MODO CLÁSICO' : session.mode === 'daily' ? 'DESAFÍO DIARIO' : 'RETO COMPARTIDO'}</div><h1 class="game-title">${tutorial ? 'Aprende el orden.' : 'Encuentra la salida.'}</h1><p class="game-description">Observa el tablero. Libera los caminos.<br>La siguiente salida está ahí.</p><div class="desktop-tip">${icon('help')}<p>Una flecha solo puede salir si no hay otra en su trayectoria. Cada intento bloqueado cuesta una vida.</p></div></div><div class="play-area">${session.lifeTokenSpent ? `<p class="bonus-life-note">${icon('heart')} Vida extra del pase · 4 vidas en este intento</p>` : ''}<div class="game-hud"><div class="lives" role="img" aria-label="3 vidas" data-lives></div><span class="game-timer">${icon('clock')}<span data-timer>${formatTime(session.elapsedMs)}</span></span></div><div class="frenzy-console" data-tier="idle"><span class="frenzy-symbol" aria-hidden="true">ϟ</span><div class="frenzy-copy"><small>COMBO · 1,8 SEGUNDOS</small><strong data-frenzy-title>ENCUENTRA EL RITMO</strong></div><div class="frenzy-timer" role="progressbar" aria-label="Tiempo para continuar el combo" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i data-frenzy-fill></i></div><span class="frenzy-count" data-frenzy-count>—</span></div><div class="board-viewport"><div class="board-frame"><div class="board-corner corner-tl"></div><div class="board-corner corner-br"></div><div class="board-host" aria-hidden="true"></div><div class="board-controls" role="group" aria-label="Tablero de flechas"></div><div class="board-loading">Preparando tu camino…</div></div></div><div class="board-feedback"><strong class="combo-badge" data-combo hidden></strong><button class="text-button zoom-button" data-action="zoom-board" aria-pressed="false">Ampliar tablero</button></div><div class="board-progress"><span>FLECHAS LIBERADAS</span><strong data-counter></strong><div class="progress-track"><i data-progress></i></div></div><div class="tutorial-instruction" ${tutorial ? '' : 'hidden'}></div><div class="game-tools"><button class="hint-button" data-action="hint">${icon('spark')}<span>Una pista</span><span class="hint-count" data-hints>${this.store.profile.hints}</span></button><button class="text-button" data-action="pause">Tomar un respiro ${icon('pause')}</button></div><p class="board-caption">${icon('arrow')} Toca una flecha para liberarla.</p></div></section>`;
   }
 
   private async mountBoard(): Promise<void> {
@@ -1199,7 +1267,13 @@ export class GameApp {
   }
 
   private closeOverlay(): void {
+    this.skinMotion.clear();
     if (this.overlay === 'chest') {
+      if (this.chestOpening && !this.chestOpening.revealed) {
+        this.chestOpening.skip();
+        return;
+      }
+      this.disposeChest();
       this.chestDrop = null;
       this.overlay = null;
       this.render();
@@ -1226,6 +1300,11 @@ export class GameApp {
   }
 
   private renderOverlay(): void {
+    document.documentElement.dataset.effectsPaused = String(
+      this.overlay !== null || document.hidden,
+    );
+    this.disposeChest();
+    this.skinMotion.clear();
     this.renderer?.setPaused(this.overlay !== null || document.hidden);
     const layer = this.root.querySelector<HTMLElement>('.overlay-layer');
     if (!layer) return;
@@ -1236,8 +1315,9 @@ export class GameApp {
             value: document.activeElement.dataset.value,
           }
         : null;
-    const main = this.root.querySelector<HTMLElement>('main');
-    if (main) main.inert = this.overlay !== null;
+    this.root.querySelectorAll<HTMLElement>('main, .topbar, .bottom-nav').forEach((element) => {
+      element.inert = this.overlay !== null;
+    });
     if (!this.overlay) {
       layer.innerHTML = '';
       return;
@@ -1263,14 +1343,17 @@ export class GameApp {
         )
         .join(
           '',
-        )}</div><button class="secondary-button" data-action="worlds">Fondos y eventos ${icon('gift')}</button><div class="theme-heading">PALETA DE FLECHAS</div>${themesContent(this.store.profile)}<button class="text-button centered" data-action="collection">Ver skins y cofres ${icon('chest')}</button><button class="text-button centered" data-action="tutorial">${icon('help')} Repetir tutorial</button>${this.commercePreview ? '<div class="preview-settings"><strong>Monetización de prueba</strong><p>Anuncios locales y pase sin cobro. Puedes restablecer el pase para volver a probar la compra y los intersticiales.</p><button class="secondary-button" data-action="reset-preview">Restablecer pase de prueba</button></div>' : ''}<p class="settings-footer">FLECHA TRAMPA · v0.3.0<br>Tu progreso se queda en este dispositivo.</p>`;
+        )}</div><button class="secondary-button" data-action="worlds">Fondos y eventos ${icon('gift')}</button><div class="theme-heading">PALETA DE FLECHAS</div>${themesContent(this.store.profile)}<button class="text-button centered" data-action="collection">Ver skins y cofres ${icon('chest')}</button><button class="text-button centered" data-action="tutorial">${icon('help')} Repetir tutorial</button>${this.commercePreview ? '<div class="preview-settings"><strong>Monetización de prueba</strong><p>Anuncios locales y pase sin cobro. Puedes restablecer el pase para volver a probar la compra y los intersticiales.</p><button class="secondary-button" data-action="reset-preview">Restablecer pase de prueba</button></div>' : ''}<p class="settings-footer">FLECHA TRAMPA · v0.4.0<br>Tu progreso se queda en este dispositivo.</p>`;
     }
     if (this.overlay === 'hints')
       content = `${close}<div class="modal-symbol lavender">${icon('spark')}</div><h2>Tu ingenio<br>también recarga.</h2><p>No te quedan pistas. Cada tres victorias conseguirás una nueva. ${this.monetization.ads.rewardedAvailable ? (this.commercePreview ? 'Puedes probar un anuncio recompensado sin publicidad real.' : 'Puedes obtener otra viendo un anuncio recompensado.') : 'Los anuncios recompensados todavía no están disponibles.'}</p>${this.monetization.ads.rewardedAvailable ? `<button class="secondary-button" data-action="rewarded-hint">${this.commercePreview ? 'Ver anuncio de prueba por una pista' : 'Ver anuncio por una pista'} ${icon('spark')}</button>` : ''}<button class="primary-button" data-action="close-overlay">Seguir pensando ${icon('arrow')}</button>`;
     if (this.overlay === 'result') content = this.resultContent();
     if (this.overlay === 'world-preview')
       content = worldPreview(this.store.profile, this.previewWorld);
-    if (this.overlay === 'chest' && this.chestDrop) content = chestContent(this.chestDrop);
+    if (this.overlay === 'skin-preview')
+      content = skinInspector(this.store.profile, this.previewSkin);
+    if (this.overlay === 'chest' && this.chestDrop)
+      content = chestOpeningContent(this.chestDrop, this.store.profile.settings.sound);
     if (this.overlay === 'energy') {
       const current = regenerateEnergy(
         this.store.profile.economy.energy,
@@ -1279,7 +1362,15 @@ export class GameApp {
       );
       content = `${close}<div class="modal-symbol lime">${icon('energy')}</div><div class="eyebrow">TU ENERGÍA</div><h2>${current.amount ? 'Listo para<br>otro intento.' : 'Recarga y<br>vuelve a volar.'}</h2><strong class="energy-total" data-energy-amount>${current.amount} / ${this.store.energyCapacity}</strong><p>Una carga por nueva partida clásica o diaria. Al ganar la recuperas. Continuar un guardado es gratis.</p><p class="energy-next">${current.amount >= this.store.energyCapacity ? 'Energía completa' : 'Próxima carga en'} <strong data-energy-wait></strong></p><p class="fine-print">Una carga cada 10 minutos, también con la app cerrada. Las bonificaciones pueden superar el límite.</p>${this.monetization.ads.rewardedAvailable ? `<button class="secondary-button" data-action="rewarded-energy">${this.commercePreview ? 'Ver anuncio de prueba por energía' : 'Ver anuncio por energía'}</button>` : ''}${this.pendingEnergySession ? '<button class="primary-button" data-action="retry-energy">Volver a intentar</button>' : ''}<button class="secondary-button" data-action="pass">Ver recompensas del pase</button><button class="text-button centered" data-action="practice">Practicar sin energía</button>`;
     }
-    layer.innerHTML = `<div class="modal-backdrop"><section class="modal-card ${this.overlay === 'result' ? 'result-card' : ''}" role="dialog" aria-modal="true" aria-label="${this.overlay === 'settings' ? 'Ajustes' : this.overlay === 'result' ? 'Resultado de la partida' : this.overlay === 'pause' ? 'Partida en pausa' : 'FLECHA TRAMPA'}">${content}</section></div>`;
+    layer.innerHTML = `<div class="modal-backdrop"><section class="modal-card ${this.overlay === 'result' ? 'result-card' : this.overlay === 'skin-preview' ? 'skin-inspector-card' : this.overlay === 'chest' ? 'chest-opening-card' : ''}" role="dialog" aria-modal="true" aria-label="${this.overlay === 'settings' ? 'Ajustes' : this.overlay === 'skin-preview' ? 'Inspector de skin' : this.overlay === 'chest' ? 'Apertura de cofre' : this.overlay === 'result' ? 'Resultado de la partida' : this.overlay === 'pause' ? 'Partida en pausa' : 'FLECHA TRAMPA'}">${content}</section></div>`;
+    if (this.overlay === 'chest' && this.chestDrop) {
+      this.chestOpening = new ChestOpening(
+        layer,
+        this.chestDrop,
+        () => this.store.profile.settings,
+        (kind, drop) => this.feedback.chest(kind, this.store.profile.settings, drop.rarity),
+      );
+    }
     this.updateEnergy();
     window.requestAnimationFrame(() => {
       const match = focused?.action
@@ -1290,6 +1381,12 @@ export class GameApp {
         : null;
       (match ?? layer.querySelector<HTMLElement>('button'))?.focus({ preventScroll: true });
     });
+  }
+
+  private disposeChest(): void {
+    this.chestOpening?.dispose();
+    this.chestOpening = null;
+    this.feedback.stopChest();
   }
 
   private resultContent(): string {
@@ -1325,6 +1422,7 @@ export class GameApp {
         this.overlay === 'settings' ||
         this.overlay === 'hints' ||
         this.overlay === 'chest' ||
+        this.overlay === 'skin-preview' ||
         this.overlay === 'energy' ||
         this.overlay === 'world-preview'
       )
@@ -1335,7 +1433,7 @@ export class GameApp {
     if (event.key !== 'Tab' || !this.overlay) return;
     const buttons = [
       ...this.root.querySelectorAll<HTMLElement>('.modal-card button:not([disabled])'),
-    ];
+    ].filter((button) => !button.closest('[hidden]') && button.getClientRects().length > 0);
     const first = buttons[0];
     const last = buttons.at(-1);
     if (event.shiftKey && document.activeElement === first) {

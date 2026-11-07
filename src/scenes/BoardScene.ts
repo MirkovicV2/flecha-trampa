@@ -3,7 +3,7 @@ import { ARROW_COLORS } from '../config/theme';
 import type { PlayerSettings } from '../config/theme';
 import { VECTORS } from '../core/types';
 import type { Arrow, Board, MoveResult } from '../core/types';
-import { SKINS } from '../config/collection';
+import { ARROW_DESIGNS, MATERIAL_INKS } from '../config/arrow-designs';
 
 const SIDE = 720;
 const MARGIN = 28;
@@ -53,96 +53,36 @@ class BoardScene extends Phaser.Scene {
     const [x, y] = this.position(arrow.x, arrow.y, board);
     const tile = this.add.graphics();
     const size = this.cell * 0.88;
-    tile.fillStyle(0x222631, 0.83);
+    tile.fillStyle(0x090f18, 0.4);
+    tile.fillRoundedRect(-size / 2, -size / 2 + 3, size, size, this.cell * 0.13);
+    tile.fillStyle(0x26303d, 0.89);
     tile.fillRoundedRect(-size / 2, -size / 2, size, size, this.cell * 0.17);
-    tile.lineStyle(1, 0x647086, 0.1);
+    tile.lineStyle(1.2, 0xa2b2c9, 0.17);
     tile.strokeRoundedRect(-size / 2, -size / 2, size, size, this.cell * 0.17);
     const glyph = this.add.graphics();
     const color = ARROW_COLORS[this.settings.theme][arrow.direction];
-    const thickness = this.cell * 0.083;
-    const arm = this.cell * 0.21;
-    glyph.lineStyle(thickness, color, 1);
-    glyph.beginPath();
-    glyph.moveTo(0, arm);
-    glyph.lineTo(0, -arm);
-    glyph.moveTo(-arm * 0.78, -arm * 0.22);
-    glyph.lineTo(0, -arm);
-    glyph.lineTo(arm * 0.78, -arm * 0.22);
-    glyph.strokePath();
-    glyph.fillStyle(color);
-    [
-      [0, arm],
-      [0, -arm],
-      [-arm * 0.78, -arm * 0.22],
-      [arm * 0.78, -arm * 0.22],
-    ].forEach(([xx, yy]) => glyph.fillCircle(xx!, yy!, thickness / 2));
-    const shape = SKINS.find((skin) => skin.id === this.settings.skin)!.shape;
-    glyph.lineStyle(thickness * 0.52, color, 0.95);
-    const line = (points: readonly (readonly [number, number])[]) => {
-      glyph.beginPath();
-      points.forEach(([px, py], index) =>
-        index ? glyph.lineTo(px * arm, py * arm) : glyph.moveTo(px * arm, py * arm),
-      );
-      glyph.strokePath();
+    const design = ARROW_DESIGNS[this.settings.skin];
+    const inks = {
+      ...MATERIAL_INKS,
+      body: design.baseColor ?? color,
+      accent: design.paletteAccent ? color : MATERIAL_INKS.accent,
     };
-    if (shape === 'double')
-      line([
-        [-0.78, 0.5],
-        [0, -0.2],
-        [0.78, 0.5],
-      ]);
-    if (shape === 'bolt')
-      line([
-        [-0.8, 0.9],
-        [-0.3, 0.05],
-        [-0.5, 0.7],
-        [0.35, 0.4],
-      ]);
-    if (shape === 'pixel') {
-      glyph.fillRect(-thickness, arm - thickness / 2, thickness * 2, thickness);
-      line([
-        [-0.9, -0.1],
-        [-0.9, -0.65],
-        [-0.45, -0.65],
-      ]);
-      line([
-        [0.9, -0.1],
-        [0.9, -0.65],
-        [0.45, -0.65],
-      ]);
-    }
-    if (shape === 'diamond')
-      line([
-        [0, -0.2],
-        [0.55, 0.35],
-        [0, 0.9],
-        [-0.55, 0.35],
-        [0, -0.2],
-      ]);
-    if (shape === 'orbit') glyph.strokeCircle(0, arm * 0.15, arm * 0.68);
-    if (shape === 'royal') {
-      line([
-        [-0.85, -0.2],
-        [-1.05, -0.85],
-        [-0.5, -0.55],
-      ]);
-      line([
-        [0.85, -0.2],
-        [1.05, -0.85],
-        [0.5, -0.55],
-      ]);
-      line([
-        [-0.45, 1.15],
-        [0.45, 1.15],
-      ]);
-    }
-    if (shape === 'nova') {
-      for (let i = 0; i < 6; i++) {
-        const angle = (i * Math.PI) / 3;
-        line([
-          [Math.cos(angle) * 0.8, Math.sin(angle) * 0.8],
-          [Math.cos(angle) * 1.12, Math.sin(angle) * 1.12],
-        ]);
+    const scale = this.cell * 0.0072;
+    for (const layer of design.layers) {
+      glyph.beginPath();
+      layer.points.forEach(([px, py], index) => {
+        const xx = (px - 50) * scale;
+        const yy = (py - 50) * scale;
+        if (index) glyph.lineTo(xx, yy);
+        else glyph.moveTo(xx, yy);
+      });
+      if (layer.fill) {
+        glyph.closePath();
+        glyph.fillStyle(inks[layer.fill], layer.opacity ?? 1);
+        glyph.fillPath();
+      } else {
+        glyph.lineStyle((layer.width ?? 1) * scale, inks[layer.stroke!], layer.opacity ?? 1);
+        glyph.strokePath();
       }
     }
     glyph.rotation = ROTATION[arrow.direction];
@@ -190,8 +130,10 @@ class BoardScene extends Phaser.Scene {
       }
       const [dx, dy] = VECTORS[arrow.direction];
       if (!this.settings.reducedMotion) {
-        const particles = 6 + Math.min(22, combo * 2);
+        const style = ARROW_DESIGNS[this.settings.skin].exit;
+        const particles = 6 + Math.min(16, combo * 2);
         const color = ARROW_COLORS[this.settings.theme][arrow.direction];
+        this.cosmeticExit(view, dx, dy, color);
         const ring = this.add
           .circle(view.x, view.y, this.cell * 0.22)
           .setStrokeStyle(combo >= 4 ? 4 : 2, color, 0.8);
@@ -219,7 +161,23 @@ class BoardScene extends Phaser.Scene {
           });
         }
         for (let index = 0; index < particles; index++) {
-          const spark = this.add.circle(view.x, view.y, 2 + (index % 3), color, 0.75);
+          const spark =
+            style === 'pixel'
+              ? this.add.rectangle(view.x, view.y, 5 + (index % 3), 5 + (index % 3), color, 0.8)
+              : style === 'prism' || style === 'crown'
+                ? this.add.triangle(
+                    view.x,
+                    view.y,
+                    0,
+                    -6,
+                    4,
+                    3,
+                    -4,
+                    3,
+                    style === 'crown' ? 0xffd58b : color,
+                    0.9,
+                  )
+                : this.add.circle(view.x, view.y, 2 + (index % 3), color, 0.75);
           this.tweens.add({
             targets: spark,
             x:
@@ -228,6 +186,7 @@ class BoardScene extends Phaser.Scene {
               view.y + Math.sin((index * Math.PI * 2) / particles) * (38 + Math.min(combo, 12) * 7),
             alpha: 0,
             scale: 0.2,
+            angle: style === 'pixel' ? 0 : index * 57,
             duration: 350,
             onComplete: () => spark.destroy(),
           });
@@ -247,6 +206,69 @@ class BoardScene extends Phaser.Scene {
         },
       });
     });
+  }
+
+  private cosmeticExit(
+    view: Phaser.GameObjects.Container,
+    dx: number,
+    dy: number,
+    color: number,
+  ): void {
+    const style = ARROW_DESIGNS[this.settings.skin].exit;
+    const angle = Math.atan2(dy, dx);
+    const fade = (
+      object: Phaser.GameObjects.Shape | Phaser.GameObjects.Graphics,
+      duration: number,
+      values: Record<string, number>,
+    ) => {
+      this.tweens.add({
+        targets: object,
+        ...values,
+        alpha: 0,
+        duration,
+        ease: 'Cubic.Out',
+        onComplete: () => object.destroy(),
+      });
+    };
+    if (style === 'orbit' || style === 'crown') {
+      for (let i = 0; i < 2; i++) {
+        const halo = this.add
+          .circle(view.x, view.y, this.cell * (0.25 + i * 0.12))
+          .setStrokeStyle(style === 'crown' ? 3 : 2, style === 'crown' ? 0xffd58b : color, 0.75)
+          .setScale(1, style === 'orbit' ? 0.48 : 1)
+          .setRotation(angle + (i * Math.PI) / 2);
+        fade(halo, 430, { scaleX: 2.5, scaleY: 2.5, angle: halo.angle + 70 });
+      }
+    } else if (style === 'electric') {
+      const arc = this.add.graphics().setPosition(view.x, view.y).setRotation(angle);
+      arc.lineStyle(2.5, 0xffd58b, 0.9);
+      arc.beginPath();
+      arc.moveTo(-this.cell * 0.3, 0);
+      for (let i = 0; i < 7; i++)
+        arc.lineTo(i * this.cell * 0.12, (i % 2 ? -1 : 1) * this.cell * 0.13);
+      arc.strokePath();
+      fade(arc, 240, { scaleX: 2.3 });
+    } else {
+      const count = style === 'nova' ? 3 : style === 'echo' ? 2 : 1;
+      for (let i = 0; i < count; i++) {
+        const offset = (i - (count - 1) / 2) * this.cell * 0.18;
+        const streak = this.add
+          .rectangle(
+            view.x - dy * offset,
+            view.y + dx * offset,
+            this.cell * (style === 'nova' ? 0.65 : 0.4),
+            style === 'pixel' ? 6 : 3,
+            i === 1 ? 0xffffff : color,
+            0.7,
+          )
+          .setRotation(angle);
+        fade(streak, style === 'pixel' ? 170 : 320, {
+          x: streak.x + dx * this.cell * 1.8,
+          y: streak.y + dy * this.cell * 1.8,
+          scaleX: 2.7,
+        });
+      }
+    }
   }
 
   hint(id: string): void {

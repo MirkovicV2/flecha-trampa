@@ -37,6 +37,8 @@ Si nueve aperturas seguidas no dan épica o legendaria, la décima garantiza una
 
 La selección usa `crypto.getRandomValues`. La rareza se elige primero y luego una skin de esa rareza de manera uniforme. Original se entrega al inicio y no aparece en cofres. Hay ocho skins: Original, Doble filo, Voltaje, Arcade, Prisma, Órbita, Corona solar y Supernova. Los duplicados conceden fragmentos para crear directamente una skin concreta, sin otra tirada aleatoria. La apertura consume el cofre y guarda el resultado antes de mostrar la animación.
 
+Desde 0.4.0, la apertura muestra un carrusel con frenado y revelación. Sus tarjetas decorativas son independientes del sorteo real y no fuerzan rarezas altas junto al premio. Saltar, cambiar el ancho, pulsar Atrás o cerrar no vuelve a cobrar ni a sortear. La colección permite inspeccionar diseños y probar sus animaciones sin desbloquearlos o consumir recursos. Ver [presentación cosmética y garantías](COSMETICS.md).
+
 Aurora, Atardecer, Glaciar y Neón son temas gratuitos. Medianoche y Solar se consiguen en los niveles 3 y 8 de la ruta gratuita. Cambian paleta, fondo y tablero. Las skins cambian el dibujo vectorial de las flechas; todas conservan una punta y una dirección reconocibles.
 
 Los escenarios de Navidad, Halloween, sakura, arcade, océano y faroles son una colección independiente de esos colores y de las skins. Se ganan con sellos gratuitos por progreso y no gastan ni otorgan energía. Se pueden previsualizar antes de desbloquearlos. Ver [fondos y eventos](EVENTS.md).
@@ -49,7 +51,7 @@ La selección usa Pointer Events al soltar el dedo, tolera 12 píxeles de movimi
 
 Los movimientos válidos separados por un máximo de 1,8 segundos forman una cadena. Un fallo, cualquier modal de pausa/ajustes o el tiempo agotado la rompe. Se guarda la mejor cadena. Hay cinco etapas visuales: En racha (2), Acelerando (4), Frenesí (7), Imparable (10) y Leyenda (15). Un medidor muestra el tiempo restante para enlazar otra flecha. El combo acelera las salidas, añade estelas y ondas, eleva el tono y refuerza la vibración en los hitos; no altera las reglas ni concede moneda o XP adicional.
 
-Los efectos de pantalla son decorativos y no interceptan pulsaciones. El tablero y los controles permanecen en sus posiciones: no se aplica un temblor de cámara que desajuste el táctil. Hay como máximo 72 partículas DOM simultáneas y 28 por salida en Phaser, con limpieza de animaciones al cambiar de pantalla o pausar. Las oleadas periféricas se limitan a una cada 500 ms, sin flashes de pantalla completa. La reducción de movimiento del sistema y del juego suprime partículas, oleadas y carteles animados, conservando la información estática de la cadena. Sonido y vibración siguen siendo opcionales.
+Los efectos de pantalla son decorativos y no interceptan pulsaciones. El tablero y los controles permanecen en sus posiciones: no se aplica un temblor de cámara que desajuste el táctil. Hay como máximo 72 partículas DOM simultáneas y 22 partículas por salida en Phaser, además de estelas y anillos acotados, con limpieza de animaciones al cambiar de pantalla o pausar. Las oleadas periféricas se limitan a una cada 500 ms, sin flashes de pantalla completa. La reducción de movimiento del sistema y del juego suprime partículas, oleadas y carteles animados, conservando la información estática de la cadena. Sonido y vibración siguen siendo opcionales.
 
 ## Actualización desde 0.1.1
 

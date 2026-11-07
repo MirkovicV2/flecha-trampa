@@ -419,11 +419,12 @@ test('opens an earned chest, equips an actual skin and persists a full visual th
   await page.getByRole('button', { name: 'Colección', exact: true }).click();
   await expect(page.locator('.chest-odds')).toContainText('60%');
   await page.getByRole('button', { name: 'Abrir cofre', exact: true }).click();
+  await expect(page.locator('[data-case-phase]')).toHaveAttribute('data-case-phase', 'revealed');
   await expect(page.getByRole('dialog')).toContainText('NUEVA SKIN');
   await page.screenshot({ path: `.artifacts/chest-${testInfo.project.name}.png`, fullPage: true });
   await page.getByRole('button', { name: 'Equipar skin', exact: true }).click();
   await expect(page.locator('[data-action="open-chest"]')).toBeDisabled();
-  const equipped = await page.locator('.skin-card.selected button').getAttribute('data-value');
+  const equipped = await page.locator('.skin-card.selected .skin-equip').getAttribute('data-value');
   expect(equipped).not.toBe('classic');
   await page.getByRole('button', { name: 'Neón', exact: true }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'neon');
@@ -435,7 +436,10 @@ test('opens an earned chest, equips an actual skin and persists a full visual th
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'neon');
   await page.getByRole('button', { name: 'Recompensas', exact: true }).click();
   await page.getByRole('button', { name: 'Colección', exact: true }).click();
-  await expect(page.locator('.skin-card.selected button')).toHaveAttribute('data-value', equipped!);
+  await expect(page.locator('.skin-card.selected .skin-equip')).toHaveAttribute(
+    'data-value',
+    equipped!,
+  );
   await expect(page.locator('[data-action="open-chest"]')).toBeDisabled();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.4.0 — 2026-11-07
+
+- Cofres con precinto, carrusel de 44 tarjetas, frenado, clics sincronizados y revelación por rareza; resultado guardado antes de animar.
+- Saltar, Atrás, Escape, rotación, segundo plano y recarga conservan el premio sin repetir consumos o compensaciones.
+- Ocho siluetas originales con caras, biseles y materiales compartidos entre SVG y Phaser. Metal base y núcleo de color en las ediciones especiales.
+- Firmas de salida propias: precisión, doble eco, electricidad, píxeles, cristal, órbitas, oro y plasma.
+- Colección renovada con fichas de taller, inspector animado, comprobación de orientaciones y filtros funcionales.
+- Nueva portada con la pieza equipada y tipografías locales Barlow Condensed y Manrope bajo licencia OFL.
+- Ambientes de nieve, pétalos, burbujas, luciérnagas, neón y faroles; miniaturas estáticas, pausa tras modales y respeto del movimiento reducido.
+- Inicio de partida vuelve a la parte superior; encabezados compactos y áreas táctiles conservadas.
+- Nuevas pruebas de integridad del carrusel, inventario, animaciones, interrupciones y navegación estrecha; Android prueba giro y revelación reales.
+- Android `versionCode 5`, misma identidad y certificado de actualización, sin reinicio del progreso ni cambios en probabilidades o monetización.
+
 ## 0.3.0 — 2026-11-07
 
 - Seis escenarios originales de Navidad, Halloween, sakura, neón, océano y faroles, independientes de skins y paletas.
