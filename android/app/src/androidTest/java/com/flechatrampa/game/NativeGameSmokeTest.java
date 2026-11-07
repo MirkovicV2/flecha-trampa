@@ -7,6 +7,7 @@ import static androidx.test.espresso.web.webdriver.DriverAtoms.webClick;
 
 import android.content.Context;
 import android.content.ContentValues;
+import android.app.KeyguardManager;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.Color;
@@ -43,7 +44,7 @@ public class NativeGameSmokeTest {
         assertTrue(preferences.edit().clear().commit());
 
         try (ActivityScenario<MainActivity> activity = ActivityScenario.launch(MainActivity.class)) {
-            activity.onActivity(instance -> instance.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON));
+            prepareWindow(activity);
             await(activity, "document.readyState === 'complete' && !!document.querySelector('[data-action=skip-tutorial]')");
             assertEquals("true", evaluate(activity, "window.Capacitor.getPlatform() === 'android'"));
             assertEquals("true", evaluate(activity, "location.origin === 'https://localhost'"));
@@ -139,7 +140,7 @@ public class NativeGameSmokeTest {
         SharedPreferences preferences = context.getSharedPreferences("CapacitorStorage", Context.MODE_PRIVATE);
         assertTrue(preferences.edit().clear().commit());
         try (ActivityScenario<MainActivity> activity = ActivityScenario.launch(MainActivity.class)) {
-            activity.onActivity(instance -> instance.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON));
+            prepareWindow(activity);
             await(activity, "!!document.querySelector('[data-action=skip-tutorial]')");
             click(activity, "[data-action=skip-tutorial]");
             // Fixture XP only: claim the real new reward through the bundled UI.
@@ -265,7 +266,22 @@ public class NativeGameSmokeTest {
         return new JSONObject(preferences.getString(SAVE_KEY, "{}"));
     }
 
+    /** Test-device setup only; the shipped Activity does not bypass a user's lock screen. */
+    private static void prepareWindow(ActivityScenario<MainActivity> activity) {
+        activity.onActivity(instance -> {
+            instance.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+            instance.setTurnScreenOn(true);
+            KeyguardManager keyguard = instance.getSystemService(KeyguardManager.class);
+            Log.i("FlechaSmoke", "Window ready: focus=" + instance.hasWindowFocus() + ", keyguard=" + keyguard.isKeyguardLocked());
+            if (keyguard.isKeyguardLocked()) {
+                instance.setShowWhenLocked(true);
+                keyguard.requestDismissKeyguard(instance, null);
+            }
+        });
+    }
+
     private static void click(ActivityScenario<MainActivity> activity, String selector) throws Exception {
+        prepareWindow(activity);
         Log.i("FlechaSmoke", "Click: " + selector);
         long focusDeadline = SystemClock.elapsedRealtime() + 30000;
         AtomicReference<Boolean> focused = new AtomicReference<>(false);
@@ -274,6 +290,10 @@ public class NativeGameSmokeTest {
             if (focused.get()) break;
             SystemClock.sleep(100);
         } while (SystemClock.elapsedRealtime() < focusDeadline);
+        if (!focused.get()) {
+            Bitmap screenshot = InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot();
+            if (screenshot != null) saveCapture(InstrumentationRegistry.getInstrumentation().getTargetContext(), screenshot, "native-focus-failure.png");
+        }
         assertTrue("Native activity must have window focus before clicking " + selector, focused.get());
         await(activity, "!!document.querySelector(" + JSONObject.quote(selector) + ") && !document.querySelector(" + JSONObject.quote(selector) + ").disabled");
         // A cold WebView on the software-rendered CI emulator can exceed Espresso's 10s default.
