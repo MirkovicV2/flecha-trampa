@@ -13,6 +13,7 @@ import { SKINS, SKIN_COST } from '../config/collection';
 import type { SkinId } from '../config/collection';
 import type { Entitlements } from './purchases';
 import { createGame } from '../core/game';
+import { mastery } from '../core/mastery';
 import { WORLDS, defaultEvents } from '../config/worlds';
 import type { EventCollection, WorldId } from '../config/worlds';
 
@@ -43,6 +44,7 @@ export interface PlayerProfile {
     totalPlayMs: number;
     arrowsCleared: number;
     bestCombo: number;
+    mastered: number;
   };
 }
 
@@ -60,7 +62,15 @@ export function defaultProfile(): PlayerProfile {
     economy: defaultEconomy(),
     events: defaultEvents(),
     daily: defaultDailyProgress(),
-    stats: { played: 0, wins: 0, flawless: 0, totalPlayMs: 0, arrowsCleared: 0, bestCombo: 0 },
+    stats: {
+      played: 0,
+      wins: 0,
+      flawless: 0,
+      totalPlayMs: 0,
+      arrowsCleared: 0,
+      bestCombo: 0,
+      mastered: 0,
+    },
   };
 }
 
@@ -207,9 +217,10 @@ export class ProgressStore {
     if (session.mode !== 'tutorial') this.profile.stats.totalPlayMs += milliseconds;
   }
 
-  consumeHint(): boolean {
-    if (this.profile.hints < 1) return false;
+  consumeHint(session?: PlaySession): boolean {
+    if (this.profile.hints < 1 || (session && session.state.status !== 'playing')) return false;
     this.profile.hints--;
+    if (session) session.hintsUsed = Math.min(1000000, (session.hintsUsed ?? 0) + 1);
     this.flush();
     return true;
   }
@@ -244,6 +255,7 @@ export class ProgressStore {
       this.profile.events.stamps = Math.min(99999, this.profile.events.stamps + stamps);
       this.profile.events.earned = Math.min(99999, this.profile.events.earned + stamps);
       this.profile.stats.wins++;
+      if (mastery(session.state, session.hintsUsed) === 3) this.profile.stats.mastered++;
       if (!session.state.errors) this.profile.stats.flawless++;
       if (this.profile.stats.wins % 3 === 0)
         this.profile.hints = Math.min(99, this.profile.hints + 1);
