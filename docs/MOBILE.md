@@ -4,7 +4,7 @@ Capacitor 8 está configurado con `com.flechatrampa.game`, `FLECHA TRAMPA` y `di
 
 ## Descargar desde el móvil
 
-Abrir la [Release v0.1.1](https://github.com/MirkovicV2/flecha-trampa/releases/tag/v0.1.1) con una cuenta que tenga acceso al repositorio privado. En GitHub Mobile: Releases → v0.1.1 → Assets → `flecha-trampa-v0.1.1-android.apk`. Descargar el archivo y seguir el instalador de Android. También se incluyen `SHA256SUMS.txt` y la información pública del certificado de firma.
+Abrir la [Release v0.2.0](https://github.com/MirkovicV2/flecha-trampa/releases/tag/v0.2.0) con una cuenta que tenga acceso al repositorio privado. En GitHub Mobile: Releases → v0.2.0 → Assets → `flecha-trampa-v0.2.0-android.apk`. Descargar el archivo y seguir el instalador de Android. También se incluyen `SHA256SUMS.txt` y la información pública del certificado de firma.
 
 Es una APK universal de tipo release para Android 7.0/API 24 o posterior, con WebView actualizado. Incluye los archivos del juego y permite jugar clásico y diario sin conexión. No necesita cuentas dentro del juego. Es una distribución de prueba propia, sin anuncios, pagos ni publicación en Google Play.
 
@@ -39,7 +39,7 @@ En otro equipo, instalar Node 24, JDK 21 y SDK 36; `npm ci`, `npm run build` y `
 
 La misma clave permite instalar futuras APK como actualización y conservar el progreso. Perderla obliga a usar otra firma, lo que puede requerir desinstalar y perder los datos locales. Una clave existente nunca se sustituye automáticamente. Las compilaciones `debug` de desarrollo utilizan otra firma; para probar las actualizaciones de esta distribución, utilizar siempre las APK release publicadas.
 
-La versión Android 0.1.1 utiliza `versionCode 2`. Incrementar `versionCode` y `versionName` en `android/app/build.gradle`, junto con `package.json` y su lockfile, para una nueva versión. Antes de una publicación de tienda, preparar la firma de producción y Google Play App Signing.
+La versión Android 0.2.0 utiliza `versionCode 3`. Incrementar `versionCode` y `versionName` en `android/app/build.gradle`, junto con `package.json` y su lockfile, para una nueva versión. Antes de una publicación de tienda, preparar la firma de producción y Google Play App Signing.
 
 ## Pruebas Android
 

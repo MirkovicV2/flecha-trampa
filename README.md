@@ -1,20 +1,24 @@
 # FLECHA TRAMPA
 
-**[Descargar APK para Android (v0.1.1)](https://github.com/MirkovicV2/flecha-trampa/releases/download/v0.1.1/flecha-trampa-v0.1.1-android.apk)**
+**[Descargar APK para Android (v0.2.0)](https://github.com/MirkovicV2/flecha-trampa/releases/download/v0.2.0/flecha-trampa-v0.2.0-android.apk)**
 
-**Piensa la salida.** Juego de puzles para móvil: flechas, tres vidas y el orden justo para despejar el tablero. Versión 0.1.1 para web y Android, con TypeScript estricto, Phaser 3, Vite, Vitest y Capacitor 8.
+**Piensa la salida.** Juego de puzles para móvil: flechas, tres vidas y el orden justo para despejar el tablero. Versión 0.2.0 para web y Android, con TypeScript estricto, Phaser 3, Vite, Vitest y Capacitor 8.
 
 ## Descargar e instalar la APK
 
-Pulsa **Descargar APK para Android** al principio de este README para descargar directamente el instalador. También puedes [ver la Release y sus archivos](https://github.com/MirkovicV2/flecha-trampa/releases/tag/v0.1.1).
+Pulsa **Descargar APK para Android** al principio de este README para descargar directamente el instalador. También puedes [ver la Release y sus archivos](https://github.com/MirkovicV2/flecha-trampa/releases/tag/v0.2.0).
 
 El enlace directo funciona también desde el README en GitHub Mobile. El repositorio es privado: iniciar sesión con la cuenta que tiene acceso. Abrir el archivo descargado y seguir el instalador de Android.
 
 Requiere Android 7.0 o posterior y Android System WebView actualizado. Es una APK universal de tipo release, firmada para pruebas, con el juego incluido para jugar sin conexión. La misma firma permite actualizar conservando las partidas. El modo clásico y el diario funcionan localmente; compartir retos fuera de la app necesita configurar una URL web pública. No es una publicación de Google Play. Ver [compilación, firma y alcance de las pruebas Android](docs/MOBILE.md).
 
+## Novedades de esta versión
+
+Energía con recarga y devolución al ganar, pase gratuito de diez niveles, reservas de vida extra, ocho skins en cofres con probabilidades visibles y seis temas completos. El tablero acepta pulsaciones durante las animaciones y se puede ampliar; los movimientos rápidos forman combos. [Reglas de energía, pase, cofres y entrada táctil](docs/ECONOMY.md). El Pase Plus está preparado; no hay compras ni anuncios reales.
+
 ## Estado de GitHub
 
-Repositorio privado verificado: [MirkovicV2/flecha-trampa](https://github.com/MirkovicV2/flecha-trampa). `main`, `develop` y las ramas de funcionalidad están publicadas. `v0.1.0` conserva el MVP web original y `v0.1.1` identifica la versión con APK Android. La cuenta activa se comprobó con `gh auth status` y `gh api user`. La protección remota de `main` no está activa: GitHub exige Pro para habilitarla en este repositorio privado. Ver [estado y comprobaciones de GitHub](docs/REMOTE_STATUS.md).
+Repositorio privado verificado: [MirkovicV2/flecha-trampa](https://github.com/MirkovicV2/flecha-trampa). `main`, `develop` y las ramas de funcionalidad están publicadas. `v0.1.0` conserva el MVP web original y `v0.2.0` identifica la versión con APK Android. La cuenta activa se comprobó con `gh auth status` y `gh api user`. La protección remota de `main` no está activa: GitHub exige Pro para habilitarla en este repositorio privado. Ver [estado y comprobaciones de GitHub](docs/REMOTE_STATUS.md).
 
 ## Inicio rápido en este ordenador
 

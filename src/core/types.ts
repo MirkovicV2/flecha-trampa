@@ -17,6 +17,7 @@ export interface Board {
 export type GameStatus = 'playing' | 'won' | 'lost';
 export interface GameState {
   readonly board: Board;
+  readonly initialLives?: 3 | 4;
   readonly lives: number;
   readonly errors: number;
   readonly moves: number;

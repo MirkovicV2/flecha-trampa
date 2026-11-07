@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.0 — 2026-11-07
+
+- Corrección táctil: controles estables, selección al soltar, rechazo de arrastres y pulsaciones simultáneas sin bloqueo global del tablero.
+- Ampliación del tablero para mejorar los objetivos táctiles en diez columnas.
+- Combos, animaciones simultáneas más rápidas, partículas acotadas, tono ascendente y mejor cadena guardada.
+- Energía persistente, recarga temporal, devolución al ganar y práctica gratuita sin energía.
+- Pase gratuito de diez niveles con XP, recompensas únicas y reservas de vida extra funcionales.
+- Ocho skins con rarezas, cofres gratuitos, probabilidades visibles, garantía épica y creación con fragmentos de duplicados.
+- Seis temas completos del juego, selección y persistencia de apariencias.
+- Preparación de Pase Plus verificado, sin anuncios ni compras reales.
+- Migración compatible con partidas de la APK anterior, versión Android 3 y firma de actualización conservada.
+
 ## 0.1.1 — 2026-11-06
 
 - APK Android release universal, firma de prueba persistente y descarga desde GitHub Releases.

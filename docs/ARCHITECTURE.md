@@ -29,7 +29,9 @@ El solver no llama `findBlocker`: calcula relaciones geométricas por pares y re
 
 ## Sesiones y concurrencia
 
-Cada sesión conserva ID, modo, semilla, parámetros, versión, tablero inicial, estado, tiempo y banderas `counted`/`recorded`. El estado se aplica antes de animar. La entrada se bloquea hasta finalizar la animación. Un contador de montaje impide que una escena antigua modifique la siguiente pantalla.
+Cada sesión conserva ID, modo, semilla, parámetros, versión, tablero inicial, estado, tiempo y banderas `counted`/`recorded`. El estado se aplica de forma síncrona antes de animar. Los controles HTML se actualizan sin reconstruir las flechas restantes y aceptan otras jugadas mientras las animaciones se solapan. Solo la flecha bloqueada tiene un breve bloqueo local. `BoardInput` distingue taps de arrastres y evita el click duplicado. Un contador de montaje impide que una escena antigua modifique la siguiente pantalla.
+
+`energy.ts` contiene regeneración y consumo puros. `economy.ts`, `config/pass.ts` y `config/collection.ts` definen el inventario, la temporada y las probabilidades de cofres. `ProgressStore` cobra cada intento una vez, devuelve energía al ganar y registra XP y premios de forma idempotente. Los derechos de pago se consultan al adaptador de compras y no se infieren del guardado. `save-validation.ts` migra los perfiles anteriores sin borrar sus partidas. Ver [reglas y límites de economía](ECONOMY.md).
 
 El resultado se registra antes de animar el último movimiento. Al cargar, se reconcilian sesiones terminales no registradas. Reiniciar crea otro intento con el mismo tablero; continuar conserva el ID y no duplica partidas.
 
