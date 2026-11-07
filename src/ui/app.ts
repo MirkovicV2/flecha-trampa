@@ -21,7 +21,7 @@ import { rewardsContent, themesContent, rewardLabel, skinInspector } from './rew
 import { isThemeName } from '../config/theme';
 import { isSkinId } from '../config/collection';
 import type { SkinId } from '../config/collection';
-import { PASS_TIERS } from '../config/pass';
+import { PASS_TIERS, parseRewardKey } from '../config/pass';
 import { energyWaitMs, regenerateEnergy } from '../services/energy';
 import type { ChestDrop } from '../services/economy';
 import { isWorldId } from '../config/worlds';
@@ -317,16 +317,27 @@ export class GameApp {
         if (this.pendingEnergySession) this.begin(this.pendingEnergySession);
         break;
       case 'claim-reward': {
-        const match = /^(free|premium):([1-9]|10)$/.exec(value ?? '');
-        if (!match) break;
-        const track = match[1] as 'free' | 'premium';
-        const tier = Number(match[2]);
+        const parsed = parseRewardKey(value);
+        if (!parsed) break;
+        const { track, tier } = parsed;
         if (this.store.claimPassReward(tier, track)) {
           this.render();
           this.toast(`Recogido: ${rewardLabel(PASS_TIERS[tier - 1]![track])}.`);
         }
         break;
       }
+      case 'pass-chapter':
+        this.root
+          .querySelector(`[data-pass-tier="${Number(value)}"]`)
+          ?.scrollIntoView({
+            behavior:
+              this.store.profile.settings.reducedMotion ||
+              matchMedia('(prefers-reduced-motion: reduce)').matches
+                ? 'instant'
+                : 'smooth',
+            block: 'start',
+          });
+        break;
       case 'open-chest':
         if (!this.chestDrop) {
           this.chestDrop = this.store.openChest();

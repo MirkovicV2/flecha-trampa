@@ -1,0 +1,100 @@
+.pass-milestones {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  margin: 24px 0;
+}
+.pass-milestone {
+  border: 1px solid #465063;
+  background: linear-gradient(160deg, #263242, #151c27);
+  border-radius: 12px;
+  padding: 15px 8px;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.pass-milestone small {
+  font: 9px var(--label-font);
+  color: #e9b96a;
+}
+.pass-milestone strong {
+  font-size: 12px;
+}
+.pass-chapters {
+  display: flex;
+  gap: 8px;
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: #10151eeb;
+  padding: 10px 0;
+  backdrop-filter: blur(12px);
+}
+.pass-chapters button {
+  flex: 1;
+}
+.pass-prize {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  gap: 7px;
+  color: #e9b96a;
+}
+.pass-prize .skin-preview {
+  width: 58px;
+  height: 58px;
+}
+.pass-prize .icon {
+  width: 28px;
+  height: 28px;
+}
+.pass-prize.rarity-epic {
+  color: #c0a0f8;
+}
+.pass-prize.rarity-rare {
+  color: #8ccbdd;
+}
+.pass-tier {
+  scroll-margin-top: 80px;
+}
+.milestone-tier {
+  border-color: #7b6443;
+  box-shadow: inset 3px 0 #d1ad70;
+}
+.pass-track:has(button.primary-button) .pass-prize {
+  animation: prize-ready 1.6s ease-in-out 2;
+}
+@keyframes prize-ready {
+  50% {
+    filter: brightness(1.35);
+    transform: translateY(-3px);
+  }
+}
+@media (max-width: 640px) {
+  .pass-milestones {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 8px;
+  }
+  .pass-milestone {
+    min-width: 125px;
+    scroll-snap-align: start;
+  }
+  .pass-track .pass-prize {
+    min-height: 44px;
+  }
+  .pass-prize .skin-preview {
+    width: 46px;
+    height: 46px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pass-track:has(button.primary-button) .pass-prize {
+    animation: none;
+  }
+}
+[data-reduced-motion='true'] .pass-prize {
+  animation: none !important;
+}

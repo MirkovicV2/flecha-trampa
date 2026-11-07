@@ -9,7 +9,7 @@ import type { EconomyState, ChestDrop } from './economy';
 import { ENERGY_CAPACITY, PREMIUM_ENERGY_CAPACITY, regenerateEnergy, spendEnergy } from './energy';
 import { PASS_SEASON, PASS_TIERS, XP_PER_TIER } from '../config/pass';
 import type { Reward } from '../config/pass';
-import { SKINS, SKIN_COST } from '../config/collection';
+import { SKINS, SKIN_COST, DUPLICATE_SHARDS } from '../config/collection';
 import type { SkinId } from '../config/collection';
 import type { Entitlements } from './purchases';
 import { createGame } from '../core/game';
@@ -293,6 +293,10 @@ export class ProgressStore {
   private grantReward(reward: Reward): void {
     const economy = this.profile.economy;
     const collection = economy.collection;
+    if (reward.kind === 'stamps') {
+      this.profile.events.stamps = Math.min(99999, this.profile.events.stamps + reward.amount);
+      this.profile.events.earned = Math.min(99999, this.profile.events.earned + reward.amount);
+    }
     if (reward.kind === 'energy') {
       economy.energy = regenerateEnergy(economy.energy, Date.now(), this.energyCapacity);
       economy.energy.amount = Math.min(99, economy.energy.amount + reward.amount);
@@ -307,8 +311,13 @@ export class ProgressStore {
       collection.lifeTokens = Math.min(99, collection.lifeTokens + reward.amount);
     if (reward.kind === 'theme' && !collection.ownedThemes.includes(reward.id))
       collection.ownedThemes.push(reward.id);
-    if (reward.kind === 'skin' && !collection.ownedSkins.includes(reward.id))
-      collection.ownedSkins.push(reward.id);
+    if (reward.kind === 'skin') {
+      if (!collection.ownedSkins.includes(reward.id)) collection.ownedSkins.push(reward.id);
+      else {
+        const rarity = SKINS.find((skin) => skin.id === reward.id)!.rarity;
+        collection.shards = Math.min(99999, collection.shards + DUPLICATE_SHARDS[rarity]);
+      }
+    }
   }
 
   openChest(random?: () => number): ChestDrop | null {
