@@ -1,9 +1,6 @@
 package com.flechatrampa.game;
 
 import static org.junit.Assert.*;
-import static androidx.test.espresso.web.sugar.Web.onWebView;
-import static androidx.test.espresso.web.webdriver.DriverAtoms.findElement;
-import static androidx.test.espresso.web.webdriver.DriverAtoms.webClick;
 
 import android.content.Context;
 import android.content.ContentValues;
@@ -16,12 +13,13 @@ import android.os.Environment;
 import android.os.SystemClock;
 import android.provider.MediaStore;
 import android.view.KeyEvent;
+import android.view.InputDevice;
+import android.view.MotionEvent;
 import android.view.WindowManager;
 import android.util.Log;
 import android.webkit.WebStorage;
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
-import androidx.test.espresso.web.webdriver.Locator;
 import androidx.test.filters.SdkSuppress;
 import androidx.test.platform.app.InstrumentationRegistry;
 import java.io.OutputStream;
@@ -303,16 +301,44 @@ public class NativeGameSmokeTest {
             if (screenshot != null) saveCapture(InstrumentationRegistry.getInstrumentation().getTargetContext(), screenshot, "native-focus-failure.png");
         }
         assertTrue("Native activity must have window focus before clicking " + selector, focused.get());
-        await(activity, "!!document.querySelector(" + JSONObject.quote(selector) + ") && !document.querySelector(" + JSONObject.quote(selector) + ").disabled");
-        // A cold WebView on the software-rendered CI emulator can exceed Espresso's 10s default.
-        // Keep a bounded wait; every click is still followed by observable UI/native-save assertions.
+        // A game with continuous animation cannot satisfy Espresso's global
+        // main-looper-idle requirement. Locate a genuinely hittable control and
+        // send real touchscreen events instead of stopping animation or invoking
+        // a synthetic DOM click. All post-action/save assertions remain in place.
+        String target = "(() => { for (const element of document.querySelectorAll(" + JSONObject.quote(selector) + ")) {"
+            + "if (element.disabled || element.closest('[inert], [hidden]') || getComputedStyle(element).visibility === 'hidden') continue;"
+            + "element.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'});"
+            + "const r=element.getBoundingClientRect(), x=r.left+r.width/2, y=r.top+r.height/2;"
+            + "if (r.width<=0 || r.height<=0 || x<0 || y<0 || x>=innerWidth || y>=innerHeight) continue;"
+            + "const hit=document.elementFromPoint(x,y); if (hit && element.contains(hit)) return {x,y,viewport:innerWidth};"
+            + "} return false; })()";
+        await(activity, "Boolean(" + target + ")");
+        evaluate(activity, "window.__nativeTapFrameReady=false; requestAnimationFrame(() => requestAnimationFrame(() => {window.__nativeTapFrameReady=true;})); true");
+        await(activity, "window.__nativeTapFrameReady===true");
+        JSONObject point = new JSONObject(evaluate(activity, target));
+        int[] origin = new int[2];
+        AtomicReference<Integer> viewWidth = new AtomicReference<>(0);
+        activity.onActivity(instance -> {
+            instance.getBridge().getWebView().getLocationOnScreen(origin);
+            viewWidth.set(instance.getBridge().getWebView().getWidth());
+        });
+        double scale = viewWidth.get()/point.getDouble("viewport");
+        assertTrue("Native tap scale must be measurable", scale > 0);
+        float x = (float) (origin[0]+point.getDouble("x")*scale);
+        float y = (float) (origin[1]+point.getDouble("y")*scale);
+        Log.i("FlechaSmoke", "Native tap: " + selector + " at " + x + "," + y + "; scale=" + scale);
+        long downTime = SystemClock.uptimeMillis();
+        MotionEvent down = MotionEvent.obtain(downTime,downTime,MotionEvent.ACTION_DOWN,x,y,0);
+        down.setSource(InputDevice.SOURCE_TOUCHSCREEN);
         try {
-            onWebView().withTimeout(30, TimeUnit.SECONDS)
-                .withElement(findElement(Locator.CSS_SELECTOR, selector)).perform(webClick());
-        } catch (RuntimeException | AssertionError failure) {
-            Log.e("FlechaSmoke", "Click failed: " + selector, failure);
-            throw failure;
-        }
+            assertTrue("Native touch down must be accepted", InstrumentationRegistry.getInstrumentation().getUiAutomation().injectInputEvent(down,true));
+            SystemClock.sleep(50);
+            MotionEvent up = MotionEvent.obtain(downTime,SystemClock.uptimeMillis(),MotionEvent.ACTION_UP,x,y,0);
+            up.setSource(InputDevice.SOURCE_TOUCHSCREEN);
+            try {
+                assertTrue("Native touch up must be accepted", InstrumentationRegistry.getInstrumentation().getUiAutomation().injectInputEvent(up,true));
+            } finally { up.recycle(); }
+        } finally { down.recycle(); }
     }
 
     private static void await(ActivityScenario<MainActivity> activity, String expression) throws Exception {
