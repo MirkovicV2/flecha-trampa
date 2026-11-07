@@ -138,7 +138,8 @@
   height: 7px;
   border-radius: 50%;
 }
-.combo-badge {
+.combo-badge,
+.combo-badge[data-intensity='5'] {
   color: var(--combo-color, var(--lime));
   text-shadow: 0 0 18px color-mix(in srgb, var(--combo-color, var(--lime)) 25%, transparent);
 }

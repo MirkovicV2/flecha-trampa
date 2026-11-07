@@ -39,6 +39,12 @@ El reloj usa `performance.now()`, excluye pausas y segundo plano y limita saltos
 
 ## Guardados
 
+Los escenarios se definen en `config/worlds.ts`; los dibujos originales son SVG en `ui/world-art.ts`. `ProgressStore` registra sellos por primeras victorias y conserva los fondos adquiridos. La compra cosmética gratuita no toca energía, skins o paletas. `save-validation.ts` añade inventario y fondo inicial a perfiles anteriores.
+
+La distribución interna usa `PreviewAdsService` y `PreviewPurchasesService` con un puerto de presentación inyectado (`CommercePreviewPort`). El servicio es comprobable sin DOM; `CommercePreviewView` gestiona foco, segundo plano, temporizadores y cancelación. Los derechos de prueba están en una clave independiente y nunca sirven como recibos de tienda. El modo `disabled` vuelve a NoOp. Un proveedor comercial futuro deberá usar recibos y verificación reales; no debe aceptar el almacenamiento del simulador.
+
+`ComboEffects` contiene solo efectos decorativos sin entrada. Se acotan partículas y oleadas y se cancelan animaciones al cambiar de pantalla. No se desplaza la cámara ni el tablero. `config/combos.ts` define los hitos y el medidor reutiliza el tiempo de la cadena pura. La reducción de movimiento se consulta tanto en DOM como en Phaser.
+
 Clave: `flecha-trampa:profile:v1`; copia anterior: sufijo `:backup`. La validación comprueba tipos, rangos, geometría, vidas, errores, movimientos, condición terminal, pertenencia al tablero inicial y solubilidad. Los primeros guardados de esquema 1 reciben campos diarios y compartidos mediante migración aditiva.
 
 Se escribe primero la copia válida anterior y después el principal. Preferences serializa ese orden. Los fallos de permisos, cuota o plugin permiten continuar en memoria e informan al usuario. El almacenamiento no está cifrado ni concede derechos de pago.

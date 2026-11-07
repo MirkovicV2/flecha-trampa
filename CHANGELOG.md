@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0 — 2026-11-07
+
+- Seis escenarios originales de Navidad, Halloween, sakura, neón, océano y faroles, independientes de skins y paletas.
+- Galería con vistas previas y desbloqueo gratuito mediante sellos de progreso; persistencia compatible con la APK anterior.
+- Anuncios de prueba etiquetados, cancelación sin recompensa, energía/pistas tras completar y recoger, intersticiales entre victorias.
+- Pantalla de compra del Pase Plus de prueba a 0,00 €, activación de ventajas, restauración y restablecimiento. Sin cobros, tarjetas, anunciantes o SDKs comerciales.
+- Combos con cinco etapas, medidor, estelas, ondas, carteles de racha, partículas de pantalla y tono/vibración ascendentes; limpieza al pausar y reducción de movimiento.
+- Se conservan la geometría táctil y la firma de actualización Android. Versión Android 4.
+- Nuevas pruebas de escenarios, compras/anuncios, segundo plano, persistencia, partículas acotadas y controles estables.
+
 ## 0.2.0 — 2026-11-07
 
 - Corrección táctil: controles estables, selección al soltar, rechazo de arrastres y pulsaciones simultáneas sin bloqueo global del tablero.

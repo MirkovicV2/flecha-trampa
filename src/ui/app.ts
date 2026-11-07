@@ -1160,7 +1160,7 @@ export class GameApp {
         ([screen, glyph, label]) =>
           `<button data-action="${screen}" class="nav-item ${activeScreen === screen ? 'active' : ''}" ${activeScreen === screen ? 'aria-current="page"' : ''}>${icon(glyph!)}<span>${label}</span></button>`,
       )
-      .join('')}<span class="nav-signature">FLECHA TRAMPA <small>v0.2</small></span></nav>`;
+      .join('')}<span class="nav-signature">FLECHA TRAMPA <small>v0.3</small></span></nav>`;
   }
 
   private openOverlay(overlay: Overlay): void {
@@ -1242,7 +1242,7 @@ export class GameApp {
         )
         .join(
           '',
-        )}</div><button class="secondary-button" data-action="worlds">Fondos y eventos ${icon('gift')}</button><div class="theme-heading">PALETA DE FLECHAS</div>${themesContent(this.store.profile)}<button class="text-button centered" data-action="collection">Ver skins y cofres ${icon('chest')}</button><button class="text-button centered" data-action="tutorial">${icon('help')} Repetir tutorial</button>${this.commercePreview ? '<div class="preview-settings"><strong>Monetización de prueba</strong><p>Anuncios locales y pase sin cobro. Puedes restablecer el pase para volver a probar la compra y los intersticiales.</p><button class="secondary-button" data-action="reset-preview">Restablecer pase de prueba</button></div>' : ''}<p class="settings-footer">FLECHA TRAMPA · v0.2.0<br>Tu progreso se queda en este dispositivo.</p>`;
+        )}</div><button class="secondary-button" data-action="worlds">Fondos y eventos ${icon('gift')}</button><div class="theme-heading">PALETA DE FLECHAS</div>${themesContent(this.store.profile)}<button class="text-button centered" data-action="collection">Ver skins y cofres ${icon('chest')}</button><button class="text-button centered" data-action="tutorial">${icon('help')} Repetir tutorial</button>${this.commercePreview ? '<div class="preview-settings"><strong>Monetización de prueba</strong><p>Anuncios locales y pase sin cobro. Puedes restablecer el pase para volver a probar la compra y los intersticiales.</p><button class="secondary-button" data-action="reset-preview">Restablecer pase de prueba</button></div>' : ''}<p class="settings-footer">FLECHA TRAMPA · v0.3.0<br>Tu progreso se queda en este dispositivo.</p>`;
     }
     if (this.overlay === 'hints')
       content = `${close}<div class="modal-symbol lavender">${icon('spark')}</div><h2>Tu ingenio<br>también recarga.</h2><p>No te quedan pistas. Cada tres victorias conseguirás una nueva. ${this.monetization.ads.rewardedAvailable ? (this.commercePreview ? 'Puedes probar un anuncio recompensado sin publicidad real.' : 'Puedes obtener otra viendo un anuncio recompensado.') : 'Los anuncios recompensados todavía no están disponibles.'}</p>${this.monetization.ads.rewardedAvailable ? `<button class="secondary-button" data-action="rewarded-hint">${this.commercePreview ? 'Ver anuncio de prueba por una pista' : 'Ver anuncio por una pista'} ${icon('spark')}</button>` : ''}<button class="primary-button" data-action="close-overlay">Seguir pensando ${icon('arrow')}</button>`;
