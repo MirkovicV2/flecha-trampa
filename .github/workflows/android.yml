@@ -2,7 +2,7 @@ name: Android APK
 on:
   workflow_dispatch:
   push:
-    branches: [main, develop, feature/android-apk]
+    branches: [main, develop, 'feature/**']
   pull_request:
     branches: [main, develop]
 permissions:

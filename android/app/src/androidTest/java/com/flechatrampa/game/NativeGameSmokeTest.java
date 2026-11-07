@@ -62,25 +62,6 @@ public class NativeGameSmokeTest {
             assertEquals(1, saved.getJSONObject("stats").getInt("played"));
             String arrows = saved.getJSONObject("classicSave").getJSONObject("state").getJSONObject("board").getJSONArray("arrows").toString();
 
-            // Shared media survives the test runner's automatic removal of app data.
-            Bitmap screenshot = InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot();
-            assertNotNull(screenshot);
-            ContentValues image = new ContentValues();
-            image.put(MediaStore.Images.Media.DISPLAY_NAME, "native-smoke.png");
-            image.put(MediaStore.Images.Media.MIME_TYPE, "image/png");
-            image.put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/FlechaTrampaTest");
-            image.put(MediaStore.Images.Media.IS_PENDING, 1);
-            Uri imageUri = context.getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, image);
-            assertNotNull(imageUri);
-            try (OutputStream output = context.getContentResolver().openOutputStream(imageUri)) {
-                assertNotNull(output);
-                assertTrue(screenshot.compress(Bitmap.CompressFormat.PNG, 100, output));
-            }
-            screenshot.recycle();
-            image.clear();
-            image.put(MediaStore.Images.Media.IS_PENDING, 0);
-            context.getContentResolver().update(imageUri, image, null, null);
-
             InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
             await(activity, "!!document.querySelector('[data-action=resume]')");
             activity.recreate();
@@ -92,7 +73,59 @@ public class NativeGameSmokeTest {
             assertEquals(1, restored.getJSONObject("stats").getInt("played"));
             assertEquals(arrows, restored.getJSONObject("classicSave").getJSONObject("state").getJSONObject("board").getJSONArray("arrows").toString());
             assertEquals("true", evaluate(activity, "document.querySelector('[data-lives]').getAttribute('aria-label') === '3 vidas'"));
+            assertEquals(4, restored.getJSONObject("economy").getJSONObject("energy").getInt("amount"));
+
+            click(activity, "[data-action=pause]");
+            click(activity, "[data-action=home]");
+            click(activity, "[data-action=rewards]");
+            click(activity, ".rewards-tabs [data-action=collection]");
+            click(activity, "[data-action=open-chest]");
+            click(activity, "[data-action=equip-drop]");
+            await(activity, "!document.querySelector('[role=dialog]')");
+            click(activity, "[data-action=theme][data-value=neon]");
+            await(activity, "document.documentElement.dataset.theme === 'neon'");
+            long cosmeticDeadline = SystemClock.elapsedRealtime() + 15000;
+            while (SystemClock.elapsedRealtime() < cosmeticDeadline && !"neon".equals(profile(preferences).getJSONObject("settings").optString("theme"))) {
+                SystemClock.sleep(100);
+            }
+            JSONObject cosmetics = profile(preferences);
+            String skin = cosmetics.getJSONObject("settings").getString("skin");
+            assertNotEquals("classic", skin);
+            assertEquals(0, cosmetics.getJSONObject("economy").getJSONObject("collection").getInt("chests"));
+            assertEquals("neon", cosmetics.getJSONObject("settings").getString("theme"));
+            activity.recreate();
+            await(activity, "!!document.querySelector('[data-action=play]')");
+            click(activity, "[data-action=play]");
+            await(activity, "document.querySelectorAll('[data-arrow]').length > 0 && !document.querySelector('.board-loading')");
+            assertEquals("true", evaluate(activity, "document.documentElement.dataset.theme === 'neon'"));
+            JSONObject finalSave = profile(preferences);
+            assertEquals(skin, finalSave.getJSONObject("settings").getString("skin"));
+            assertEquals(4, finalSave.getJSONObject("economy").getJSONObject("energy").getInt("amount"));
+            assertEquals(1, finalSave.getJSONObject("stats").getInt("played"));
+            assertEquals(arrows, finalSave.getJSONObject("classicSave").getJSONObject("state").getJSONObject("board").getJSONArray("arrows").toString());
+            capture(context);
         }
+    }
+
+    private static void capture(Context context) throws Exception {
+        // Shared media survives the test runner's automatic removal of app data.
+        Bitmap screenshot = InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot();
+        assertNotNull(screenshot);
+        ContentValues image = new ContentValues();
+        image.put(MediaStore.Images.Media.DISPLAY_NAME, "native-smoke.png");
+        image.put(MediaStore.Images.Media.MIME_TYPE, "image/png");
+        image.put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/FlechaTrampaTest");
+        image.put(MediaStore.Images.Media.IS_PENDING, 1);
+        Uri imageUri = context.getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, image);
+        assertNotNull(imageUri);
+        try (OutputStream output = context.getContentResolver().openOutputStream(imageUri)) {
+            assertNotNull(output);
+            assertTrue(screenshot.compress(Bitmap.CompressFormat.PNG, 100, output));
+        }
+        screenshot.recycle();
+        image.clear();
+        image.put(MediaStore.Images.Media.IS_PENDING, 0);
+        context.getContentResolver().update(imageUri, image, null, null);
     }
 
     private static JSONObject profile(SharedPreferences preferences) throws Exception {
