@@ -1,5 +1,13 @@
 # Arquitectura y garantías
 
+## Siluetas, lectura de rutas y dominio
+
+`generator/shapes.ts` define cinco máscaras originales. El generador inverso solo inserta en celdas admitidas, la densidad usa el área de la máscara y el fallback conserva la prueba de potencial creciente. Las trayectorias siguen recorriendo el rectángulo completo, incluso a través de los huecos. Ausencia de `shape` conserva los tableros rectangulares anteriores; `classicConfigForLevel` añade las formas únicamente a nuevos intentos clásicos. El diario conserva su configuración. Enlaces y validador de guardados transportan y verifican el parámetro.
+
+`BoardInput` reconoce la pulsación de 420 ms, rechaza desplazamientos, scroll, cancelación y pérdida de foco, e impide que el clic de compatibilidad ejecute otra acción. `RouteInspector` presenta el primer bloqueo calculado por las reglas puras. No muta el tablero ni consume pistas. El botón Rutas ofrece el mismo acceso por teclado. Las ondas de desbloqueo solo marcan movimientos recién válidos. Ni estos efectos ni la pulsación desplazan la geometría de los objetivos.
+
+`core/mastery.ts` calcula estrellas a partir de victoria, errores y pistas consumidas. `ProgressStore.consumeHint(session)` persiste contador y consumo en una transacción. Cada resultado se registra una sola vez; los guardados antiguos sin contador no reciben la estrella por ausencia de pistas. `bestCombo` se conserva por intento y la nueva estadística `mastered` migra a cero. La presentación está en `ui/mastery.ts` y el tablero DOM en `ui/game-screen.ts`.
+
 ## Geometría y presentación cosmética
 
 `config/arrow-designs.ts` define caras y tintas originales en coordenadas normalizadas. SVG y Phaser consumen la misma geometría. `SkinMotionPreview` limita la vida de las animaciones del inspector; un identificador de generación impide que una finalización antigua borre una vista nueva. `home.ts` y las vistas previas de escenarios utilizan la pieza equipada.
@@ -63,4 +71,4 @@ Antes de escribir se comprueba que el principal no haya cambiado desde la últim
 
 Las fechas y rachas usan UTC. Cada fecha completada suma una vez. Los mejores resultados priorizan menos errores y, a igualdad de errores, menor tiempo. La racha visible caduca tras un día sin completar. El reloj y los resultados locales no permiten rankings fiables sin backend.
 
-`#reto=FT1.payload.checksum` contiene esquema, generador, semilla y parámetros en base64url con Unicode. El checksum detecta daños accidentales: no es una firma ni una protección contra trampas. El fragmento evita rutas dinámicas en hosting estático. Los valores mostrados en HTML se escapan.
+`#reto=FT1.payload.checksum` contiene los retos rectangulares y `FT2.payload.checksum` las máscaras. La nueva app abre ambos; los clientes anteriores rechazan FT2 en vez de eliminar el parámetro de forma silenciosamente. Un fixture fija el formato FT1 anterior byte a byte y se rechaza cambiar el sobre sin adaptar los parámetros. El payload contiene esquema, generador, semilla y parámetros en base64url con Unicode. El checksum detecta daños accidentales: no es una firma ni una protección contra trampas. El fragmento evita rutas dinámicas en hosting estático. Los valores mostrados en HTML se escapan.

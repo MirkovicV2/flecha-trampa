@@ -22,6 +22,8 @@ export interface PlaySession {
   energySpent?: boolean;
   rewardXp?: number;
   lifeTokenSpent?: boolean;
+  hintsUsed?: number;
+  bestCombo?: number;
 }
 
 export function newSession(
@@ -46,6 +48,8 @@ export function newSession(
     date,
     generatorVersion: GENERATOR_VERSION,
     counted: false,
+    hintsUsed: 0,
+    bestCombo: 0,
   };
 }
 
@@ -72,5 +76,7 @@ export function tutorialSession(): PlaySession {
     date: null,
     generatorVersion: GENERATOR_VERSION,
     counted: false,
+    hintsUsed: 0,
+    bestCombo: 0,
   };
 }

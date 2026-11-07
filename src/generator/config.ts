@@ -1,3 +1,6 @@
+import { isBoardShape } from './shapes';
+import type { BoardShape } from './shapes';
+
 export const GENERATOR_VERSION = 'inverse-v1';
 
 export interface LevelConfig {
@@ -5,6 +8,7 @@ export interface LevelConfig {
   readonly height: number;
   readonly density: number;
   readonly complexity: number;
+  readonly shape?: BoardShape;
 }
 
 export function isLevelConfig(value: unknown): value is LevelConfig {
@@ -26,8 +30,22 @@ export function isLevelConfig(value: unknown): value is LevelConfig {
     typeof config.complexity === 'number' &&
     Number.isFinite(config.complexity) &&
     config.complexity >= 0 &&
-    config.complexity <= 1
+    config.complexity <= 1 &&
+    (config.shape === undefined || isBoardShape(config.shape))
   );
+}
+
+/** Existing seeds/configurations remain identical. Only new classic attempts use masks. */
+export function classicConfigForLevel(level: number): LevelConfig {
+  const config = configForLevel(level);
+  if (level < 3) return config;
+  const shapes = ['diamond', 'cross', 'ring', 'hourglass', 'square'] as const;
+  const shape = shapes[(level - 3) % shapes.length]!;
+  return {
+    ...config,
+    shape,
+    density: shape === 'square' ? config.density : Math.min(0.94, config.density + 0.16),
+  };
 }
 
 export function configForLevel(level: number): LevelConfig {

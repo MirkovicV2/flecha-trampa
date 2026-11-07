@@ -1,5 +1,6 @@
 import { isBoard } from '../core/board';
 import { GENERATOR_VERSION, isLevelConfig } from '../generator/config';
+import { arrowCount, containsCell } from '../generator/shapes';
 import { solve } from '../solver/solver';
 import type { PlayerProfile } from './progress';
 import type { PlaySession } from './session';
@@ -98,6 +99,8 @@ export function isSavedSession(
   )
     return false;
   if (value.rewardXp !== undefined && !integer(value.rewardXp, 0, 175)) return false;
+  if (value.hintsUsed !== undefined && !integer(value.hintsUsed, 0, 1000000)) return false;
+  if (value.bestCombo !== undefined && !integer(value.bestCombo, 0, 100)) return false;
   if (
     config.width !== initialBoard.width ||
     config.height !== initialBoard.height ||
@@ -105,8 +108,10 @@ export function isSavedSession(
   )
     return false;
   if (
-    initialBoard.arrows.length !==
-    Math.max(1, Math.round(config.width * config.height * config.density))
+    initialBoard.arrows.length !== arrowCount(config) ||
+    initialBoard.arrows.some(
+      ({ x, y }) => !containsCell(config.width, config.height, config.shape ?? 'square', x, y),
+    )
   )
     return false;
   if (currentBoard.width !== initialBoard.width || currentBoard.height !== initialBoard.height)
@@ -224,6 +229,8 @@ export function decodeProfile(serialized: string | null): PlayerProfile | null {
     if (stats.flawless > stats.wins || stats.wins > stats.played) return null;
     if (stats.bestCombo === undefined) stats.bestCombo = 0;
     if (!integer(stats.bestCombo, 0, 100)) return null;
+    if (stats.mastered === undefined) stats.mastered = 0;
+    if (!integer(stats.mastered, 0, stats.flawless)) return null;
     return value as unknown as PlayerProfile;
   } catch {
     return null;

@@ -5,6 +5,8 @@ import './ui/combos.css';
 import './ui/atelier.css';
 import './ui/chests.css';
 import './ui/presentation.css';
+import './ui/arena.css';
+import './ui/mastery.css';
 import { GameApp } from './ui/app';
 import { createProgressStore } from './services/platform';
 
