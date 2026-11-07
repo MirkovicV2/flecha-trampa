@@ -9,6 +9,7 @@ import android.content.Context;
 import android.content.ContentValues;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Environment;
 import android.os.SystemClock;
@@ -128,11 +129,7 @@ public class NativeGameSmokeTest {
             assertEquals("christmas", finalSave.getJSONObject("settings").getString("world"));
             assertEquals(0, finalSave.getJSONObject("events").getInt("stamps"));
             assertEquals(arrows, finalSave.getJSONObject("classicSave").getJSONObject("state").getJSONObject("board").getJSONArray("arrows").toString());
-            // Give Phaser and the compositor two frames after the async scene becomes ready.
-            evaluate(activity, "requestAnimationFrame(() => requestAnimationFrame(() => { window.__nativePaintReady = true; })); true");
-            await(activity, "window.__nativePaintReady === true");
-            SystemClock.sleep(300);
-            capture(context);
+            captureBoard(context, activity, "native-smoke.png");
         }
     }
 
@@ -177,19 +174,55 @@ public class NativeGameSmokeTest {
             assertEquals(1, saved.getJSONObject("sharedSave").getInt("hintsUsed"));
             assertEquals(1, saved.getJSONObject("stats").getInt("played"));
             assertEquals("true", evaluate(activity, "document.querySelector('.board-frame').dataset.shape === 'diamond' && document.querySelector('[data-hints]').textContent === '2'"));
-            SystemClock.sleep(300);
-            capture(context, "native-silhouette.png");
+            captureBoard(context, activity, "native-silhouette.png");
         }
     }
 
-    private static void capture(Context context) throws Exception {
-        capture(context, "native-smoke.png");
+    private static void captureBoard(Context context, ActivityScenario<MainActivity> activity, String filename) throws Exception {
+        // DOM readiness can precede the Android compositor. Require actual arrow pixels,
+        // not just buttons under an old loading frame, before retaining visual evidence.
+        evaluate(activity, "window.__nativePaintReady = false; requestAnimationFrame(() => requestAnimationFrame(() => { window.__nativePaintReady = true; })); true");
+        await(activity, "window.__nativePaintReady === true");
+        JSONObject board = new JSONObject(evaluate(activity, "(() => { const r = document.querySelector('.board-frame').getBoundingClientRect(); return { x: r.left, y: r.top, width: r.width, height: r.height, viewport: innerWidth }; })()"));
+        int[] origin = new int[2];
+        AtomicReference<Integer> viewWidth = new AtomicReference<>(0);
+        activity.onActivity(instance -> {
+            instance.getBridge().getWebView().getLocationOnScreen(origin);
+            viewWidth.set(instance.getBridge().getWebView().getWidth());
+        });
+        double scale = viewWidth.get() / board.getDouble("viewport");
+        assertTrue("WebView must have measurable bounds", scale > 0);
+        long deadline = SystemClock.elapsedRealtime() + 15000;
+        int samples = 0;
+        do {
+            Bitmap screenshot = InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot();
+            assertNotNull(screenshot);
+            int left = Math.max(0, (int) (origin[0] + (board.getDouble("x") + board.getDouble("width") * 0.08) * scale));
+            int right = Math.min(screenshot.getWidth(), (int) (origin[0] + (board.getDouble("x") + board.getDouble("width") * 0.92) * scale));
+            int top = Math.max(0, (int) (origin[1] + (board.getDouble("y") + board.getDouble("height") * 0.08) * scale));
+            int bottom = Math.min(screenshot.getHeight(), (int) (origin[1] + (board.getDouble("y") + board.getDouble("height") * 0.92) * scale));
+            samples = 0;
+            for (int y = top; y < bottom; y += 4) {
+                for (int x = left; x < right; x += 4) {
+                    int pixel = screenshot.getPixel(x, y);
+                    int max = Math.max(Color.red(pixel), Math.max(Color.green(pixel), Color.blue(pixel)));
+                    int min = Math.min(Color.red(pixel), Math.min(Color.green(pixel), Color.blue(pixel)));
+                    if (max > 170 && max - min > 55) samples++;
+                }
+            }
+            if (samples >= 20) {
+                Log.i("FlechaSmoke", "Native board paint verified: " + samples + " colored samples in " + filename);
+                saveCapture(context, screenshot, filename);
+                return;
+            }
+            screenshot.recycle();
+            SystemClock.sleep(200);
+        } while (SystemClock.elapsedRealtime() < deadline);
+        fail("Native board did not paint arrow colors within 15s: " + samples + " samples");
     }
 
-    private static void capture(Context context, String filename) throws Exception {
+    private static void saveCapture(Context context, Bitmap screenshot, String filename) throws Exception {
         // Shared media survives the test runner's automatic removal of app data.
-        Bitmap screenshot = InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot();
-        assertNotNull(screenshot);
         ContentValues image = new ContentValues();
         image.put(MediaStore.Images.Media.DISPLAY_NAME, filename);
         image.put(MediaStore.Images.Media.MIME_TYPE, "image/png");
