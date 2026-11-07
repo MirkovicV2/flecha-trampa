@@ -9,6 +9,8 @@ export interface LevelConfig {
   readonly density: number;
   readonly complexity: number;
   readonly shape?: BoardShape;
+  /** Opt-in algorithm revision. Absence preserves all FT1/FT2 seeds exactly. */
+  readonly tuning?: 'chain-v2';
 }
 
 export function isLevelConfig(value: unknown): value is LevelConfig {
@@ -31,20 +33,26 @@ export function isLevelConfig(value: unknown): value is LevelConfig {
     Number.isFinite(config.complexity) &&
     config.complexity >= 0 &&
     config.complexity <= 1 &&
-    (config.shape === undefined || isBoardShape(config.shape))
+    (config.shape === undefined || isBoardShape(config.shape)) &&
+    (config.tuning === undefined || config.tuning === 'chain-v2')
   );
 }
 
 /** Existing seeds/configurations remain identical. Only new classic attempts use masks. */
 export function classicConfigForLevel(level: number): LevelConfig {
   const config = configForLevel(level);
-  if (level < 3) return config;
+  if (level === 1) return { ...config, density: 0.65, complexity: 0.55 };
   const shapes = ['diamond', 'cross', 'ring', 'hourglass', 'square'] as const;
-  const shape = shapes[(level - 3) % shapes.length]!;
+  const shape = level === 2 ? undefined : shapes[(level - 3) % shapes.length]!;
   return {
     ...config,
-    shape,
-    density: shape === 'square' ? config.density : Math.min(0.94, config.density + 0.16),
+    ...(shape === undefined ? {} : { shape }),
+    tuning: 'chain-v2',
+    density: Math.min(
+      0.96,
+      0.72 + Math.log2(level + 1) * 0.045 + (shape && shape !== 'square' ? 0.06 : 0),
+    ),
+    complexity: Math.min(1, 0.55 + Math.log2(level + 1) * 0.09),
   };
 }
 

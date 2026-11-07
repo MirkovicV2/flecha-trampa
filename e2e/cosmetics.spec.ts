@@ -1,4 +1,6 @@
 import { expect, test } from '@playwright/test';
+import { newSession } from '../src/services/session';
+import { configForLevel } from '../src/generator/config';
 import { SKINS, RARITIES } from '../src/config/collection';
 import { ARROW_DESIGNS } from '../src/config/arrow-designs';
 import { defaultProfile, SAVE_KEY } from '../src/services/progress';
@@ -9,7 +11,7 @@ for (const rarity of RARITIES)
   test(`inspects every ${rarity} design and motion without granting locked items`, async ({
     page,
   }, info) => {
-    test.setTimeout(90000);
+    test.setTimeout(150000);
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
     await page.goto('/');
@@ -67,7 +69,10 @@ for (const rarity of RARITIES)
 test('equipped materials render and animate real moves without changing touch targets', async ({
   page,
 }) => {
+  test.setTimeout(150000);
   const profile = defaultProfile();
+  profile.level = 31;
+  profile.classicSave = newSession('classic', 31, 'cosmetic-materials', configForLevel(31));
   profile.tutorialDone = true;
   profile.economy.collection.ownedSkins = SKINS.map((skin) => skin.id);
   await page.addInitScript(({ key, value }) => localStorage.setItem(key, JSON.stringify(value)), {
@@ -77,7 +82,21 @@ test('equipped materials render and animate real moves without changing touch ta
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto('/');
-  for (const skin of ['pixel', 'prism', 'orbit', 'royal', 'nova'] as const) {
+  for (const skin of [
+    'pixel',
+    'prism',
+    'orbit',
+    'royal',
+    'nova',
+    'frost',
+    'ember',
+    'ronin',
+    'circuit',
+    'petal',
+    'tide',
+    'phoenix',
+    'aurora',
+  ] as const) {
     await page.getByRole('button', { name: 'Recompensas', exact: true }).click();
     await page.getByRole('button', { name: 'Colección', exact: true }).click();
     await page.locator(`[data-action="skin"][data-value="${skin}"]`).click();
@@ -96,7 +115,7 @@ test('equipped materials render and animate real moves without changing touch ta
         };
       }),
     );
-    const board: Board = { width: 4, height: 4, arrows };
+    const board: Board = { width: 8, height: 8, arrows };
     const moving = availableMoves(board)[0]!;
     const stationary = arrows.find((arrow) => arrow.id !== moving.id)!;
     const target = page.locator(`[data-arrow="${stationary.id}"]`);

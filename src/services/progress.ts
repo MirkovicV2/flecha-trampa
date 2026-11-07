@@ -191,6 +191,7 @@ export class ProgressStore {
         if (!energy) return false;
         this.profile.economy.energy = energy;
         session.energySpent = true;
+        session.energyPolicy = 'attempt-v2';
       }
       if (session.mode === 'classic') {
         let lives: 3 | 4 = this.hasPremium ? 4 : 3;
@@ -236,7 +237,8 @@ export class ProgressStore {
         session.mode === 'daily' &&
         session.date &&
         !this.profile.daily.records[session.date]?.completed;
-      if (session.energySpent) {
+      // Honor the one-charge refund promised to attempts saved by pre-0.6 apps.
+      if (session.energySpent && session.energyPolicy !== 'attempt-v2') {
         const current = regenerateEnergy(
           this.profile.economy.energy,
           Date.now(),

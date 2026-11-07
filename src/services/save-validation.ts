@@ -97,6 +97,11 @@ export function isSavedSession(
   )
     return false;
   if (value.rewardXp !== undefined && !integer(value.rewardXp, 0, 175)) return false;
+  if (
+    value.energyPolicy !== undefined &&
+    (value.energyPolicy !== 'attempt-v2' || !value.energySpent)
+  )
+    return false;
   if (value.hintsUsed !== undefined && !integer(value.hintsUsed, 0, 1000000)) return false;
   if (value.bestCombo !== undefined && !integer(value.bestCombo, 0, 100)) return false;
   if (

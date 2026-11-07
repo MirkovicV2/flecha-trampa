@@ -95,6 +95,6 @@
     animation: none;
   }
 }
-[data-reduced-motion='true'] .pass-prize {
+[data-motion='reduced'] .pass-prize {
   animation: none !important;
 }
