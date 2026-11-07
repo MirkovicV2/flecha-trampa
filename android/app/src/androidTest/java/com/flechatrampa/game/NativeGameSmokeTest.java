@@ -18,7 +18,13 @@ import android.view.MotionEvent;
 import android.view.WindowManager;
 import android.util.Log;
 import android.webkit.WebStorage;
-import androidx.test.core.app.ActivityScenario;
+import android.app.Activity;
+import android.content.Intent;
+import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry;
+import androidx.test.runner.lifecycle.Stage;
+import java.util.LinkedHashSet;
+import java.util.Set;
+import java.util.function.Consumer;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.SdkSuppress;
 import androidx.test.platform.app.InstrumentationRegistry;
@@ -39,15 +45,100 @@ import org.junit.runner.RunWith;
 public class NativeGameSmokeTest {
     private static final String SAVE_KEY = "flecha-trampa:profile:v1";
 
+    /**
+     * ActivityScenario also waits for a globally idle looper in onActivity,
+     * recreate and close. A running game's Choreographer need never become idle.
+     * Use real Android lifecycle transitions and bounded state assertions instead.
+     * This helper belongs only to the instrumentation APK.
+     */
+    private static final class NativeSession implements AutoCloseable {
+        static NativeSession launch() {
+            Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+            context.startActivity(new Intent(context, MainActivity.class)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK));
+            NativeSession session = new NativeSession();
+            session.awaitResumed(null);
+            return session;
+        }
+
+        void onActivity(Consumer<MainActivity> action) {
+            InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+                MainActivity current = resumed();
+                assertNotNull("A real MainActivity must be resumed", current);
+                action.accept(current);
+            });
+        }
+
+        void recreate() {
+            AtomicReference<MainActivity> previous = new AtomicReference<>();
+            onActivity(instance -> {
+                previous.set(instance);
+                instance.recreate();
+            });
+            awaitResumed(previous.get());
+        }
+
+        private void awaitResumed(MainActivity previous) {
+            long deadline = SystemClock.elapsedRealtime() + 30000;
+            AtomicReference<Boolean> ready = new AtomicReference<>(false);
+            do {
+                InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+                    MainActivity current = resumed();
+                    ready.set(current != null && current != previous
+                        && (previous == null || previous.isDestroyed()));
+                });
+                if (ready.get()) return;
+                SystemClock.sleep(100);
+            } while (SystemClock.elapsedRealtime() < deadline);
+            fail("Android did not create and resume a new MainActivity within 30s");
+        }
+
+        // Called only on the Android main thread, as required by the registry.
+        private static MainActivity resumed() {
+            MainActivity result = null;
+            for (Activity candidate : ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED)) {
+                if (candidate instanceof MainActivity) {
+                    assertNull("Only one game activity may be resumed", result);
+                    result = (MainActivity) candidate;
+                }
+            }
+            return result;
+        }
+
+        private static Set<MainActivity> living() {
+            Set<MainActivity> result = new LinkedHashSet<>();
+            for (Stage stage : Stage.values()) {
+                if (stage == Stage.DESTROYED) continue;
+                for (Activity candidate : ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(stage)) {
+                    if (candidate instanceof MainActivity) result.add((MainActivity) candidate);
+                }
+            }
+            return result;
+        }
+
+        @Override public void close() {
+            InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+                for (MainActivity instance : living()) instance.finish();
+            });
+            long deadline = SystemClock.elapsedRealtime() + 30000;
+            AtomicReference<Boolean> finished = new AtomicReference<>(false);
+            do {
+                InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> finished.set(living().isEmpty()));
+                if (finished.get()) return;
+                SystemClock.sleep(100);
+            } while (SystemClock.elapsedRealtime() < deadline);
+            fail("Android did not destroy the test activity within 30s");
+        }
+    }
+
     @Test(timeout = 240000)
     public void bundledGameKeepsNativeSaveAcrossActivityRecreation() throws Exception {
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         SharedPreferences preferences = context.getSharedPreferences("CapacitorStorage", Context.MODE_PRIVATE);
-        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
         InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> WebStorage.getInstance().deleteAllData());
         assertTrue(preferences.edit().clear().commit());
 
-        try (ActivityScenario<MainActivity> activity = ActivityScenario.launch(MainActivity.class)) {
+        try (NativeSession activity = NativeSession.launch()) {
             prepareWindow(activity);
             await(activity, "document.readyState === 'complete' && !!document.querySelector('[data-action=skip-tutorial]')");
             assertEquals("true", evaluate(activity, "window.Capacitor.getPlatform() === 'android'"));
@@ -89,7 +180,7 @@ public class NativeGameSmokeTest {
             click(activity, "[data-action=rewards]");
             click(activity, ".rewards-tabs [data-action=collection]");
             assertEquals("Native animation coverage requires normal system motion", "false", evaluate(activity, "matchMedia('(prefers-reduced-motion: reduce)').matches"));
-            // Espresso can return after an animation has finished. Observe the whole lifecycle
+            // Native dispatch can return after an animation has started. Observe the whole lifecycle
             // in the real WebView instead of polling a transient phase after the click returns.
             evaluate(activity, "(() => { window.__nativeChestPhases = []; window.__nativeChestObserver = new MutationObserver(() => { const phase = document.querySelector('[data-case-phase]')?.dataset.casePhase; if (phase && window.__nativeChestPhases.at(-1) !== phase) window.__nativeChestPhases.push(phase); }); window.__nativeChestObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-case-phase'] }); return true; })()");
             click(activity, "[data-action=open-chest]");
@@ -142,7 +233,6 @@ public class NativeGameSmokeTest {
     public void shapedChallengeAndRouteInspectionSurviveNativeRecreation() throws Exception {
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         SharedPreferences preferences = context.getSharedPreferences("CapacitorStorage", Context.MODE_PRIVATE);
-        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
         InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> WebStorage.getInstance().deleteAllData());
         // Seed before launching: changing Preferences under a live Activity races
         // its lifecycle save and can replace the fixture with the previous profile.
@@ -155,7 +245,7 @@ public class NativeGameSmokeTest {
         }
         fixture.getJSONObject("economy").getJSONObject("energy").put("updatedAt", System.currentTimeMillis());
         assertTrue(preferences.edit().clear().putString(SAVE_KEY, fixture.toString()).commit());
-        try (ActivityScenario<MainActivity> activity = ActivityScenario.launch(MainActivity.class)) {
+        try (NativeSession activity = NativeSession.launch()) {
             prepareWindow(activity);
             await(activity, "!!document.querySelector('.hero-play')");
             click(activity, "[data-action=rewards]");
@@ -206,7 +296,7 @@ public class NativeGameSmokeTest {
         }
     }
 
-    private static void captureBoard(Context context, ActivityScenario<MainActivity> activity, String filename) throws Exception {
+    private static void captureBoard(Context context, NativeSession activity, String filename) throws Exception {
         // DOM readiness can precede the Android compositor. Require actual arrow pixels,
         // not just buttons under an old loading frame, before retaining visual evidence.
         evaluate(activity, "window.__nativePaintReady = false; requestAnimationFrame(() => requestAnimationFrame(() => { window.__nativePaintReady = true; })); true");
@@ -273,7 +363,7 @@ public class NativeGameSmokeTest {
     }
 
     /** Test-device setup only; the shipped Activity does not bypass a user's lock screen. */
-    private static void prepareWindow(ActivityScenario<MainActivity> activity) {
+    private static void prepareWindow(NativeSession activity) {
         activity.onActivity(instance -> {
             instance.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             instance.setTurnScreenOn(true);
@@ -286,7 +376,7 @@ public class NativeGameSmokeTest {
         });
     }
 
-    private static void click(ActivityScenario<MainActivity> activity, String selector) throws Exception {
+    private static void click(NativeSession activity, String selector) throws Exception {
         prepareWindow(activity);
         Log.i("FlechaSmoke", "Click: " + selector);
         long focusDeadline = SystemClock.elapsedRealtime() + 30000;
@@ -341,7 +431,7 @@ public class NativeGameSmokeTest {
         } finally { down.recycle(); }
     }
 
-    private static void await(ActivityScenario<MainActivity> activity, String expression) throws Exception {
+    private static void await(NativeSession activity, String expression) throws Exception {
         long deadline = SystemClock.elapsedRealtime() + 30000;
         while (SystemClock.elapsedRealtime() < deadline) {
             if ("true".equals(evaluate(activity, expression))) return;
@@ -350,7 +440,7 @@ public class NativeGameSmokeTest {
         fail("WebView did not become ready: " + expression + "; UI: " + evaluate(activity, "document.body.innerText.slice(0, 1800)"));
     }
 
-    private static String evaluate(ActivityScenario<MainActivity> activity, String expression) throws Exception {
+    private static String evaluate(NativeSession activity, String expression) throws Exception {
         CountDownLatch latch = new CountDownLatch(1);
         AtomicReference<String> result = new AtomicReference<>("false");
         activity.onActivity(instance -> {
