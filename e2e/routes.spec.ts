@@ -99,7 +99,8 @@ test('route mode works with keyboard and cancelled drags never become moves', as
 for (const shape of BOARD_SHAPES) {
   test(`${shape} silhouette survives reload, fits and can be completed`, async ({ page }, info) => {
     // Includes creation, restoration and up to 45 real pointer interactions.
-    test.setTimeout(75000);
+    // CI traces show successful clicks taking up to 2.4s each on the hosted runner.
+    test.setTimeout(120000);
     const board = await arena(page, shape);
     for (const arrow of board.arrows)
       expect(containsCell(8, 8, shape, arrow.x, arrow.y)).toBe(true);
