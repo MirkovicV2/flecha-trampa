@@ -20,6 +20,9 @@
   inset: 0;
   background: radial-gradient(ellipse at center, #080b13c4 20%, #080b1366 75%);
 }
+.world-landscape {
+  display: none;
+}
 :root[data-world='void'] .world-backdrop {
   opacity: 0.5;
 }
@@ -268,6 +271,16 @@
   width: 18px;
 }
 @media (max-width: 600px) {
+  .world-landscape {
+    display: block;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    aspect-ratio: 10 / 7;
+    opacity: 0.85;
+    mask-image: linear-gradient(transparent, #000 35%);
+  }
   .worlds-intro {
     align-items: flex-start;
     gap: 15px;

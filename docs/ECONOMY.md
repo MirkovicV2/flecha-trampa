@@ -47,7 +47,9 @@ Los controles HTML mantienen su identidad entre jugadas. El motor procesa el mov
 
 La selección usa Pointer Events al soltar el dedo, tolera 12 píxeles de movimiento y descarta arrastres, cancelaciones y pulsaciones largas. El click de compatibilidad no repite la jugada. Teclado, accesibilidad y clicks de WebView siguen disponibles. «Ampliar tablero» permite desplazarse por un tablero de al menos 500 píxeles para obtener objetivos de más de 44 píxeles incluso con diez columnas.
 
-Los movimientos válidos separados por un máximo de 1,8 segundos forman una cadena. Un fallo, una pausa o el tiempo agotado la rompe. Se guarda la mejor cadena. El combo acelera la salida de flechas, aumenta partículas hasta un límite y eleva el tono del sonido; no altera las reglas ni concede dinero o XP adicional. La reducción de movimiento del sistema y del juego suprime estos efectos.
+Los movimientos válidos separados por un máximo de 1,8 segundos forman una cadena. Un fallo, cualquier modal de pausa/ajustes o el tiempo agotado la rompe. Se guarda la mejor cadena. Hay cinco etapas visuales: En racha (2), Acelerando (4), Frenesí (7), Imparable (10) y Leyenda (15). Un medidor muestra el tiempo restante para enlazar otra flecha. El combo acelera las salidas, añade estelas y ondas, eleva el tono y refuerza la vibración en los hitos; no altera las reglas ni concede moneda o XP adicional.
+
+Los efectos de pantalla son decorativos y no interceptan pulsaciones. El tablero y los controles permanecen en sus posiciones: no se aplica un temblor de cámara que desajuste el táctil. Hay como máximo 72 partículas DOM simultáneas y 28 por salida en Phaser, con limpieza de animaciones al cambiar de pantalla o pausar. Las oleadas periféricas se limitan a una cada 500 ms, sin flashes de pantalla completa. La reducción de movimiento del sistema y del juego suprime partículas, oleadas y carteles animados, conservando la información estática de la cadena. Sonido y vibración siguen siendo opcionales.
 
 ## Actualización desde 0.1.1
 

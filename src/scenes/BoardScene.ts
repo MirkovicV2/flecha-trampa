@@ -190,27 +190,45 @@ class BoardScene extends Phaser.Scene {
       }
       const [dx, dy] = VECTORS[arrow.direction];
       if (!this.settings.reducedMotion) {
-        const particles = 6 + Math.min(10, combo * 2);
+        const particles = 6 + Math.min(22, combo * 2);
         const color = ARROW_COLORS[this.settings.theme][arrow.direction];
         const ring = this.add
           .circle(view.x, view.y, this.cell * 0.22)
-          .setStrokeStyle(2, color, 0.6);
+          .setStrokeStyle(combo >= 4 ? 4 : 2, color, 0.8);
         this.tweens.add({
           targets: ring,
-          scale: 2.1,
+          scale: combo >= 7 ? 3.8 : 2.8,
           alpha: 0,
-          duration: 200,
+          duration: 260,
           onComplete: () => ring.destroy(),
         });
+        if (combo >= 2) {
+          const trail = this.add
+            .rectangle(view.x, view.y, this.cell * 0.7, this.cell * 0.1, color, 0.45)
+            .setRotation(Math.atan2(dy, dx))
+            .setBlendMode(Phaser.BlendModes.ADD);
+          this.tweens.add({
+            targets: trail,
+            x: view.x + dx * SIDE,
+            y: view.y + dy * SIDE,
+            scaleX: 3 + Math.min(combo, 10) * 0.15,
+            alpha: 0,
+            duration: 200,
+            ease: 'Quad.In',
+            onComplete: () => trail.destroy(),
+          });
+        }
         for (let index = 0; index < particles; index++) {
           const spark = this.add.circle(view.x, view.y, 2 + (index % 3), color, 0.75);
           this.tweens.add({
             targets: spark,
-            x: view.x + Math.cos((index * Math.PI * 2) / particles) * (30 + Math.min(combo, 8) * 4),
-            y: view.y + Math.sin((index * Math.PI * 2) / particles) * (30 + Math.min(combo, 8) * 4),
+            x:
+              view.x + Math.cos((index * Math.PI * 2) / particles) * (38 + Math.min(combo, 12) * 7),
+            y:
+              view.y + Math.sin((index * Math.PI * 2) / particles) * (38 + Math.min(combo, 12) * 7),
             alpha: 0,
             scale: 0.2,
-            duration: 260,
+            duration: 350,
             onComplete: () => spark.destroy(),
           });
         }
