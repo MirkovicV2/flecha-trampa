@@ -14,6 +14,7 @@ import android.os.Environment;
 import android.os.SystemClock;
 import android.provider.MediaStore;
 import android.view.KeyEvent;
+import android.view.WindowManager;
 import android.util.Log;
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
@@ -41,6 +42,7 @@ public class NativeGameSmokeTest {
         assertTrue(preferences.edit().clear().commit());
 
         try (ActivityScenario<MainActivity> activity = ActivityScenario.launch(MainActivity.class)) {
+            activity.onActivity(instance -> instance.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON));
             await(activity, "document.readyState === 'complete' && !!document.querySelector('[data-action=skip-tutorial]')");
             assertEquals("true", evaluate(activity, "window.Capacitor.getPlatform() === 'android'"));
             assertEquals("true", evaluate(activity, "location.origin === 'https://localhost'"));
@@ -156,6 +158,14 @@ public class NativeGameSmokeTest {
 
     private static void click(ActivityScenario<MainActivity> activity, String selector) throws Exception {
         Log.i("FlechaSmoke", "Click: " + selector);
+        long focusDeadline = SystemClock.elapsedRealtime() + 30000;
+        AtomicReference<Boolean> focused = new AtomicReference<>(false);
+        do {
+            activity.onActivity(instance -> focused.set(instance.hasWindowFocus()));
+            if (focused.get()) break;
+            SystemClock.sleep(100);
+        } while (SystemClock.elapsedRealtime() < focusDeadline);
+        assertTrue("Native activity must have window focus before clicking " + selector, focused.get());
         await(activity, "!!document.querySelector(" + JSONObject.quote(selector) + ") && !document.querySelector(" + JSONObject.quote(selector) + ").disabled");
         // A cold WebView on the software-rendered CI emulator can exceed Espresso's 10s default.
         // Keep a bounded wait; every click is still followed by observable UI/native-save assertions.
