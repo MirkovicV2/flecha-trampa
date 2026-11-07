@@ -6,7 +6,7 @@ import type { PlayerProfile } from './progress';
 import type { PlaySession } from './session';
 import { defaultDailyProgress, isDailyProgress, isUtcDate } from './daily';
 import { integer, isRecord, nonNegative } from '../utils/validation';
-import { isSkinId, SKINS } from '../config/collection';
+import { isSkinId, SKINS, KEY_WINS_REQUIRED, MAX_CHEST_KEYS } from '../config/collection';
 import { isThemeName } from '../config/theme';
 import { PASS_SEASON, MAX_PASS_TIER, parseRewardKey, XP_PER_TIER } from '../config/pass';
 import { defaultEconomy } from './economy';
@@ -46,6 +46,8 @@ function isEconomy(value: unknown): boolean {
     integer(collection.lifeTokens, 0, 99) &&
     integer(collection.shards, 0, 99999) &&
     integer(collection.chests, 0, 999) &&
+    integer(collection.keys, 0, MAX_CHEST_KEYS) &&
+    integer(collection.keyProgress, 0, KEY_WINS_REQUIRED - 1) &&
     integer(collection.opened) &&
     integer(collection.sinceEpic, 0, 9)
   );
@@ -97,6 +99,14 @@ export function isSavedSession(
   )
     return false;
   if (value.rewardXp !== undefined && !integer(value.rewardXp, 0, 175)) return false;
+  if (
+    value.forgeReward !== undefined &&
+    ((value.forgeReward !== 'progress' && value.forgeReward !== 'key') ||
+      mode === 'shared' ||
+      !value.recorded ||
+      state.status !== 'won')
+  )
+    return false;
   if (
     value.rewardChests !== undefined &&
     (!integer(value.rewardChests, 0, 1) ||
@@ -221,6 +231,13 @@ export function decodeProfile(serialized: string | null): PlayerProfile | null {
       value.economy.collection.lifeTokens === undefined
     )
       value.economy.collection.lifeTokens = 0;
+    // A one-time starter key for pre-key profiles. Existing stock and claims stay intact.
+    // Zero is a real saved balance, never a request for another migration grant.
+    if (isRecord(value.economy) && isRecord(value.economy.collection)) {
+      if (value.economy.collection.keys === undefined) value.economy.collection.keys = 1;
+      if (value.economy.collection.keyProgress === undefined)
+        value.economy.collection.keyProgress = 0;
+    }
     if (!isEconomy(value.economy)) return null;
     const economy = value.economy as unknown as PlayerProfile['economy'];
     if (!economy.collection.ownedSkins.includes(value.settings.skin))

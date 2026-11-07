@@ -15,16 +15,16 @@ const wonAttempt = (mode: 'classic' | 'shared', level: number) => {
 };
 
 describe('evergreen earned chest supply', () => {
-  it('awards one chest per five new classic levels, including after the pass, exactly once', () => {
+  it('awards one chest per fifteen new classic levels, including after the pass, exactly once', () => {
     const store = new ProgressStore(null);
-    for (const level of [4, 5, 6, 10, 40, 45, 1000]) {
+    for (const level of [4, 5, 6, 14, 15, 16, 30, 40, 45, 1000, 1005]) {
       store.profile.level = level;
       const before = store.profile.economy.collection.chests;
       const session = wonAttempt('classic', level);
       store.recordResult(session);
       store.recordResult(session);
-      expect(store.profile.economy.collection.chests).toBe(before + Number(level % 5 === 0));
-      expect(session.rewardChests ?? 0).toBe(Number(level % 5 === 0));
+      expect(store.profile.economy.collection.chests).toBe(before + Number(level % 15 === 0));
+      expect(session.rewardChests ?? 0).toBe(Number(level % 15 === 0));
       expect(store.profile.economy.energy.amount).toBe(5);
     }
     store.profile.level = 1005;
@@ -43,9 +43,9 @@ describe('evergreen earned chest supply', () => {
   });
   it('round-trips a chest milestone without reconciling another award and validates its metadata', () => {
     const store = new ProgressStore(null);
-    store.profile.level = 5;
+    store.profile.level = 15;
     store.profile.stats.played = 1;
-    const session = wonAttempt('classic', 5);
+    const session = wonAttempt('classic', 15);
     store.profile.classicSave = session;
     store.recordResult(session);
     expect(isSavedSession(session)).toBe(true);

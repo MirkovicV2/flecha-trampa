@@ -16,6 +16,8 @@ describe('40-tier continuing season', () => {
     expect(profile?.economy.pass.xp).toBe(4000);
     expect(profile?.tutorialDone).toBe(true);
     expect(profile?.economy.collection.ownedSkins).toEqual(['classic']);
+    expect(profile?.economy.collection.keys).toBe(1);
+    expect(profile?.economy.collection.keyProgress).toBe(0);
   });
   it('preserves earned season, XP and old claims without resetting inventory', () => {
     const old = defaultProfile();

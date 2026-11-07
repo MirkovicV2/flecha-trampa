@@ -1,12 +1,12 @@
 # FLECHA TRAMPA
 
-**[Descargar APK para Android (v0.6.0)](https://github.com/MirkovicV2/flecha-trampa/releases/download/v0.6.0/flecha-trampa-v0.6.0-android.apk)**
+**[Descargar APK para Android (v0.7.0)](https://github.com/MirkovicV2/flecha-trampa/releases/download/v0.7.0/flecha-trampa-v0.7.0-android.apk)**
 
-**Abre camino.** Juego de puzles para móvil: flechas, tres vidas y el orden justo para despejar el tablero. Versión 0.6.0 para web y Android, con TypeScript estricto, Phaser 3, Vite, Vitest y Capacitor 8.
+**Abre camino.** Juego de puzles para móvil: flechas, tres vidas y el orden justo para despejar el tablero. Versión 0.7.0 para web y Android, con TypeScript estricto, Phaser 3, Vite, Vitest y Capacitor 8.
 
 ## Descargar e instalar la APK
 
-Pulsa **Descargar APK para Android** al principio de este README para descargar directamente el instalador. También puedes [ver la Release y sus archivos](https://github.com/MirkovicV2/flecha-trampa/releases/tag/v0.6.0).
+Pulsa **Descargar APK para Android** al principio de este README para descargar directamente el instalador. También puedes [ver la Release y sus archivos](https://github.com/MirkovicV2/flecha-trampa/releases/tag/v0.7.0).
 
 El enlace directo funciona también desde el README en GitHub Mobile. El repositorio es privado: iniciar sesión con la cuenta que tiene acceso. Abrir el archivo descargado y seguir el instalador de Android.
 
@@ -14,7 +14,9 @@ Requiere Android 7.0 o posterior y Android System WebView actualizado. Es una AP
 
 ## Novedades de esta versión
 
-El pase conserva tus XP y premios anteriores y se amplía a **40 niveles y 80 recompensas**, con 23 skins garantizadas entre sus dos rutas, cofres, pistas, vidas, fragmentos y sellos para fondos. Los hitos gratuitos incluyen Cero absoluto (20), Noche de brujas (25), Solsticio (30) y Fénix (40); la ruta Plus termina con Dragón imperial. Una skin ya conseguida se compensa con fragmentos. Cada cinco niveles clásicos nuevos recibes además un cofre, incluso después de terminar el pase; así la colección sigue creciendo.
+**Cofres más escasos y con coste de apertura:** un cofre por cada 15 niveles clásicos nuevos y un máximo de uno por premio del pase (9 gratuitos y 12 Plus en la temporada). Cada apertura gasta también 1 llave, forjada con 5 victorias nuevas. Se conservan tus cofres y premios ya reclamados; actualizar concede una sola llave inicial a los perfiles anteriores.
+
+El pase conserva tus XP y premios anteriores y se amplía a **40 niveles y 80 recompensas**, con 23 skins garantizadas entre sus dos rutas, cofres, pistas, vidas, fragmentos y sellos para fondos. Los hitos gratuitos incluyen Cero absoluto (20), Noche de brujas (25), Solsticio (30) y Fénix (40); la ruta Plus termina con Dragón imperial. Una skin ya conseguida se compensa con fragmentos. Cada quince niveles clásicos nuevos recibes además un cofre, incluso después de terminar el pase; así la colección sigue creciendo.
 
 Los intentos clásicos nuevos usan cadenas de bloqueos más largas desde el nivel 2, más densidad y menos salidas iniciales. El solver comprueba cada tablero; los guardados, diarios y retos anteriores se conservan. En la muestra de niveles 31–60, la profundidad media pasa de 8,16 a 19,77 y las salidas iniciales del 44,18 % al 27,54 %. Consulta la metodología y ejecuta `npm run balance` en [balance](docs/BALANCE.md).
 
@@ -30,7 +32,7 @@ Partida revisada a partir de las fichas y capturas oficiales de Slide Arrows Mat
 
 ### Cosméticos y progresión incluidos
 
-Cofres con precinto animado, carrusel de piezas, clics sincronizados, frenado y revelación según rareza. El premio se guarda antes de animar: saltar, girar el móvil, pulsar Atrás o cerrar no repite el sorteo ni pierde la pieza. No hay llaves ni venta de cofres.
+Cofres con precinto animado, carrusel de piezas, clics sincronizados, frenado y revelación según rareza. El premio se guarda antes de animar: saltar, girar el móvil, pulsar Atrás o cerrar no repite el sorteo ni pierde la pieza. Abrir requiere un cofre y una llave de juego. Se forja una llave cada cinco victorias nuevas; clásico nuevo y la primera victoria diaria suman. Hay una llave inicial y no se venden llaves ni cofres.
 
 32 skins con siluetas, biseles y materiales propios: 24 piezas nuevas, incluidas Escarcha, Caldera, Sakura, Noche de brujas, Solsticio, Fénix y Dragón imperial. Hay 16 familias de animación reales en el tablero. Colección con fichas, filtros por rareza e inspector para probar cada firma de movimiento. El mismo dibujo aparece en la colección, la portada y el tablero. Ver [diseño, animación y garantías de los cofres](docs/COSMETICS.md).
 
@@ -46,7 +48,7 @@ Para probar las nuevas formas directamente: **Inicio → Reta a alguien → Form
 
 Los cofres, fondos y pase de prueba se prueban así:
 
-1. Recompensas → **Colección** → **Abrir cofre**. Activa su botón de sonido para escuchar precinto, tarjetas y revelación. Si ya gastaste el cofre de bienvenida, el nivel 2 del pase gratuito concede otro y los niveles 5 y 9 conceden dos cada uno. Cada cinco niveles clásicos nuevos también consigues un cofre.
+1. Recompensas → **Colección** → **Abrir cofre**. Activa su botón de sonido para escuchar precinto, tarjetas y revelación. Si ya gastaste el cofre de bienvenida, cada premio de cofres del pase concede uno y los niveles clásicos 15, 30, 45 y sucesivos conceden otro. Necesitas una llave por apertura: la forja suma una por cada cinco victorias nuevas, incluyendo el primer diario del día. La colección muestra el saldo y el progreso.
 2. Pulsa la lupa de cualquier skin → **Probar animación**. Puedes inspeccionarlas todas aunque aún no sean tuyas; solo equipar o crear requiere propiedad o fragmentos.
 3. Inicio → **Navidad. Halloween. Tu mundo.**, o Recompensas → **Fondos y eventos**. Un sello de bienvenida permite desbloquear Navidad; puedes previsualizar todos los demás.
 4. Recompensas → Pase de temporada → **Probar Pase Plus · 0 €**. Cancelar, activar y restaurar funcionan. Ajustes → **Restablecer pase de prueba** permite repetir el flujo.
@@ -54,7 +56,7 @@ Los cofres, fondos y pase de prueba se prueban así:
 
 ## Estado de GitHub
 
-Repositorio privado verificado: [MirkovicV2/flecha-trampa](https://github.com/MirkovicV2/flecha-trampa). `main`, `develop` y las ramas de funcionalidad están publicadas. `v0.1.0` conserva el MVP web original; `v0.6.0` identifica la ampliación de colección, pase y dificultad. Las fuentes comprobadas superan **133 pruebas de lógica, 94 de navegador y dos casos Android**, con lint y compilación correctos. La cuenta activa se comprobó con `gh auth status` y `gh api user`. La protección remota de `main` no está activa: GitHub exige Pro para habilitarla en este repositorio privado; la API vuelve a confirmar HTTP 403. Ver [estado y comprobaciones de GitHub](docs/REMOTE_STATUS.md).
+Repositorio privado verificado: [MirkovicV2/flecha-trampa](https://github.com/MirkovicV2/flecha-trampa). `main`, `develop` y las ramas de funcionalidad están publicadas. `v0.1.0` conserva el MVP original; `v0.7.0` identifica la entrega de llaves y cofres más escasos, manteniendo la colección, el pase y el generador táctico de 0.6. Las fuentes comprobadas superan **155 pruebas de lógica, 98 de navegador y dos casos Android**, con lint y compilación correctos. La cuenta activa se comprobó con `gh auth status` y `gh api user`. La protección remota de `main` no está activa: la API exige un plan compatible con este repositorio privado. Ver [estado y comprobaciones de GitHub](docs/REMOTE_STATUS.md).
 
 ## Inicio rápido en este ordenador
 

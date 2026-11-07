@@ -188,6 +188,7 @@ public class NativeGameSmokeTest {
             assertEquals("true", evaluate(activity, "['sealed', 'rolling', 'settling', 'revealed'].every(phase => window.__nativeChestPhases.includes(phase))"));
             evaluate(activity, "window.__nativeChestObserver.disconnect(); true");
             assertEquals(1, profile(preferences).getJSONObject("economy").getJSONObject("collection").getInt("opened"));
+            assertEquals(0, profile(preferences).getJSONObject("economy").getJSONObject("collection").getInt("keys"));
             click(activity, "[data-action=equip-drop]");
             await(activity, "!document.querySelector('[role=dialog]')");
             click(activity, "[data-action=theme][data-value=neon]");
@@ -224,6 +225,7 @@ public class NativeGameSmokeTest {
             assertEquals(1, finalSave.getJSONObject("stats").getInt("played"));
             assertEquals("christmas", finalSave.getJSONObject("settings").getString("world"));
             assertEquals(0, finalSave.getJSONObject("events").getInt("stamps"));
+            assertEquals(0, finalSave.getJSONObject("economy").getJSONObject("collection").getInt("keys"));
             assertEquals(arrows, finalSave.getJSONObject("classicSave").getJSONObject("state").getJSONObject("board").getJSONArray("arrows").toString());
             captureBoard(context, activity, "native-smoke.png");
         }
@@ -253,9 +255,19 @@ public class NativeGameSmokeTest {
             await(activity, "document.querySelectorAll('[data-action=claim-reward]').length === 80");
             click(activity, "[data-action=claim-reward][data-value='free:40']");
             await(activity, "document.querySelector('[data-action=claim-reward][data-value=\"free:40\"]').disabled");
+            click(activity, "[data-action=claim-reward][data-value='free:2']");
+            await(activity, "document.querySelector('[data-action=claim-reward][data-value=\"free:2\"]').disabled");
             click(activity, ".rewards-tabs [data-action=collection]");
             assertEquals("true", evaluate(activity, "document.querySelectorAll('[data-collection-skin]').length === 32"));
             click(activity, "[data-action=skin][data-value=phoenix]");
+            assertEquals("true", evaluate(activity, "document.querySelector('[data-key-count]').textContent === '1'"));
+            click(activity, "[data-action=open-chest]");
+            await(activity, "document.querySelector('[data-case-phase]')?.dataset.casePhase === 'revealed'");
+            click(activity, "[data-action=close-overlay]");
+            await(activity, "!document.querySelector('[data-case-phase]')");
+            assertEquals("true", evaluate(activity, "document.querySelector('[data-action=open-chest]').disabled && document.querySelector('[data-key-count]').textContent === '0' && document.querySelector('#chest-opening-cost').textContent.includes('1 cofre y 1 llave')"));
+            assertEquals(1, profile(preferences).getJSONObject("economy").getJSONObject("collection").getInt("chests"));
+            assertEquals(0, profile(preferences).getJSONObject("economy").getJSONObject("collection").getInt("keys"));
             click(activity, "[data-action=home]");
             click(activity, "[data-action=shared]");
             await(activity, "!!document.querySelector('#challenge-shape')");
@@ -287,6 +299,7 @@ public class NativeGameSmokeTest {
             JSONObject saved = profile(preferences);
             assertEquals("chain-v2", saved.getJSONObject("sharedSave").getJSONObject("config").getString("tuning"));
             assertEquals("phoenix", saved.getJSONObject("settings").getString("skin"));
+            assertEquals(0, saved.getJSONObject("economy").getJSONObject("collection").getInt("keys"));
             assertTrue(saved.getJSONObject("economy").getJSONObject("pass").getJSONArray("claimed").toString().contains("free:40"));
             assertEquals("diamond", saved.getJSONObject("sharedSave").getJSONObject("config").getString("shape"));
             assertEquals(1, saved.getJSONObject("sharedSave").getInt("hintsUsed"));

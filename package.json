@@ -1,6 +1,6 @@
 {
   "name": "flecha-trampa",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
   "overrides": {
     "minimatch@>=7.0.0 <=11.0.0": "11.0.5"

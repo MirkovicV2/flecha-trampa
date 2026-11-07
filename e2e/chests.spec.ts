@@ -67,6 +67,7 @@ test('skip, Escape and resize reveal the same duplicate without extra rewards', 
   profile.tutorialDone = true;
   profile.economy.collection.ownedSkins = SKINS.map((skin) => skin.id);
   profile.economy.collection.chests = 3;
+  profile.economy.collection.keys = 3;
   await page.addInitScript(
     ({ key, value }) => {
       if (!localStorage.getItem(key)) localStorage.setItem(key, JSON.stringify(value));

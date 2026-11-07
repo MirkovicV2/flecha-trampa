@@ -9,7 +9,14 @@ import type { EconomyState, ChestDrop } from './economy';
 import { ENERGY_CAPACITY, PREMIUM_ENERGY_CAPACITY, regenerateEnergy, spendEnergy } from './energy';
 import { PASS_SEASON, PASS_TIERS, XP_PER_TIER } from '../config/pass';
 import type { Reward } from '../config/pass';
-import { SKINS, SKIN_COST, DUPLICATE_SHARDS } from '../config/collection';
+import {
+  SKINS,
+  SKIN_COST,
+  DUPLICATE_SHARDS,
+  CHEST_LEVEL_INTERVAL,
+  KEY_WINS_REQUIRED,
+  MAX_CHEST_KEYS,
+} from '../config/collection';
 import type { SkinId } from '../config/collection';
 import type { Entitlements } from './purchases';
 import { createGame } from '../core/game';
@@ -255,12 +262,26 @@ export class ProgressStore {
       );
       const stamps = firstClassic ? 1 : firstDaily ? 2 : 0;
       // Keep every cosmetic obtainable through play after the finite pass ends.
-      if (firstClassic && session.level % 5 === 0 && this.profile.economy.collection.chests < 999) {
+      if (
+        firstClassic &&
+        session.level % CHEST_LEVEL_INTERVAL === 0 &&
+        this.profile.economy.collection.chests < 999
+      ) {
         session.rewardChests = 1;
         this.profile.economy.collection.chests = Math.min(
           999,
           this.profile.economy.collection.chests + 1,
         );
+      }
+      const collection = this.profile.economy.collection;
+      if ((firstClassic || firstDaily) && collection.keys < MAX_CHEST_KEYS) {
+        collection.keyProgress++;
+        session.forgeReward = 'progress';
+        if (collection.keyProgress === KEY_WINS_REQUIRED) {
+          collection.keyProgress = 0;
+          collection.keys++;
+          session.forgeReward = 'key';
+        }
       }
       this.profile.events.stamps = Math.min(99999, this.profile.events.stamps + stamps);
       this.profile.events.earned = Math.min(99999, this.profile.events.earned + stamps);

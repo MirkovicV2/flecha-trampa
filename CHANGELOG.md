@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.7.0 — 2026-11-07
+
+- Apertura por un cofre y una llave, con coste visible y bloqueo cuando falta un recurso. Forja gratuita de una llave por cinco victorias nuevas, incluyendo el primer diario de cada fecha.
+- Cofres clásicos cada 15 niveles nuevos; paquetes del pase reducidos a un cofre: 9 gratuitos y 12 Plus, conservando sus 80 recompensas y las skins garantizadas.
+- Migración compatible del inventario anterior con una sola llave inicial. Guardado de forja, aperturas y recompensas sin duplicados por recarga o doble pulsación.
+- Contador de llaves, progreso de forja, acceso a jugar y animación al conseguir una llave. Versión de Ajustes tomada del paquete.
+
 ## 0.6.0 — 2026-11-07
 
 - Catálogo de 32 skins: 24 matrices originales nuevas, ocho familias adicionales de salida (16 en total), materiales y efectos compartidos entre inspector y Phaser. Filtros para cada rareza.
