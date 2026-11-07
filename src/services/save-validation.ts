@@ -1,5 +1,6 @@
 import { isBoard } from '../core/board';
 import { GENERATOR_VERSION, isLevelConfig } from '../generator/config';
+import { arrowCount, containsCell } from '../generator/shapes';
 import { solve } from '../solver/solver';
 import type { PlayerProfile } from './progress';
 import type { PlaySession } from './session';
@@ -105,8 +106,10 @@ export function isSavedSession(
   )
     return false;
   if (
-    initialBoard.arrows.length !==
-    Math.max(1, Math.round(config.width * config.height * config.density))
+    initialBoard.arrows.length !== arrowCount(config) ||
+    initialBoard.arrows.some(
+      ({ x, y }) => !containsCell(config.width, config.height, config.shape ?? 'square', x, y),
+    )
   )
     return false;
   if (currentBoard.width !== initialBoard.width || currentBoard.height !== initialBoard.height)
