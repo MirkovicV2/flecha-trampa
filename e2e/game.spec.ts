@@ -83,6 +83,8 @@ test('hints identify a legal move and pause freezes the timer', async ({ page })
   await solveCurrent(page);
   await expect(page.getByRole('dialog')).toContainText('CAMINO DESPEJADO');
   await page.getByRole('button', { name: 'Siguiente nivel' }).click();
+  await expect(page.locator('.commerce-card')).toContainText('Intersticial de prueba');
+  await page.getByRole('button', { name: 'Cerrar vista previa', exact: true }).click();
   await expect(page.locator('.level-chip')).toContainText('NIVEL 02');
 });
 
@@ -111,6 +113,31 @@ test('home and settings fit portrait screens and all navigation works', async ({
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
+});
+
+test('pausing in-flight arrows resumes rendering and still completes the level', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await skipTutorial(page);
+  await page.getByRole('button', { name: /Jugar ahora/ }).click();
+  const board = await readBoard(page);
+  const first = solve(board).sequence.slice(0, 2);
+  await page.evaluate((ids) => {
+    for (const id of ids)
+      document.querySelector<HTMLButtonElement>(`[data-arrow="${id}"]`)!.click();
+    document.querySelector<HTMLButtonElement>('[data-action="pause"]')!.click();
+  }, first);
+  await expect(page.getByRole('dialog')).toContainText('Un pequeño');
+  await expect(page.locator('[data-arrow]')).toHaveCount(board.arrows.length - 2);
+  await page.getByRole('button', { name: 'Continuar', exact: true }).click();
+  await solveCurrent(page);
+  await expect(page.getByRole('dialog')).toContainText('CAMINO DESPEJADO');
+  await page.getByRole('button', { name: 'Volver al inicio', exact: true }).click();
+  await page.getByRole('button', { name: /Jugar ahora/ }).click();
+  await readBoard(page);
+  expect(errors).toEqual([]);
 });
 
 test('reload restores the exact board, hints, settings and one counted start', async ({ page }) => {
@@ -366,7 +393,7 @@ test('a classic win refunds energy, earns pass XP and claims a reward only once'
   await expect(
     page.getByRole('button', { name: 'Recoger Plus nivel 1', exact: true }),
   ).toBeDisabled();
-  await expect(page.getByRole('button', { name: 'Pase Plus · Próximamente' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Probar Pase Plus · 0 €' })).toBeEnabled();
   await page.getByRole('button', { name: 'Recoger gratis nivel 1', exact: true }).click();
   await expect(page.locator('[data-energy-amount]')).toHaveText('7/5');
   await expect(

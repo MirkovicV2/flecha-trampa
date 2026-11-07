@@ -20,7 +20,7 @@ La ruta gratuita entrega energía, cofres, fragmentos, los temas Medianoche y So
 
 Las dos reservas del nivel 4 añaden una cuarta vida a los siguientes dos intentos clásicos nuevos, una por intento. No se consumen por continuar ni al intentar iniciar sin energía. Diario y retos compartidos siempre mantienen tres vidas. Con Pase Plus activo no se consumen estas reservas.
 
-La segunda ruta y las ventajas de Pase Plus están preparadas: ocho cargas máximas de regeneración, cuatro vidas en cada intento clásico y omisión de intersticiales. Solo se activan con el derecho de temporada confirmado por `PurchasesService`; no se guarda una bandera local para simular una compra. `NoOpPurchasesService` mantiene la compra desactivada y Restaurar compras explica que no hay compras disponibles. No hay precios inventados, cobros ni anuncios reales.
+La segunda ruta y las ventajas de Pase Plus incluyen ocho cargas máximas de regeneración, cuatro vidas en cada intento clásico y omisión de intersticiales. La distribución interna ofrece un adaptador de prueba con pantalla de compra de 0,00 €, cancelación y restauración, siempre etiquetado sin cobro. Sus derechos se guardan aparte y no acreditan compras reales. Con `VITE_MONETIZATION_MODE=disabled`, los adaptadores NoOp mantienen anuncios y compra desactivados. Ver los límites y la configuración en [monetización](MONETIZATION.md).
 
 ## Cofres y skins
 
@@ -39,13 +39,17 @@ La selección usa `crypto.getRandomValues`. La rareza se elige primero y luego u
 
 Aurora, Atardecer, Glaciar y Neón son temas gratuitos. Medianoche y Solar se consiguen en los niveles 3 y 8 de la ruta gratuita. Cambian paleta, fondo y tablero. Las skins cambian el dibujo vectorial de las flechas; todas conservan una punta y una dirección reconocibles.
 
+Los escenarios de Navidad, Halloween, sakura, arcade, océano y faroles son una colección independiente de esos colores y de las skins. Se ganan con sellos gratuitos por progreso y no gastan ni otorgan energía. Se pueden previsualizar antes de desbloquearlos. Ver [fondos y eventos](EVENTS.md).
+
 ## Combos y entrada táctil
 
 Los controles HTML mantienen su identidad entre jugadas. El motor procesa el movimiento antes de animarlo; las animaciones pueden solaparse y no bloquean otras flechas. Solo se bloquea temporalmente la flecha que acaba de fallar para evitar errores duplicados. Phaser se ocupa de dibujar y no registra otra fuente de entrada.
 
 La selección usa Pointer Events al soltar el dedo, tolera 12 píxeles de movimiento y descarta arrastres, cancelaciones y pulsaciones largas. El click de compatibilidad no repite la jugada. Teclado, accesibilidad y clicks de WebView siguen disponibles. «Ampliar tablero» permite desplazarse por un tablero de al menos 500 píxeles para obtener objetivos de más de 44 píxeles incluso con diez columnas.
 
-Los movimientos válidos separados por un máximo de 1,8 segundos forman una cadena. Un fallo, una pausa o el tiempo agotado la rompe. Se guarda la mejor cadena. El combo acelera la salida de flechas, aumenta partículas hasta un límite y eleva el tono del sonido; no altera las reglas ni concede dinero o XP adicional. La reducción de movimiento del sistema y del juego suprime estos efectos.
+Los movimientos válidos separados por un máximo de 1,8 segundos forman una cadena. Un fallo, cualquier modal de pausa/ajustes o el tiempo agotado la rompe. Se guarda la mejor cadena. Hay cinco etapas visuales: En racha (2), Acelerando (4), Frenesí (7), Imparable (10) y Leyenda (15). Un medidor muestra el tiempo restante para enlazar otra flecha. El combo acelera las salidas, añade estelas y ondas, eleva el tono y refuerza la vibración en los hitos; no altera las reglas ni concede moneda o XP adicional.
+
+Los efectos de pantalla son decorativos y no interceptan pulsaciones. El tablero y los controles permanecen en sus posiciones: no se aplica un temblor de cámara que desajuste el táctil. Hay como máximo 72 partículas DOM simultáneas y 28 por salida en Phaser, con limpieza de animaciones al cambiar de pantalla o pausar. Las oleadas periféricas se limitan a una cada 500 ms, sin flashes de pantalla completa. La reducción de movimiento del sistema y del juego suprime partículas, oleadas y carteles animados, conservando la información estática de la cadena. Sonido y vibración siguen siendo opcionales.
 
 ## Actualización desde 0.1.1
 

@@ -1,5 +1,15 @@
 # Estado de GitHub
 
+## Versión 0.3.0 — 7 de noviembre de 2026
+
+La cuenta activa vuelve a estar verificada como `MirkovicV2` y el repositorio sigue siendo privado. Las funcionalidades se desarrollaron en `feature/seasonal-worlds`, `feature/preview-commerce` y `feature/frenzy-feedback`, con lint, tests y build antes de integrarlas en `develop`. `feature/android-030` añade la versión Android y el endurecimiento de la pausa.
+
+El código `75ab59b008e155bf94d59b148f827f26e56cafcc` supera [CI web](https://github.com/MirkovicV2/flecha-trampa/actions/runs/42338601293) con 92 pruebas de lógica y 46 de navegador, y [Android release en emulador](https://github.com/MirkovicV2/flecha-trampa/actions/runs/42338601274) con 1 prueba sin fallos, errores u omisiones. La APK local conserva la firma anterior y contiene los mismos 11 archivos web que el candidato nativo comprobado por Actions.
+
+La distribución se identifica con la etiqueta anotada `v0.3.0` y la [Release de Android](https://github.com/MirkovicV2/flecha-trampa/releases/tag/v0.3.0). El README contiene el enlace directo a `flecha-trampa-v0.3.0-android.apk`. Se publican los binarios como assets de Release; las claves y las credenciales siguen fuera de Git. El pase y los anuncios de esta versión son simulaciones etiquetadas, sin cobro real.
+
+Los apartados siguientes conservan la comprobación y las restricciones de la publicación inicial.
+
 Comprobado el 6 de noviembre de 2026 desde este ordenador con GitHub CLI 2.103.3.
 
 ## Cuenta y repositorio

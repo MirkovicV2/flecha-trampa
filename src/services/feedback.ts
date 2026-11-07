@@ -10,10 +10,15 @@ export class FeedbackService {
     if (settings.haptics) {
       if (Capacitor.isNativePlatform()) {
         void Haptics.impact({
-          style: kind === 'blocked' ? ImpactStyle.Medium : ImpactStyle.Light,
+          style:
+            kind === 'blocked' || (kind === 'tap' && [4, 7, 10, 15].includes(combo))
+              ? ImpactStyle.Medium
+              : ImpactStyle.Light,
         }).catch(() => undefined);
       } else if (typeof navigator.vibrate === 'function') {
-        navigator.vibrate(kind === 'blocked' ? [30, 30, 30] : 12);
+        navigator.vibrate(
+          kind === 'blocked' ? [30, 30, 30] : kind === 'tap' && combo >= 7 ? 20 : 12,
+        );
       }
     }
     if (!settings.sound) return;
@@ -26,16 +31,19 @@ export class FeedbackService {
           ? [523.25, 659.25, 783.99, 1046.5]
           : kind === 'blocked'
             ? [150, 110]
-            : [540, 760];
+            : combo >= 7
+              ? [540, 760, 1080]
+              : [540, 760];
       notes.forEach((frequency, index) => {
         const oscillator = context.createOscillator();
         const gain = context.createGain();
         const time = context.currentTime + index * 0.075;
-        oscillator.type = kind === 'blocked' ? 'triangle' : 'sine';
+        oscillator.type =
+          kind === 'blocked' || (kind === 'tap' && combo >= 7) ? 'triangle' : 'sine';
         oscillator.frequency.value =
           frequency * (kind === 'tap' ? 1 + Math.min(combo, 10) * 0.045 : 1);
         gain.gain.setValueAtTime(0, time);
-        gain.gain.linearRampToValueAtTime(0.055, time + 0.01);
+        gain.gain.linearRampToValueAtTime(kind === 'tap' ? 0.04 : 0.055, time + 0.008);
         gain.gain.exponentialRampToValueAtTime(0.001, time + 0.2);
         oscillator.connect(gain);
         gain.connect(context.destination);

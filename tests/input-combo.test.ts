@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { advanceCombo, COMBO_WINDOW_MS, emptyCombo } from '../src/core/combo';
 import { isTap } from '../src/ui/board-input';
+import { comboStage } from '../src/config/combos';
 
 describe('touch gesture intent', () => {
   const start = { x: 10, y: 20, at: 1000 };
@@ -13,6 +14,14 @@ describe('touch gesture intent', () => {
 });
 
 describe('combo timing', () => {
+  it('escalates feedback while keeping particle budgets bounded', () => {
+    expect(comboStage(0).tier).toBe('idle');
+    expect(comboStage(4).tier).toBe('rush');
+    expect(comboStage(7).tier).toBe('frenzy');
+    expect(comboStage(10).tier).toBe('unstoppable');
+    expect(comboStage(100000).particles).toBeLessThanOrEqual(32);
+    expect(comboStage(Number.NaN).particles).toBe(0);
+  });
   it('chains fast valid moves, breaks on errors and retains the best streak', () => {
     let state = advanceCombo(emptyCombo(), true, 100);
     state = advanceCombo(state, true, 300);

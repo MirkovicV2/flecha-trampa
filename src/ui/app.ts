@@ -23,10 +23,28 @@ import type { SkinId } from '../config/collection';
 import { PASS_TIERS } from '../config/pass';
 import { energyWaitMs, regenerateEnergy } from '../services/energy';
 import type { ChestDrop } from '../services/economy';
+import { isWorldId } from '../config/worlds';
+import type { WorldId } from '../config/worlds';
+import { worldArt } from './world-art';
+import { worldPreview } from './worlds';
+import { CommercePreviewView } from './commerce-preview';
+import { PreviewAdsService, PreviewPurchasesService } from '../services/preview-commerce';
+import { PREVIEW_PURCHASE_KEY } from '../services/preview-commerce';
+import { comboStage } from '../config/combos';
+import { ComboEffects } from './combo-effects';
 
 type Screen = 'home' | 'modes' | 'game' | 'stats' | 'daily' | 'shared' | 'rewards';
 type Overlay =
-  'pause' | 'settings' | 'result' | 'onboarding' | 'hints' | 'conflict' | 'energy' | 'chest' | null;
+  | 'pause'
+  | 'settings'
+  | 'result'
+  | 'onboarding'
+  | 'hints'
+  | 'conflict'
+  | 'energy'
+  | 'chest'
+  | 'world-preview'
+  | null;
 const DIRECTION_LABEL = { up: 'arriba', right: 'derecha', down: 'abajo', left: 'izquierda' };
 
 export class GameApp {
@@ -48,11 +66,15 @@ export class GameApp {
   private readonly shareService = new ShareService();
   private sharing = false;
   private manualShareText: string | null = null;
-  private readonly monetization = new MonetizationService();
+  private readonly monetization: MonetizationService;
+  private readonly commerceView: CommercePreviewView;
+  private readonly commercePreview: boolean;
+  private readonly effects: ComboEffects;
   private pendingArrowFocus: string | null = null;
   private readonly blockedArrows = new Set<string>();
   private combo = emptyCombo();
-  private rewardsTab: 'pass' | 'collection' = 'pass';
+  private rewardsTab: 'pass' | 'collection' | 'worlds' = 'pass';
+  private previewWorld: WorldId = 'christmas';
   private chestDrop: ChestDrop | null = null;
   private energyReturn: Overlay = null;
   private pendingEnergySession: PlaySession | null = null;
@@ -62,7 +84,19 @@ export class GameApp {
     private readonly root: HTMLElement,
     private readonly store = new ProgressStore(),
   ) {
-    store.onConflict = () => this.openOverlay('conflict');
+    this.commerceView = new CommercePreviewView(root);
+    this.effects = new ComboEffects(root);
+    this.commercePreview = (import.meta.env.VITE_MONETIZATION_MODE ?? 'preview') === 'preview';
+    this.monetization = this.commercePreview
+      ? new MonetizationService(
+          new PreviewAdsService(this.commerceView),
+          new PreviewPurchasesService(this.commerceView),
+        )
+      : new MonetizationService();
+    store.onConflict = () => {
+      this.commerceView.cancel();
+      this.openOverlay('conflict');
+    };
     store.onError = () =>
       this.toast(
         'No se pudo guardar. Tu partida sigue abierta, pero revisa el almacenamiento del dispositivo.',
@@ -86,6 +120,8 @@ export class GameApp {
         this.store.flush();
       }
       this.lastTick = performance.now();
+      // Run after Phaser's own visibility listener, which can wake its frame loop.
+      queueMicrotask(() => this.renderer?.setPaused(this.overlay !== null || document.hidden));
     });
     window.addEventListener('pagehide', () => {
       this.tick();
@@ -93,6 +129,7 @@ export class GameApp {
     });
     window.addEventListener('storage', (event) => {
       if (event.key === SAVE_KEY || event.key === null) this.store.detectConflict();
+      if (event.key === PREVIEW_PURCHASE_KEY || event.key === null) void this.refreshPurchases();
     });
     window.setInterval(() => this.tick(), 250);
     const incoming = readChallengeUrl(location.href);
@@ -104,19 +141,25 @@ export class GameApp {
     this.render();
     bindNativeLifecycle(
       () => {
+        this.commerceView.cancel();
         this.tick();
         this.pause();
         this.store.flush();
         void this.store.whenIdle();
       },
       () => {
+        if (this.commerceView.active) {
+          this.commerceView.cancel();
+          return;
+        }
         if (this.overlay === 'conflict') return;
         if (
           this.overlay === 'settings' ||
           this.overlay === 'hints' ||
           this.overlay === 'onboarding' ||
           this.overlay === 'energy' ||
-          this.overlay === 'chest'
+          this.overlay === 'chest' ||
+          this.overlay === 'world-preview'
         )
           this.closeOverlay();
         else if (this.overlay || (this.screen !== 'home' && this.screen !== 'game'))
@@ -139,6 +182,7 @@ export class GameApp {
   }
 
   private action(action: string, value?: string): void {
+    if (this.commerceView.active) return;
     if (this.store.conflicted && action !== 'reload') return;
     switch (action) {
       case 'reload':
@@ -186,8 +230,32 @@ export class GameApp {
       case 'rewards':
       case 'pass':
       case 'collection':
-        this.rewardsTab = action === 'collection' ? 'collection' : 'pass';
+      case 'worlds':
+        this.rewardsTab =
+          action === 'collection' ? 'collection' : action === 'worlds' ? 'worlds' : 'pass';
         this.go('rewards');
+        break;
+      case 'preview-world':
+        if (isWorldId(value)) {
+          this.previewWorld = value;
+          this.openOverlay('world-preview');
+        }
+        break;
+      case 'unlock-world':
+      case 'equip-world':
+        if (
+          isWorldId(value) &&
+          (action === 'equip-world' || this.store.unlockWorld(value)) &&
+          this.store.equipWorld(value)
+        ) {
+          this.overlay = null;
+          this.render();
+          this.toast(
+            action === 'unlock-world'
+              ? 'Fondo desbloqueado y equipado. ¡Es tuyo para siempre!'
+              : 'Fondo equipado. Tu mundo, a tu manera.',
+          );
+        }
         break;
       case 'energy':
         this.energyReturn = this.overlay;
@@ -230,6 +298,9 @@ export class GameApp {
         break;
       case 'restore-purchases':
         void this.refreshPurchases(true);
+        break;
+      case 'reset-preview':
+        if (!this.purchasing && this.commercePreview) void this.resetPreview();
         break;
       case 'rewarded-energy':
         void this.rewardedEnergy();
@@ -560,33 +631,70 @@ export class GameApp {
       if (restore)
         this.toast(
           this.store.hasPremium || rights.adsRemoved
-            ? 'Compras verificadas y restauradas.'
+            ? this.commercePreview
+              ? 'Pase de prueba restaurado. Sin cobro real.'
+              : 'Compras verificadas y restauradas.'
             : 'No hay compras disponibles para restaurar en esta versión.',
         );
     } catch {
       if (restore) this.toast('No se pudieron verificar las compras. Inténtalo más tarde.');
     } finally {
       if (restore) this.purchasing = false;
+      this.updatePurchaseButtons();
     }
+  }
+
+  private updatePurchaseButtons(): void {
+    const button = this.root.querySelector<HTMLButtonElement>('[data-action="buy-pass"]');
+    if (!button) return;
+    const available = !!this.monetization.purchases.available;
+    button.disabled = this.purchasing || !available;
+    button.textContent = available
+      ? this.commercePreview
+        ? 'Probar Pase Plus · 0 €'
+        : 'Obtener Pase Plus'
+      : 'Pase Plus · Próximamente';
+    button.setAttribute('aria-busy', String(this.purchasing));
   }
 
   private async purchasePass(): Promise<void> {
     if (!this.monetization.purchases.available || this.purchasing) return;
     this.purchasing = true;
+    this.updatePurchaseButtons();
     try {
       const result = await this.monetization.purchases.purchase('battle-pass');
       if (result === 'purchased') {
         await this.refreshPurchases();
         this.toast(
           this.store.hasPremium
-            ? 'Pase Plus verificado y activado.'
+            ? this.commercePreview
+              ? 'Pase Plus de prueba activado. No se ha cobrado nada.'
+              : 'Pase Plus verificado y activado.'
             : 'La tienda aún no ha confirmado el pase. Prueba Restaurar compras.',
         );
       } else if (result === 'unavailable') this.toast('El Pase Plus aún no está disponible.');
+      else if (result === 'cancelled' && this.commercePreview)
+        this.toast('Compra de prueba cancelada. No se ha cobrado nada.');
     } catch {
       this.toast('La compra no se pudo completar.');
     } finally {
       this.purchasing = false;
+      this.updatePurchaseButtons();
+    }
+  }
+
+  private async resetPreview(): Promise<void> {
+    this.purchasing = true;
+    try {
+      await this.monetization.purchases.resetPreview?.();
+      await this.refreshPurchases();
+      this.renderOverlay();
+      this.toast('Pase de prueba restablecido. Los intersticiales vuelven a estar activos.');
+    } catch {
+      this.toast('No se pudo restablecer la prueba.');
+    } finally {
+      this.purchasing = false;
+      this.updatePurchaseButtons();
     }
   }
 
@@ -630,6 +738,8 @@ export class GameApp {
 
   private pause(): void {
     this.combo = { ...this.combo, count: 0, lastMoveAt: 0 };
+    this.effects.clear();
+    this.updateCombo();
     if (this.screen === 'game' && this.session?.state.status === 'playing' && !this.overlay)
       this.openOverlay('pause');
   }
@@ -642,7 +752,7 @@ export class GameApp {
     if (this.combo.count && now - this.combo.lastMoveAt > COMBO_WINDOW_MS) {
       this.combo = { ...this.combo, count: 0 };
       this.updateCombo();
-    }
+    } else if (this.combo.count) this.updateCombo();
     if (this.screen === 'daily') {
       if (this.displayedDailyDate !== utcDate()) {
         this.render();
@@ -681,6 +791,7 @@ export class GameApp {
       return;
     const result = attemptMove(session.state, id);
     if (result.kind === 'ignored') return;
+    const hitRect = this.root.querySelector(`[data-arrow="${id}"]`)?.getBoundingClientRect();
     this.tick();
     if (result.kind === 'blocked') this.blockedArrows.add(id);
     this.combo = advanceCombo(this.combo, result.kind === 'removed', performance.now());
@@ -705,7 +816,15 @@ export class GameApp {
       this.combo.count,
     );
     this.updateHud();
-    this.updateCombo();
+    this.updateCombo(true);
+    if (result.kind === 'removed' && hitRect)
+      this.effects.hit(
+        this.combo.count,
+        this.store.profile.settings,
+        { x: hitRect.x + hitRect.width / 2, y: hitRect.y + hitRect.height / 2 },
+        session.state.status === 'won',
+      );
+    else if (result.kind === 'blocked') this.effects.clear();
     if (result.kind === 'blocked') this.toast('Camino bloqueado. Busca qué flecha sale primero.');
     await this.renderer.animate(result, this.combo.count);
     if (epoch !== this.epoch) return;
@@ -765,15 +884,17 @@ export class GameApp {
   }
 
   private render(): void {
+    this.effects.clear();
     this.epoch++;
     this.blockedArrows.clear();
     this.renderer?.destroy();
     this.renderer = null;
     document.documentElement.dataset.theme = this.store.profile.settings.theme;
+    document.documentElement.dataset.world = this.store.profile.settings.world;
     document.documentElement.dataset.motion = this.store.profile.settings.reducedMotion
       ? 'reduced'
       : 'full';
-    this.root.innerHTML = `<div class="app-shell ${this.screen === 'game' ? 'is-playing' : ''}">${this.header()}<main id="main-content">${this.content()}</main>${this.screen !== 'game' ? this.nav() : ''}<div class="overlay-layer"></div><div class="toast" role="status" aria-live="polite"></div></div>`;
+    this.root.innerHTML = `<div class="world-backdrop" aria-hidden="true">${worldArt(this.store.profile.settings.world)}${this.store.profile.settings.world !== 'void' ? `<div class="world-landscape">${worldArt(this.store.profile.settings.world)}</div>` : ''}</div><div class="app-shell ${this.screen === 'game' ? 'is-playing' : ''}">${this.header()}${this.commercePreview ? '<div class="preview-notice" role="note">ANUNCIOS Y COMPRAS DE PRUEBA <span>· SIN COBRO</span></div>' : ''}<main id="main-content">${this.content()}</main>${this.screen !== 'game' ? this.nav() : ''}<div class="overlay-layer"></div><div class="toast" role="status" aria-live="polite"></div></div>`;
     if (this.screen === 'game') void this.mountBoard();
     this.renderOverlay();
   }
@@ -803,6 +924,7 @@ export class GameApp {
           this.store.hasPremium,
           this.rewardsTab,
           !!this.monetization.purchases.available && !this.purchasing,
+          this.commercePreview,
         );
     }
   }
@@ -810,7 +932,7 @@ export class GameApp {
   private homeContent(): string {
     const profile = this.store.profile;
     const continuing = profile.classicSave?.state.status === 'playing';
-    return `<section class="home-hero"><div class="hero-copy"><div class="eyebrow"><span class="live-dot"></span> TU PRÓXIMA PEQUEÑA VICTORIA</div><h1>Piensa<br>la <span>salida.</span></h1><p class="hero-description">Cada flecha tiene un camino.<br>El truco es encontrar el orden.</p><button class="primary-button hero-play" data-action="play"><span>${continuing ? 'Continuar partida' : 'Jugar ahora'}<small>CLÁSICO <span>·</span> NIVEL ${String(profile.level).padStart(2, '0')}</small></span>${icon('diagonal')}</button><p class="hero-caption">${icon('heart')} ${this.store.hasPremium || profile.economy.collection.lifeTokens > 0 ? 'Cuatro' : 'Tres'} vidas. Cero prisas.</p>${profile.economy.collection.lifeTokens ? `<p class="bonus-life-note">${profile.economy.collection.lifeTokens} reservas de vida extra: una por nuevo intento clásico; continuar es gratis.</p>` : ''}</div><div class="hero-art" aria-hidden="true"><div class="art-orbit orbit-one"></div><div class="art-orbit orbit-two"></div><div class="art-caption">ENCUENTRA TU CAMINO</div>${['up', 'right', 'left', 'down', 'right', 'up', 'down', 'left', 'up'].map((direction, index) => `<div class="art-tile art-${index} direction-${direction}"><span>↑</span></div>`).join('')}<div class="art-tag">${icon('spark')} UN MOVIMIENTO LO CAMBIA TODO</div></div></section><section class="home-lower"><div class="section-heading"><span>Más formas de pensar</span><span class="micro-copy">ELIGE TU RETO</span></div><div class="mode-preview-grid"><button class="mode-preview daily-preview" data-action="daily"><span class="preview-icon">${icon('calendar')}</span><span><small>UNO CADA DÍA</small><strong>El reto de hoy</strong><span>Un nuevo día, una nueva salida.</span></span>${icon('diagonal')}</button><button class="mode-preview share-preview" data-action="shared"><span class="preview-icon">${icon('share')}</span><span><small>MEJOR EN COMPAÑÍA</small><strong>Reta a alguien</strong><span>El mismo puzle. ¿Otro camino?</span></span>${icon('diagonal')}</button></div><div class="rewards-shortcuts"><button data-action="pass">${icon('gift')}<span>Pase de temporada<small>${profile.economy.pass.xp} XP · Recompensas gratuitas</small></span>${icon('arrow')}</button><button data-action="collection">${icon('chest')}<span>Tu colección<small>${profile.economy.collection.chests} cofres · Skins y temas</small></span>${icon('arrow')}</button></div><div class="home-footnote"><span class="tiny-dots"><i></i><i></i><i></i><i></i></span> Sin cuenta. Sin prisa. Con ingenio.</div></section>`;
+    return `<section class="home-hero"><div class="hero-copy"><div class="eyebrow"><span class="live-dot"></span> TU PRÓXIMA PEQUEÑA VICTORIA</div><h1>Piensa<br>la <span>salida.</span></h1><p class="hero-description">Cada flecha tiene un camino.<br>El truco es encontrar el orden.</p><button class="primary-button hero-play" data-action="play"><span>${continuing ? 'Continuar partida' : 'Jugar ahora'}<small>CLÁSICO <span>·</span> NIVEL ${String(profile.level).padStart(2, '0')}</small></span>${icon('diagonal')}</button><p class="hero-caption">${icon('heart')} ${this.store.hasPremium || profile.economy.collection.lifeTokens > 0 ? 'Cuatro' : 'Tres'} vidas. Cero prisas.</p>${profile.economy.collection.lifeTokens ? `<p class="bonus-life-note">${profile.economy.collection.lifeTokens} reservas de vida extra: una por nuevo intento clásico; continuar es gratis.</p>` : ''}</div><div class="hero-art" aria-hidden="true"><div class="art-orbit orbit-one"></div><div class="art-orbit orbit-two"></div><div class="art-caption">ENCUENTRA TU CAMINO</div>${['up', 'right', 'left', 'down', 'right', 'up', 'down', 'left', 'up'].map((direction, index) => `<div class="art-tile art-${index} direction-${direction}"><span>↑</span></div>`).join('')}<div class="art-tag">${icon('spark')} UN MOVIMIENTO LO CAMBIA TODO</div></div></section><section class="home-lower"><div class="section-heading"><span>Más formas de pensar</span><span class="micro-copy">ELIGE TU RETO</span></div><div class="mode-preview-grid"><button class="mode-preview daily-preview" data-action="daily"><span class="preview-icon">${icon('calendar')}</span><span><small>UNO CADA DÍA</small><strong>El reto de hoy</strong><span>Un nuevo día, una nueva salida.</span></span>${icon('diagonal')}</button><button class="mode-preview share-preview" data-action="shared"><span class="preview-icon">${icon('share')}</span><span><small>MEJOR EN COMPAÑÍA</small><strong>Reta a alguien</strong><span>El mismo puzle. ¿Otro camino?</span></span>${icon('diagonal')}</button></div><button class="world-shortcut" data-action="worlds">${icon('gift')}<span><strong>Navidad. Halloween. Tu mundo.</strong><small>Fondos de evento gratis ? ${profile.events.stamps} sellos disponibles</small></span>${icon('arrow')}</button><div class="rewards-shortcuts"><button data-action="pass">${icon('gift')}<span>Pase de temporada<small>${profile.economy.pass.xp} XP · Recompensas gratuitas</small></span>${icon('arrow')}</button><button data-action="collection">${icon('chest')}<span>Tu colección<small>${profile.economy.collection.chests} cofres · Skins y temas</small></span>${icon('arrow')}</button></div><div class="home-footnote"><span class="tiny-dots"><i></i><i></i><i></i><i></i></span> Sin cuenta. Sin prisa. Con ingenio.</div></section>`;
   }
 
   private modesContent(): string {
@@ -884,7 +1006,7 @@ export class GameApp {
   private gameContent(): string {
     const session = this.session!;
     const tutorial = session.mode === 'tutorial';
-    return `<section class="game-layout"><div class="game-intro"><div class="eyebrow">${tutorial ? 'APRENDER HACIENDO' : session.mode === 'classic' ? 'MODO CLÁSICO' : session.mode === 'daily' ? 'DESAFÍO DIARIO' : 'RETO COMPARTIDO'}</div><h1 class="game-title">${tutorial ? 'Todo tiene<br> un orden.' : 'Una flecha.<br> Un paso más.'}</h1><p class="game-description">Observa el tablero. Libera los caminos.<br>La siguiente salida está ahí.</p><div class="desktop-tip">${icon('help')}<p>Una flecha solo puede salir si no hay otra en su trayectoria. Cada intento bloqueado cuesta una vida.</p></div></div><div class="play-area">${session.lifeTokenSpent ? `<p class="bonus-life-note">${icon('heart')} Vida extra del pase · 4 vidas en este intento</p>` : ''}<div class="game-hud"><div class="lives" role="img" aria-label="3 vidas" data-lives></div><span class="game-timer">${icon('clock')}<span data-timer>${formatTime(session.elapsedMs)}</span></span></div><div class="board-viewport"><div class="board-frame"><div class="board-corner corner-tl"></div><div class="board-corner corner-br"></div><div class="board-host" aria-hidden="true"></div><div class="board-controls" role="group" aria-label="Tablero de flechas"></div><div class="board-loading">Preparando tu camino…</div></div></div><div class="board-feedback"><strong class="combo-badge" data-combo hidden></strong><button class="text-button zoom-button" data-action="zoom-board" aria-pressed="false">Ampliar tablero</button></div><div class="board-progress"><span>FLECHAS LIBERADAS</span><strong data-counter></strong><div class="progress-track"><i data-progress></i></div></div><div class="tutorial-instruction" ${tutorial ? '' : 'hidden'}></div><div class="game-tools"><button class="hint-button" data-action="hint">${icon('spark')}<span>Una pista</span><span class="hint-count" data-hints>${this.store.profile.hints}</span></button><button class="text-button" data-action="pause">Tomar un respiro ${icon('pause')}</button></div><p class="board-caption">${icon('arrow')} Toca una flecha para liberarla.</p></div></section>`;
+    return `<section class="game-layout"><div class="game-intro"><div class="eyebrow">${tutorial ? 'APRENDER HACIENDO' : session.mode === 'classic' ? 'MODO CLÁSICO' : session.mode === 'daily' ? 'DESAFÍO DIARIO' : 'RETO COMPARTIDO'}</div><h1 class="game-title">${tutorial ? 'Todo tiene<br> un orden.' : 'Una flecha.<br> Un paso más.'}</h1><p class="game-description">Observa el tablero. Libera los caminos.<br>La siguiente salida está ahí.</p><div class="desktop-tip">${icon('help')}<p>Una flecha solo puede salir si no hay otra en su trayectoria. Cada intento bloqueado cuesta una vida.</p></div></div><div class="play-area">${session.lifeTokenSpent ? `<p class="bonus-life-note">${icon('heart')} Vida extra del pase · 4 vidas en este intento</p>` : ''}<div class="game-hud"><div class="lives" role="img" aria-label="3 vidas" data-lives></div><span class="game-timer">${icon('clock')}<span data-timer>${formatTime(session.elapsedMs)}</span></span></div><div class="frenzy-console" data-tier="idle"><span class="frenzy-symbol" aria-hidden="true">ϟ</span><div class="frenzy-copy"><small>COMBO · 1,8 SEGUNDOS</small><strong data-frenzy-title>ENCUENTRA EL RITMO</strong></div><div class="frenzy-timer" role="progressbar" aria-label="Tiempo para continuar el combo" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i data-frenzy-fill></i></div><span class="frenzy-count" data-frenzy-count>—</span></div><div class="board-viewport"><div class="board-frame"><div class="board-corner corner-tl"></div><div class="board-corner corner-br"></div><div class="board-host" aria-hidden="true"></div><div class="board-controls" role="group" aria-label="Tablero de flechas"></div><div class="board-loading">Preparando tu camino…</div></div></div><div class="board-feedback"><strong class="combo-badge" data-combo hidden></strong><button class="text-button zoom-button" data-action="zoom-board" aria-pressed="false">Ampliar tablero</button></div><div class="board-progress"><span>FLECHAS LIBERADAS</span><strong data-counter></strong><div class="progress-track"><i data-progress></i></div></div><div class="tutorial-instruction" ${tutorial ? '' : 'hidden'}></div><div class="game-tools"><button class="hint-button" data-action="hint">${icon('spark')}<span>Una pista</span><span class="hint-count" data-hints>${this.store.profile.hints}</span></button><button class="text-button" data-action="pause">Tomar un respiro ${icon('pause')}</button></div><p class="board-caption">${icon('arrow')} Toca una flecha para liberarla.</p></div></section>`;
   }
 
   private async mountBoard(): Promise<void> {
@@ -904,6 +1026,7 @@ export class GameApp {
       });
       await this.renderer.ready;
       if (epoch !== this.epoch) return;
+      this.renderer.setPaused(this.overlay !== null || document.hidden);
       this.busy = false;
       this.visualSettingsDirty = false;
       this.root.querySelector('.board-loading')?.remove();
@@ -990,13 +1113,33 @@ export class GameApp {
     }
   }
 
-  private updateCombo(): void {
+  private updateCombo(animate = false): void {
     const badge = this.root.querySelector<HTMLElement>('[data-combo]');
     if (!badge) return;
+    const stage = comboStage(this.combo.count);
+    const console = this.root.querySelector<HTMLElement>('.frenzy-console');
+    const title = this.root.querySelector('[data-frenzy-title]');
+    const count = this.root.querySelector('[data-frenzy-count]');
+    const fuse = this.root.querySelector<HTMLElement>('[data-frenzy-fill]');
+    if (console) {
+      console.dataset.tier = stage.tier;
+      console.style.setProperty('--combo-color', stage.color);
+    }
+    if (title) title.textContent = stage.name;
+    if (count) count.textContent = this.combo.count > 1 ? `×${this.combo.count}` : '—';
+    const remaining = this.combo.count
+      ? Math.max(0, 1 - (performance.now() - this.combo.lastMoveAt) / COMBO_WINDOW_MS) * 100
+      : 0;
+    if (fuse) {
+      fuse.style.width = `${remaining}%`;
+      fuse.parentElement?.setAttribute('aria-valuenow', String(Math.round(remaining)));
+    }
+    badge.style.setProperty('--combo-color', stage.color);
     badge.hidden = this.combo.count < 2;
     badge.textContent = `COMBO ×${this.combo.count}`;
     badge.dataset.intensity = String(Math.min(5, this.combo.count));
     if (
+      animate &&
       !this.store.profile.settings.reducedMotion &&
       !matchMedia('(prefers-reduced-motion: reduce)').matches &&
       this.combo.count >= 2
@@ -1037,11 +1180,16 @@ export class GameApp {
         ([screen, glyph, label]) =>
           `<button data-action="${screen}" class="nav-item ${activeScreen === screen ? 'active' : ''}" ${activeScreen === screen ? 'aria-current="page"' : ''}>${icon(glyph!)}<span>${label}</span></button>`,
       )
-      .join('')}<span class="nav-signature">FLECHA TRAMPA <small>v0.2</small></span></nav>`;
+      .join('')}<span class="nav-signature">FLECHA TRAMPA <small>v0.3</small></span></nav>`;
   }
 
   private openOverlay(overlay: Overlay): void {
     if (this.overlay === 'conflict' && overlay !== 'conflict') return;
+    if (overlay !== 'result') {
+      this.effects.clear();
+      this.combo = { ...this.combo, count: 0, lastMoveAt: 0 };
+      this.updateCombo();
+    }
     this.tick();
     this.previousFocus = document.activeElement as HTMLElement | null;
     this.overlay = overlay;
@@ -1078,6 +1226,7 @@ export class GameApp {
   }
 
   private renderOverlay(): void {
+    this.renderer?.setPaused(this.overlay !== null || document.hidden);
     const layer = this.root.querySelector<HTMLElement>('.overlay-layer');
     if (!layer) return;
     const focused =
@@ -1114,11 +1263,13 @@ export class GameApp {
         )
         .join(
           '',
-        )}</div><div class="theme-heading">PALETA DE FLECHAS</div>${themesContent(this.store.profile)}<button class="text-button centered" data-action="collection">Ver skins y cofres ${icon('chest')}</button><button class="text-button centered" data-action="tutorial">${icon('help')} Repetir tutorial</button><p class="settings-footer">FLECHA TRAMPA · v0.2.0<br>Tu progreso se queda en este dispositivo.</p>`;
+        )}</div><button class="secondary-button" data-action="worlds">Fondos y eventos ${icon('gift')}</button><div class="theme-heading">PALETA DE FLECHAS</div>${themesContent(this.store.profile)}<button class="text-button centered" data-action="collection">Ver skins y cofres ${icon('chest')}</button><button class="text-button centered" data-action="tutorial">${icon('help')} Repetir tutorial</button>${this.commercePreview ? '<div class="preview-settings"><strong>Monetización de prueba</strong><p>Anuncios locales y pase sin cobro. Puedes restablecer el pase para volver a probar la compra y los intersticiales.</p><button class="secondary-button" data-action="reset-preview">Restablecer pase de prueba</button></div>' : ''}<p class="settings-footer">FLECHA TRAMPA · v0.3.0<br>Tu progreso se queda en este dispositivo.</p>`;
     }
     if (this.overlay === 'hints')
-      content = `${close}<div class="modal-symbol lavender">${icon('spark')}</div><h2>Tu ingenio<br>también recarga.</h2><p>No te quedan pistas. Cada tres victorias conseguirás una nueva. ${this.monetization.ads.rewardedAvailable ? 'Puedes obtener otra viendo un anuncio recompensado.' : 'Los anuncios recompensados todavía no están disponibles.'}</p>${this.monetization.ads.rewardedAvailable ? `<button class="secondary-button" data-action="rewarded-hint">Ver anuncio por una pista ${icon('spark')}</button>` : ''}<button class="primary-button" data-action="close-overlay">Seguir pensando ${icon('arrow')}</button>`;
+      content = `${close}<div class="modal-symbol lavender">${icon('spark')}</div><h2>Tu ingenio<br>también recarga.</h2><p>No te quedan pistas. Cada tres victorias conseguirás una nueva. ${this.monetization.ads.rewardedAvailable ? (this.commercePreview ? 'Puedes probar un anuncio recompensado sin publicidad real.' : 'Puedes obtener otra viendo un anuncio recompensado.') : 'Los anuncios recompensados todavía no están disponibles.'}</p>${this.monetization.ads.rewardedAvailable ? `<button class="secondary-button" data-action="rewarded-hint">${this.commercePreview ? 'Ver anuncio de prueba por una pista' : 'Ver anuncio por una pista'} ${icon('spark')}</button>` : ''}<button class="primary-button" data-action="close-overlay">Seguir pensando ${icon('arrow')}</button>`;
     if (this.overlay === 'result') content = this.resultContent();
+    if (this.overlay === 'world-preview')
+      content = worldPreview(this.store.profile, this.previewWorld);
     if (this.overlay === 'chest' && this.chestDrop) content = chestContent(this.chestDrop);
     if (this.overlay === 'energy') {
       const current = regenerateEnergy(
@@ -1126,7 +1277,7 @@ export class GameApp {
         Date.now(),
         this.store.energyCapacity,
       );
-      content = `${close}<div class="modal-symbol lime">${icon('energy')}</div><div class="eyebrow">TU ENERGÍA</div><h2>${current.amount ? 'Listo para<br>otro intento.' : 'Recarga y<br>vuelve a volar.'}</h2><strong class="energy-total" data-energy-amount>${current.amount} / ${this.store.energyCapacity}</strong><p>Una carga por nueva partida clásica o diaria. Al ganar la recuperas. Continuar un guardado es gratis.</p><p class="energy-next">${current.amount >= this.store.energyCapacity ? 'Energía completa' : 'Próxima carga en'} <strong data-energy-wait></strong></p><p class="fine-print">Una carga cada 10 minutos, también con la app cerrada. Las bonificaciones pueden superar el límite.</p>${this.monetization.ads.rewardedAvailable ? '<button class="secondary-button" data-action="rewarded-energy">Ver anuncio por energía</button>' : ''}${this.pendingEnergySession ? '<button class="primary-button" data-action="retry-energy">Volver a intentar</button>' : ''}<button class="secondary-button" data-action="pass">Ver recompensas del pase</button><button class="text-button centered" data-action="practice">Practicar sin energía</button>`;
+      content = `${close}<div class="modal-symbol lime">${icon('energy')}</div><div class="eyebrow">TU ENERGÍA</div><h2>${current.amount ? 'Listo para<br>otro intento.' : 'Recarga y<br>vuelve a volar.'}</h2><strong class="energy-total" data-energy-amount>${current.amount} / ${this.store.energyCapacity}</strong><p>Una carga por nueva partida clásica o diaria. Al ganar la recuperas. Continuar un guardado es gratis.</p><p class="energy-next">${current.amount >= this.store.energyCapacity ? 'Energía completa' : 'Próxima carga en'} <strong data-energy-wait></strong></p><p class="fine-print">Una carga cada 10 minutos, también con la app cerrada. Las bonificaciones pueden superar el límite.</p>${this.monetization.ads.rewardedAvailable ? `<button class="secondary-button" data-action="rewarded-energy">${this.commercePreview ? 'Ver anuncio de prueba por energía' : 'Ver anuncio por energía'}</button>` : ''}${this.pendingEnergySession ? '<button class="primary-button" data-action="retry-energy">Volver a intentar</button>' : ''}<button class="secondary-button" data-action="pass">Ver recompensas del pase</button><button class="text-button centered" data-action="practice">Practicar sin energía</button>`;
     }
     layer.innerHTML = `<div class="modal-backdrop"><section class="modal-card ${this.overlay === 'result' ? 'result-card' : ''}" role="dialog" aria-modal="true" aria-label="${this.overlay === 'settings' ? 'Ajustes' : this.overlay === 'result' ? 'Resultado de la partida' : this.overlay === 'pause' ? 'Partida en pausa' : 'FLECHA TRAMPA'}">${content}</section></div>`;
     this.updateEnergy();
@@ -1174,7 +1325,8 @@ export class GameApp {
         this.overlay === 'settings' ||
         this.overlay === 'hints' ||
         this.overlay === 'chest' ||
-        this.overlay === 'energy'
+        this.overlay === 'energy' ||
+        this.overlay === 'world-preview'
       )
         this.closeOverlay();
       else if (this.overlay === 'pause') this.closeOverlay();
