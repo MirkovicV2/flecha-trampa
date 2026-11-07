@@ -638,12 +638,27 @@ export class GameApp {
       if (restore) this.toast('No se pudieron verificar las compras. Inténtalo más tarde.');
     } finally {
       if (restore) this.purchasing = false;
+      this.updatePurchaseButtons();
     }
+  }
+
+  private updatePurchaseButtons(): void {
+    const button = this.root.querySelector<HTMLButtonElement>('[data-action="buy-pass"]');
+    if (!button) return;
+    const available = !!this.monetization.purchases.available;
+    button.disabled = this.purchasing || !available;
+    button.textContent = available
+      ? this.commercePreview
+        ? 'Probar Pase Plus · 0 €'
+        : 'Obtener Pase Plus'
+      : 'Pase Plus · Próximamente';
+    button.setAttribute('aria-busy', String(this.purchasing));
   }
 
   private async purchasePass(): Promise<void> {
     if (!this.monetization.purchases.available || this.purchasing) return;
     this.purchasing = true;
+    this.updatePurchaseButtons();
     try {
       const result = await this.monetization.purchases.purchase('battle-pass');
       if (result === 'purchased') {
@@ -662,6 +677,7 @@ export class GameApp {
       this.toast('La compra no se pudo completar.');
     } finally {
       this.purchasing = false;
+      this.updatePurchaseButtons();
     }
   }
 
@@ -676,6 +692,7 @@ export class GameApp {
       this.toast('No se pudo restablecer la prueba.');
     } finally {
       this.purchasing = false;
+      this.updatePurchaseButtons();
     }
   }
 
