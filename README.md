@@ -1,12 +1,12 @@
 # FLECHA TRAMPA
 
-**[Descargar APK para Android (v0.2.0)](https://github.com/MirkovicV2/flecha-trampa/releases/download/v0.2.0/flecha-trampa-v0.2.0-android.apk)**
+**[Descargar APK para Android (v0.3.0)](https://github.com/MirkovicV2/flecha-trampa/releases/download/v0.3.0/flecha-trampa-v0.3.0-android.apk)**
 
-**Piensa la salida.** Juego de puzles para móvil: flechas, tres vidas y el orden justo para despejar el tablero. Versión 0.2.0 para web y Android, con TypeScript estricto, Phaser 3, Vite, Vitest y Capacitor 8.
+**Piensa la salida.** Juego de puzles para móvil: flechas, tres vidas y el orden justo para despejar el tablero. Versión 0.3.0 para web y Android, con TypeScript estricto, Phaser 3, Vite, Vitest y Capacitor 8.
 
 ## Descargar e instalar la APK
 
-Pulsa **Descargar APK para Android** al principio de este README para descargar directamente el instalador. También puedes [ver la Release y sus archivos](https://github.com/MirkovicV2/flecha-trampa/releases/tag/v0.2.0).
+Pulsa **Descargar APK para Android** al principio de este README para descargar directamente el instalador. También puedes [ver la Release y sus archivos](https://github.com/MirkovicV2/flecha-trampa/releases/tag/v0.3.0).
 
 El enlace directo funciona también desde el README en GitHub Mobile. El repositorio es privado: iniciar sesión con la cuenta que tiene acceso. Abrir el archivo descargado y seguir el instalador de Android.
 
@@ -14,11 +14,20 @@ Requiere Android 7.0 o posterior y Android System WebView actualizado. Es una AP
 
 ## Novedades de esta versión
 
-Energía con recarga y devolución al ganar, pase gratuito de diez niveles, reservas de vida extra, ocho skins en cofres con probabilidades visibles y seis temas completos. El tablero acepta pulsaciones durante las animaciones y se puede ampliar; los movimientos rápidos forman combos. [Reglas de energía, pase, cofres y entrada táctil](docs/ECONOMY.md). El Pase Plus está preparado; no hay compras ni anuncios reales.
+Seis escenarios originales de Navidad, Halloween, sakura, neón, océano y festival de faroles, con vistas previas y desbloqueo gratuito por sellos. Son independientes de la skin y la paleta de las flechas. Los combos ahora escalan hasta Frenesí, Imparable y Leyenda, con medidor, estelas, ondas y partículas, manteniendo estables los controles táctiles.
+
+Hay anuncios locales y compra del Pase Plus **de prueba, sin cobro**, para revisar el flujo completo. La compra de 0,00 € activa cuatro vidas clásicas, capacidad de ocho cargas y omisión de intersticiales; cancelar no activa nada y Restaurar compras conserva la prueba. Los anuncios recompensados solo dan la recompensa local al completarlos y recogerla. No se solicitan tarjetas ni hay anunciantes o SDK de tienda. Ver [fondos y eventos](docs/EVENTS.md), [economía](docs/ECONOMY.md) y [límites del simulador](docs/MONETIZATION.md).
+
+## Probar las novedades
+
+1. Inicio → **Navidad. Halloween. Tu mundo.**, o Recompensas → **Fondos y eventos**. Tienes un sello de bienvenida para desbloquear Navidad; puedes previsualizar todos los demás.
+2. Recompensas → Pase de temporada → **Probar Pase Plus · 0 €**. Cancelar, activar y restaurar funcionan. Ajustes → **Restablecer pase de prueba** permite repetir el flujo.
+3. Pulsa el contador de energía → **Ver anuncio de prueba por energía**. Espera los cuatro segundos y recoge la recompensa; cerrar antes no otorga nada.
+4. Encadena flechas válidas en menos de 1,8 segundos. Usa retos compartidos para practicar sin energía. Activa el sonido en Ajustes si quieres escuchar la progresión del combo.
 
 ## Estado de GitHub
 
-Repositorio privado verificado: [MirkovicV2/flecha-trampa](https://github.com/MirkovicV2/flecha-trampa). `main`, `develop` y las ramas de funcionalidad están publicadas. `v0.1.0` conserva el MVP web original y `v0.2.0` identifica la versión con APK Android. La cuenta activa se comprobó con `gh auth status` y `gh api user`. La protección remota de `main` no está activa: GitHub exige Pro para habilitarla en este repositorio privado. Ver [estado y comprobaciones de GitHub](docs/REMOTE_STATUS.md).
+Repositorio privado verificado: [MirkovicV2/flecha-trampa](https://github.com/MirkovicV2/flecha-trampa). `main`, `develop` y las ramas de funcionalidad están publicadas. `v0.1.0` conserva el MVP web original y `v0.3.0` identifica la versión con APK Android. La cuenta activa se comprobó con `gh auth status` y `gh api user`. La protección remota de `main` no está activa: GitHub exige Pro para habilitarla en este repositorio privado. Ver [estado y comprobaciones de GitHub](docs/REMOTE_STATUS.md).
 
 ## Inicio rápido en este ordenador
 
@@ -77,7 +86,7 @@ En Windows, `scripts/dev.ps1 -Task check` o `-Task preview` selecciona también 
 
 ## Reglas y experiencia
 
-Cada flecha ocupa una celda y sale en línea recta según su orientación. Si su trayectoria hasta el borde está libre, sale y desaparece. Si encuentra otra flecha, permanece en su sitio y consume una vida. Cada nivel comienza con tres vidas: despejar el tablero da la victoria y perder las tres vidas termina el intento.
+Cada flecha ocupa una celda y sale en línea recta según su orientación. Si su trayectoria hasta el borde está libre, sale y desaparece. Si encuentra otra flecha, permanece en su sitio y consume una vida. El intento comienza con tres vidas por defecto: despejar el tablero da la victoria y agotar las vidas termina el intento. Las reservas gratuitas y el Pase Plus de prueba permiten cuatro vidas en clásico; diario y retos compartidos conservan tres.
 
 No hay límite de tiempo. El cronómetro excluye pausas y segundo plano. Las pistas destacan una flecha válida del tablero actual, sin moverla automáticamente. Las direcciones se distinguen por su forma y orientación, además del color.
 
@@ -113,7 +122,7 @@ Densidad y complejidad progresan por separado del tamaño. Las pruebas ejecutan 
 
 ## Progreso y recompensas
 
-Se guardan nivel clásico, sesiones de cada modo, partidas, victorias, victorias sin errores, tiempo activo, flechas liberadas, rachas, resultados diarios, pistas y ajustes. Hay tres pistas iniciales y una pista adicional por cada tres victorias. Las paletas Aurora y Atardecer son gratuitas.
+Se guardan nivel clásico, sesiones de cada modo, partidas, victorias, victorias sin errores, tiempo activo, flechas liberadas, rachas, resultados diarios, pistas y ajustes. Hay tres pistas iniciales y una pista adicional por cada tres victorias. Las paletas Aurora, Atardecer, Glaciar y Neón son gratuitas; Medianoche y Solar se ganan en el pase gratuito. Los fondos de evento se compran con sellos gratuitos obtenidos por primeras victorias, sin gastar ni otorgar energía.
 
 En web se utiliza `localStorage`; en la app nativa, Capacitor Preferences con escrituras serializadas. Ambos usan un esquema validado y una copia anterior recuperable. La interfaz informa de guardados dañados o almacenamiento no disponible. Si otra pestaña actualiza el progreso, se bloquea la escritura antigua y se ofrece recuperar la versión reciente.
 
@@ -129,7 +138,7 @@ src/
   scenes/      representación y animaciones de Phaser
   ui/          pantallas DOM, controles accesibles y coordinación
   services/    progreso, diario, compartir, feedback, plataforma y monetización
-  config/      paletas y ajustes
+  config/      paletas, fondos, combos y catálogos
   utils/       PRNG, formatos y validación
   assets/      documentación de recursos originales
 tests/         pruebas de lógica y servicios
@@ -138,7 +147,7 @@ public/        icono original
 .github/workflows/ci.yml
 ```
 
-Phaser se carga al abrir el tablero. Primero se aplica y guarda la transición pura; después se anima. El bloqueo de entrada evita dobles movimientos durante animaciones y un contador de pantalla descarta respuestas de escenas antiguas. El resultado se registra antes de terminar la animación para sobrevivir a una recarga.
+Phaser se carga al abrir el tablero. Primero se aplica y guarda la transición pura; después se anima. La identidad estable de los controles evita dobles pulsaciones y permite encadenar jugadas durante animaciones; un contador de pantalla descarta respuestas de escenas antiguas. Los efectos decorativos no desplazan las zonas táctiles. El resultado se registra antes de terminar la animación para sobrevivir a una recarga.
 
 ## Ramas, contribución y releases
 
@@ -168,6 +177,6 @@ En este PC se han instalado JDK 21 y Android SDK 36 dentro de `.tools/`, sin sus
 
 ## Monetización y limitaciones
 
-`AdsService` y `PurchasesService` tienen implementaciones NoOp. No hay anuncios, pagos ni recompensas publicitarias simuladas. Están preparados los puntos de integración de pistas recompensadas, intersticiales entre niveles, eliminación de anuncios y cosméticos. Ver [monetización futura](docs/MONETIZATION.md).
+Esta distribución interna habilita `PreviewAdsService` y `PreviewPurchasesService`. Todos los flujos dicen **PRUEBA · SIN COBRO** y el pase cuesta 0,00 € de prueba. Los derechos locales del simulador no son recibos de tienda. En Ajustes se puede restablecer el pase. `VITE_MONETIZATION_MODE=disabled` selecciona los adaptadores NoOp y desactiva anuncios y compra. Una distribución comercial debe desactivar el simulador hasta implementar proveedores reales y verificación de recibos. Ver [configuración y monetización futura](docs/MONETIZATION.md).
 
 Pendiente: disponer de un plan compatible para activar y verificar protección de `main`; probar la APK en teléfonos físicos; preparar y firmar iOS en un Mac; alojar una URL pública para compartir entre equipos. No hay ranking global, sincronización en la nube, analítica ni caché PWA offline. Las pruebas automatizadas no sustituyen la validación en hardware real.

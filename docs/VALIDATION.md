@@ -1,5 +1,15 @@
 # Validación del juego
 
+## Versión 0.3.0 — 7 de noviembre de 2026
+
+En Windows se han completado lint, formato, TypeScript estricto y Vite build; las 92 pruebas Vitest de 11 archivos son correctas. Las 44 pruebas Playwright de móvil y escritorio pasan contra la compilación de producción. Tras aclarar los sellos faltantes en una vista previa bloqueada, se repitieron los dos recorridos de escenarios, también correctos.
+
+La cobertura nueva incluye migración y persistencia de fondos, sellos por primeras victorias sin explotación por reintentos, desbloqueo sin cambios de energía, previsualización de los seis eventos, compra de prueba cancelada/activada/restaurada/restablecida, anuncios completados y cancelados, limpieza al salir de primer plano y ausencia de recompensas prematuras. Se comprueban las cuatro vidas clásicas y la omisión de intersticiales con Plus de prueba. Los combos se prueban con diez extracciones simultáneas, máximo de 72 partículas DOM, geometría táctil constante, pausa y reducción de movimiento.
+
+La compilación y lint Android locales son correctos. La APK release 0.3.0 (`versionCode 4`) está firmada con el mismo certificado de 0.2.0, con firma v2/v3, alineación de 16 KB y depuración desactivada. Se han comparado por SHA-256 los 11 archivos de `dist/` con sus copias dentro de la APK: coinciden. Hash del instalador: `993d9d7c16624a52f4e8bb8204b5176d3b1b30358be08627dc088f87ff567e02`.
+
+Se revisaron visualmente la galería, Navidad en partida, la vista previa Halloween, la pantalla de compra de prueba y el estado Imparable en móvil. Las capturas están en `.artifacts/`. Las simulaciones no constituyen pruebas de SDKs publicitarios, cobros o facturación real. No se ha validado esta versión en un teléfono físico o iOS.
+
 ## Versión 0.2.0 — 7 de noviembre de 2026
 
 83 pruebas Vitest correctas, lint y compilación web correctos. Se comprobaron los 30 recorridos previos de navegador y cuatro comprobaciones posteriores de cofres/temas y vidas extra, sin fallos. La suite ampliada contiene 32 casos de navegador entre móvil y escritorio. Incluye eventos táctiles reales, arrastres, combos durante animaciones, energía agotada, recompensas únicas, persistencia de skins y cuatro vidas gratuitas al continuar.
