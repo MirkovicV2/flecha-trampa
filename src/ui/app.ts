@@ -30,6 +30,8 @@ import { worldPreview } from './worlds';
 import { CommercePreviewView } from './commerce-preview';
 import { PreviewAdsService, PreviewPurchasesService } from '../services/preview-commerce';
 import { PREVIEW_PURCHASE_KEY } from '../services/preview-commerce';
+import { comboStage } from '../config/combos';
+import { ComboEffects } from './combo-effects';
 
 type Screen = 'home' | 'modes' | 'game' | 'stats' | 'daily' | 'shared' | 'rewards';
 type Overlay =
@@ -67,6 +69,7 @@ export class GameApp {
   private readonly monetization: MonetizationService;
   private readonly commerceView: CommercePreviewView;
   private readonly commercePreview: boolean;
+  private readonly effects: ComboEffects;
   private pendingArrowFocus: string | null = null;
   private readonly blockedArrows = new Set<string>();
   private combo = emptyCombo();
@@ -82,6 +85,7 @@ export class GameApp {
     private readonly store = new ProgressStore(),
   ) {
     this.commerceView = new CommercePreviewView(root);
+    this.effects = new ComboEffects(root);
     this.commercePreview = (import.meta.env.VITE_MONETIZATION_MODE ?? 'preview') === 'preview';
     this.monetization = this.commercePreview
       ? new MonetizationService(
@@ -715,6 +719,8 @@ export class GameApp {
 
   private pause(): void {
     this.combo = { ...this.combo, count: 0, lastMoveAt: 0 };
+    this.effects.clear();
+    this.updateCombo();
     if (this.screen === 'game' && this.session?.state.status === 'playing' && !this.overlay)
       this.openOverlay('pause');
   }
@@ -727,7 +733,7 @@ export class GameApp {
     if (this.combo.count && now - this.combo.lastMoveAt > COMBO_WINDOW_MS) {
       this.combo = { ...this.combo, count: 0 };
       this.updateCombo();
-    }
+    } else if (this.combo.count) this.updateCombo();
     if (this.screen === 'daily') {
       if (this.displayedDailyDate !== utcDate()) {
         this.render();
@@ -766,6 +772,7 @@ export class GameApp {
       return;
     const result = attemptMove(session.state, id);
     if (result.kind === 'ignored') return;
+    const hitRect = this.root.querySelector(`[data-arrow="${id}"]`)?.getBoundingClientRect();
     this.tick();
     if (result.kind === 'blocked') this.blockedArrows.add(id);
     this.combo = advanceCombo(this.combo, result.kind === 'removed', performance.now());
@@ -790,7 +797,15 @@ export class GameApp {
       this.combo.count,
     );
     this.updateHud();
-    this.updateCombo();
+    this.updateCombo(true);
+    if (result.kind === 'removed' && hitRect)
+      this.effects.hit(
+        this.combo.count,
+        this.store.profile.settings,
+        { x: hitRect.x + hitRect.width / 2, y: hitRect.y + hitRect.height / 2 },
+        session.state.status === 'won',
+      );
+    else if (result.kind === 'blocked') this.effects.clear();
     if (result.kind === 'blocked') this.toast('Camino bloqueado. Busca qué flecha sale primero.');
     await this.renderer.animate(result, this.combo.count);
     if (epoch !== this.epoch) return;
@@ -850,6 +865,7 @@ export class GameApp {
   }
 
   private render(): void {
+    this.effects.clear();
     this.epoch++;
     this.blockedArrows.clear();
     this.renderer?.destroy();
@@ -859,7 +875,7 @@ export class GameApp {
     document.documentElement.dataset.motion = this.store.profile.settings.reducedMotion
       ? 'reduced'
       : 'full';
-    this.root.innerHTML = `<div class="world-backdrop" aria-hidden="true">${worldArt(this.store.profile.settings.world)}</div><div class="app-shell ${this.screen === 'game' ? 'is-playing' : ''}">${this.header()}${this.commercePreview ? '<div class="preview-notice" role="note">ANUNCIOS Y COMPRAS DE PRUEBA <span>· SIN COBRO</span></div>' : ''}<main id="main-content">${this.content()}</main>${this.screen !== 'game' ? this.nav() : ''}<div class="overlay-layer"></div><div class="toast" role="status" aria-live="polite"></div></div>`;
+    this.root.innerHTML = `<div class="world-backdrop" aria-hidden="true">${worldArt(this.store.profile.settings.world)}${this.store.profile.settings.world !== 'void' ? `<div class="world-landscape">${worldArt(this.store.profile.settings.world)}</div>` : ''}</div><div class="app-shell ${this.screen === 'game' ? 'is-playing' : ''}">${this.header()}${this.commercePreview ? '<div class="preview-notice" role="note">ANUNCIOS Y COMPRAS DE PRUEBA <span>· SIN COBRO</span></div>' : ''}<main id="main-content">${this.content()}</main>${this.screen !== 'game' ? this.nav() : ''}<div class="overlay-layer"></div><div class="toast" role="status" aria-live="polite"></div></div>`;
     if (this.screen === 'game') void this.mountBoard();
     this.renderOverlay();
   }
@@ -971,7 +987,7 @@ export class GameApp {
   private gameContent(): string {
     const session = this.session!;
     const tutorial = session.mode === 'tutorial';
-    return `<section class="game-layout"><div class="game-intro"><div class="eyebrow">${tutorial ? 'APRENDER HACIENDO' : session.mode === 'classic' ? 'MODO CLÁSICO' : session.mode === 'daily' ? 'DESAFÍO DIARIO' : 'RETO COMPARTIDO'}</div><h1 class="game-title">${tutorial ? 'Todo tiene<br> un orden.' : 'Una flecha.<br> Un paso más.'}</h1><p class="game-description">Observa el tablero. Libera los caminos.<br>La siguiente salida está ahí.</p><div class="desktop-tip">${icon('help')}<p>Una flecha solo puede salir si no hay otra en su trayectoria. Cada intento bloqueado cuesta una vida.</p></div></div><div class="play-area">${session.lifeTokenSpent ? `<p class="bonus-life-note">${icon('heart')} Vida extra del pase · 4 vidas en este intento</p>` : ''}<div class="game-hud"><div class="lives" role="img" aria-label="3 vidas" data-lives></div><span class="game-timer">${icon('clock')}<span data-timer>${formatTime(session.elapsedMs)}</span></span></div><div class="board-viewport"><div class="board-frame"><div class="board-corner corner-tl"></div><div class="board-corner corner-br"></div><div class="board-host" aria-hidden="true"></div><div class="board-controls" role="group" aria-label="Tablero de flechas"></div><div class="board-loading">Preparando tu camino…</div></div></div><div class="board-feedback"><strong class="combo-badge" data-combo hidden></strong><button class="text-button zoom-button" data-action="zoom-board" aria-pressed="false">Ampliar tablero</button></div><div class="board-progress"><span>FLECHAS LIBERADAS</span><strong data-counter></strong><div class="progress-track"><i data-progress></i></div></div><div class="tutorial-instruction" ${tutorial ? '' : 'hidden'}></div><div class="game-tools"><button class="hint-button" data-action="hint">${icon('spark')}<span>Una pista</span><span class="hint-count" data-hints>${this.store.profile.hints}</span></button><button class="text-button" data-action="pause">Tomar un respiro ${icon('pause')}</button></div><p class="board-caption">${icon('arrow')} Toca una flecha para liberarla.</p></div></section>`;
+    return `<section class="game-layout"><div class="game-intro"><div class="eyebrow">${tutorial ? 'APRENDER HACIENDO' : session.mode === 'classic' ? 'MODO CLÁSICO' : session.mode === 'daily' ? 'DESAFÍO DIARIO' : 'RETO COMPARTIDO'}</div><h1 class="game-title">${tutorial ? 'Todo tiene<br> un orden.' : 'Una flecha.<br> Un paso más.'}</h1><p class="game-description">Observa el tablero. Libera los caminos.<br>La siguiente salida está ahí.</p><div class="desktop-tip">${icon('help')}<p>Una flecha solo puede salir si no hay otra en su trayectoria. Cada intento bloqueado cuesta una vida.</p></div></div><div class="play-area">${session.lifeTokenSpent ? `<p class="bonus-life-note">${icon('heart')} Vida extra del pase · 4 vidas en este intento</p>` : ''}<div class="game-hud"><div class="lives" role="img" aria-label="3 vidas" data-lives></div><span class="game-timer">${icon('clock')}<span data-timer>${formatTime(session.elapsedMs)}</span></span></div><div class="frenzy-console" data-tier="idle"><span class="frenzy-symbol" aria-hidden="true">ϟ</span><div class="frenzy-copy"><small>COMBO · 1,8 SEGUNDOS</small><strong data-frenzy-title>ENCUENTRA EL RITMO</strong></div><div class="frenzy-timer" role="progressbar" aria-label="Tiempo para continuar el combo" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i data-frenzy-fill></i></div><span class="frenzy-count" data-frenzy-count>—</span></div><div class="board-viewport"><div class="board-frame"><div class="board-corner corner-tl"></div><div class="board-corner corner-br"></div><div class="board-host" aria-hidden="true"></div><div class="board-controls" role="group" aria-label="Tablero de flechas"></div><div class="board-loading">Preparando tu camino…</div></div></div><div class="board-feedback"><strong class="combo-badge" data-combo hidden></strong><button class="text-button zoom-button" data-action="zoom-board" aria-pressed="false">Ampliar tablero</button></div><div class="board-progress"><span>FLECHAS LIBERADAS</span><strong data-counter></strong><div class="progress-track"><i data-progress></i></div></div><div class="tutorial-instruction" ${tutorial ? '' : 'hidden'}></div><div class="game-tools"><button class="hint-button" data-action="hint">${icon('spark')}<span>Una pista</span><span class="hint-count" data-hints>${this.store.profile.hints}</span></button><button class="text-button" data-action="pause">Tomar un respiro ${icon('pause')}</button></div><p class="board-caption">${icon('arrow')} Toca una flecha para liberarla.</p></div></section>`;
   }
 
   private async mountBoard(): Promise<void> {
@@ -1077,13 +1093,33 @@ export class GameApp {
     }
   }
 
-  private updateCombo(): void {
+  private updateCombo(animate = false): void {
     const badge = this.root.querySelector<HTMLElement>('[data-combo]');
     if (!badge) return;
+    const stage = comboStage(this.combo.count);
+    const console = this.root.querySelector<HTMLElement>('.frenzy-console');
+    const title = this.root.querySelector('[data-frenzy-title]');
+    const count = this.root.querySelector('[data-frenzy-count]');
+    const fuse = this.root.querySelector<HTMLElement>('[data-frenzy-fill]');
+    if (console) {
+      console.dataset.tier = stage.tier;
+      console.style.setProperty('--combo-color', stage.color);
+    }
+    if (title) title.textContent = stage.name;
+    if (count) count.textContent = this.combo.count > 1 ? `×${this.combo.count}` : '—';
+    const remaining = this.combo.count
+      ? Math.max(0, 1 - (performance.now() - this.combo.lastMoveAt) / COMBO_WINDOW_MS) * 100
+      : 0;
+    if (fuse) {
+      fuse.style.width = `${remaining}%`;
+      fuse.parentElement?.setAttribute('aria-valuenow', String(Math.round(remaining)));
+    }
+    badge.style.setProperty('--combo-color', stage.color);
     badge.hidden = this.combo.count < 2;
     badge.textContent = `COMBO ×${this.combo.count}`;
     badge.dataset.intensity = String(Math.min(5, this.combo.count));
     if (
+      animate &&
       !this.store.profile.settings.reducedMotion &&
       !matchMedia('(prefers-reduced-motion: reduce)').matches &&
       this.combo.count >= 2
@@ -1129,6 +1165,11 @@ export class GameApp {
 
   private openOverlay(overlay: Overlay): void {
     if (this.overlay === 'conflict' && overlay !== 'conflict') return;
+    if (overlay !== 'result') {
+      this.effects.clear();
+      this.combo = { ...this.combo, count: 0, lastMoveAt: 0 };
+      this.updateCombo();
+    }
     this.tick();
     this.previousFocus = document.activeElement as HTMLElement | null;
     this.overlay = overlay;
