@@ -3,6 +3,9 @@ import { ARROW_COLORS } from '../config/theme';
 import type { PlayerSettings } from '../config/theme';
 import { VECTORS } from '../core/types';
 import type { Arrow, Board, MoveResult } from '../core/types';
+import { ARROW_DESIGNS, MATERIAL_INKS } from '../config/arrow-designs';
+import { containsCell } from '../generator/shapes';
+import type { BoardShape } from '../generator/shapes';
 
 const SIDE = 720;
 const MARGIN = 28;
@@ -16,7 +19,12 @@ class BoardScene extends Phaser.Scene {
   private readonly initialBoard: Board;
   private readonly readyCallback: () => void;
 
-  constructor(board: Board, settings: PlayerSettings, ready: () => void) {
+  constructor(
+    board: Board,
+    settings: PlayerSettings,
+    ready: () => void,
+    private readonly shape: BoardShape = 'square',
+  ) {
     super({ key: 'Board' });
     this.initialBoard = board;
     this.settings = settings;
@@ -29,7 +37,16 @@ class BoardScene extends Phaser.Scene {
     const grid = this.add.graphics();
     for (let y = 0; y < board.height; y++)
       for (let x = 0; x < board.width; x++) {
+        if (!containsCell(board.width, board.height, this.shape, x, y)) continue;
         const [cx, cy] = this.position(x, y, board);
+        grid.fillStyle(0xa9c4d8, 0.028);
+        grid.fillRoundedRect(
+          cx - this.cell * 0.47,
+          cy - this.cell * 0.47,
+          this.cell * 0.94,
+          this.cell * 0.94,
+          this.cell * 0.08,
+        );
         grid.fillStyle(0x9aa3b8, 0.17);
         grid.fillCircle(cx, cy, 2.3);
       }
@@ -52,29 +69,38 @@ class BoardScene extends Phaser.Scene {
     const [x, y] = this.position(arrow.x, arrow.y, board);
     const tile = this.add.graphics();
     const size = this.cell * 0.88;
-    tile.fillStyle(0x222631, 0.83);
-    tile.fillRoundedRect(-size / 2, -size / 2, size, size, this.cell * 0.17);
-    tile.lineStyle(1, 0x647086, 0.1);
-    tile.strokeRoundedRect(-size / 2, -size / 2, size, size, this.cell * 0.17);
+    tile.fillStyle(0x090f18, 0.4);
+    tile.fillRoundedRect(-size / 2, -size / 2 + 3, size, size, this.cell * 0.13);
+    tile.fillStyle(0x26303d, 0.65);
+    tile.fillRoundedRect(-size / 2, -size / 2, size, size, this.cell * 0.12);
+    tile.lineStyle(1.2, 0xa2b2c9, 0.17);
+    tile.strokeRoundedRect(-size / 2, -size / 2, size, size, this.cell * 0.12);
     const glyph = this.add.graphics();
     const color = ARROW_COLORS[this.settings.theme][arrow.direction];
-    const thickness = this.cell * 0.083;
-    const arm = this.cell * 0.21;
-    glyph.lineStyle(thickness, color, 1);
-    glyph.beginPath();
-    glyph.moveTo(0, arm);
-    glyph.lineTo(0, -arm);
-    glyph.moveTo(-arm * 0.78, -arm * 0.22);
-    glyph.lineTo(0, -arm);
-    glyph.lineTo(arm * 0.78, -arm * 0.22);
-    glyph.strokePath();
-    glyph.fillStyle(color);
-    [
-      [0, arm],
-      [0, -arm],
-      [-arm * 0.78, -arm * 0.22],
-      [arm * 0.78, -arm * 0.22],
-    ].forEach(([xx, yy]) => glyph.fillCircle(xx!, yy!, thickness / 2));
+    const design = ARROW_DESIGNS[this.settings.skin];
+    const inks = {
+      ...MATERIAL_INKS,
+      body: design.baseColor ?? color,
+      accent: design.paletteAccent ? color : MATERIAL_INKS.accent,
+    };
+    const scale = this.cell * 0.0072;
+    for (const layer of design.layers) {
+      glyph.beginPath();
+      layer.points.forEach(([px, py], index) => {
+        const xx = (px - 50) * scale;
+        const yy = (py - 50) * scale;
+        if (index) glyph.lineTo(xx, yy);
+        else glyph.moveTo(xx, yy);
+      });
+      if (layer.fill) {
+        glyph.closePath();
+        glyph.fillStyle(inks[layer.fill], layer.opacity ?? 1);
+        glyph.fillPath();
+      } else {
+        glyph.lineStyle((layer.width ?? 1) * scale, inks[layer.stroke!], layer.opacity ?? 1);
+        glyph.strokePath();
+      }
+    }
     glyph.rotation = ROTATION[arrow.direction];
     const container = this.add.container(x, y, [tile, glyph]);
     container.setSize(size, size);
@@ -105,6 +131,19 @@ class BoardScene extends Phaser.Scene {
       };
       this.pending.add(done);
       if (result.kind === 'blocked') {
+        const blocker = result.blocker ? this.views.get(result.blocker.id) : undefined;
+        if (blocker) {
+          const impact = this.add
+            .circle(blocker.x, blocker.y, this.cell * 0.42)
+            .setStrokeStyle(3, 0xffa18b, 0.95);
+          this.tweens.add({
+            targets: impact,
+            alpha: 0,
+            scale: this.settings.reducedMotion ? 1 : 1.5,
+            duration: 360,
+            onComplete: () => impact.destroy(),
+          });
+        }
         const [dx, dy] = VECTORS[arrow.direction];
         this.tweens.add({
           targets: view,
@@ -120,27 +159,64 @@ class BoardScene extends Phaser.Scene {
       }
       const [dx, dy] = VECTORS[arrow.direction];
       if (!this.settings.reducedMotion) {
-        const particles = 6 + Math.min(10, combo * 2);
+        const style = ARROW_DESIGNS[this.settings.skin].exit;
+        const particles = 6 + Math.min(16, combo * 2);
         const color = ARROW_COLORS[this.settings.theme][arrow.direction];
+        this.cosmeticExit(view, dx, dy, color);
         const ring = this.add
           .circle(view.x, view.y, this.cell * 0.22)
-          .setStrokeStyle(2, color, 0.6);
+          .setStrokeStyle(combo >= 4 ? 4 : 2, color, 0.8);
         this.tweens.add({
           targets: ring,
-          scale: 2.1,
+          scale: combo >= 7 ? 3.8 : 2.8,
           alpha: 0,
-          duration: 200,
+          duration: 260,
           onComplete: () => ring.destroy(),
         });
+        if (combo >= 2) {
+          const trail = this.add
+            .rectangle(view.x, view.y, this.cell * 0.7, this.cell * 0.1, color, 0.45)
+            .setRotation(Math.atan2(dy, dx))
+            .setBlendMode(Phaser.BlendModes.ADD);
+          this.tweens.add({
+            targets: trail,
+            x: view.x + dx * SIDE,
+            y: view.y + dy * SIDE,
+            scaleX: 3 + Math.min(combo, 10) * 0.15,
+            alpha: 0,
+            duration: 200,
+            ease: 'Quad.In',
+            onComplete: () => trail.destroy(),
+          });
+        }
         for (let index = 0; index < particles; index++) {
-          const spark = this.add.circle(view.x, view.y, 2 + (index % 3), color, 0.75);
+          const spark =
+            style === 'pixel'
+              ? this.add.rectangle(view.x, view.y, 5 + (index % 3), 5 + (index % 3), color, 0.8)
+              : style === 'prism' || style === 'crown'
+                ? this.add.triangle(
+                    view.x,
+                    view.y,
+                    0,
+                    -6,
+                    4,
+                    3,
+                    -4,
+                    3,
+                    style === 'crown' ? 0xffd58b : color,
+                    0.9,
+                  )
+                : this.add.circle(view.x, view.y, 2 + (index % 3), color, 0.75);
           this.tweens.add({
             targets: spark,
-            x: view.x + Math.cos((index * Math.PI * 2) / particles) * (30 + Math.min(combo, 8) * 4),
-            y: view.y + Math.sin((index * Math.PI * 2) / particles) * (30 + Math.min(combo, 8) * 4),
+            x:
+              view.x + Math.cos((index * Math.PI * 2) / particles) * (38 + Math.min(combo, 12) * 7),
+            y:
+              view.y + Math.sin((index * Math.PI * 2) / particles) * (38 + Math.min(combo, 12) * 7),
             alpha: 0,
             scale: 0.2,
-            duration: 260,
+            angle: style === 'pixel' ? 0 : index * 57,
+            duration: 350,
             onComplete: () => spark.destroy(),
           });
         }
@@ -159,6 +235,69 @@ class BoardScene extends Phaser.Scene {
         },
       });
     });
+  }
+
+  private cosmeticExit(
+    view: Phaser.GameObjects.Container,
+    dx: number,
+    dy: number,
+    color: number,
+  ): void {
+    const style = ARROW_DESIGNS[this.settings.skin].exit;
+    const angle = Math.atan2(dy, dx);
+    const fade = (
+      object: Phaser.GameObjects.Shape | Phaser.GameObjects.Graphics,
+      duration: number,
+      values: Record<string, number>,
+    ) => {
+      this.tweens.add({
+        targets: object,
+        ...values,
+        alpha: 0,
+        duration,
+        ease: 'Cubic.Out',
+        onComplete: () => object.destroy(),
+      });
+    };
+    if (style === 'orbit' || style === 'crown') {
+      for (let i = 0; i < 2; i++) {
+        const halo = this.add
+          .circle(view.x, view.y, this.cell * (0.25 + i * 0.12))
+          .setStrokeStyle(style === 'crown' ? 3 : 2, style === 'crown' ? 0xffd58b : color, 0.75)
+          .setScale(1, style === 'orbit' ? 0.48 : 1)
+          .setRotation(angle + (i * Math.PI) / 2);
+        fade(halo, 430, { scaleX: 2.5, scaleY: 2.5, angle: halo.angle + 70 });
+      }
+    } else if (style === 'electric') {
+      const arc = this.add.graphics().setPosition(view.x, view.y).setRotation(angle);
+      arc.lineStyle(2.5, 0xffd58b, 0.9);
+      arc.beginPath();
+      arc.moveTo(-this.cell * 0.3, 0);
+      for (let i = 0; i < 7; i++)
+        arc.lineTo(i * this.cell * 0.12, (i % 2 ? -1 : 1) * this.cell * 0.13);
+      arc.strokePath();
+      fade(arc, 240, { scaleX: 2.3 });
+    } else {
+      const count = style === 'nova' ? 3 : style === 'echo' ? 2 : 1;
+      for (let i = 0; i < count; i++) {
+        const offset = (i - (count - 1) / 2) * this.cell * 0.18;
+        const streak = this.add
+          .rectangle(
+            view.x - dy * offset,
+            view.y + dx * offset,
+            this.cell * (style === 'nova' ? 0.65 : 0.4),
+            style === 'pixel' ? 6 : 3,
+            i === 1 ? 0xffffff : color,
+            0.7,
+          )
+          .setRotation(angle);
+        fade(streak, style === 'pixel' ? 170 : 320, {
+          x: streak.x + dx * this.cell * 1.8,
+          y: streak.y + dy * this.cell * 1.8,
+          scaleX: 2.7,
+        });
+      }
+    }
   }
 
   hint(id: string): void {
@@ -182,13 +321,16 @@ export class BoardRenderer {
   readonly ready: Promise<void>;
   private readonly game: Phaser.Game;
   private readonly boardScene: BoardScene;
+  private booted = false;
+  private paused = false;
+  private destroyed = false;
 
-  constructor(host: HTMLElement, board: Board, settings: PlayerSettings) {
+  constructor(host: HTMLElement, board: Board, settings: PlayerSettings, shape?: BoardShape) {
     let onReady: () => void = () => undefined;
     this.ready = new Promise<void>((resolve) => {
       onReady = resolve;
     });
-    this.boardScene = new BoardScene(board, settings, onReady);
+    this.boardScene = new BoardScene(board, settings, onReady, shape);
     this.game = new Phaser.Game({
       type: Phaser.AUTO,
       parent: host,
@@ -202,6 +344,18 @@ export class BoardRenderer {
       render: { antialias: true, powerPreference: 'low-power' },
       banner: false,
     });
+    void this.ready.then(() => {
+      this.booted = true;
+      if (!this.destroyed) this.setPaused(this.paused);
+    });
+  }
+
+  /** Static overlays do not need a WebGL frame loop behind their backdrop blur. */
+  setPaused(paused: boolean): void {
+    this.paused = paused;
+    if (!this.booted || this.destroyed) return;
+    if (paused) this.game.loop.sleep();
+    else this.game.loop.wake();
   }
 
   animate(result: MoveResult, combo = 0): Promise<void> {
@@ -211,6 +365,9 @@ export class BoardRenderer {
     this.boardScene.hint(id);
   }
   destroy(): void {
+    this.destroyed = true;
     this.game.destroy(true);
+    // Phaser processes pendingDestroy on a frame; a sleeping game still needs that frame.
+    if (this.booted && !this.game.loop.running) this.game.loop.wake();
   }
 }

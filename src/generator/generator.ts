@@ -5,6 +5,7 @@ import type { Solution } from '../solver/solver';
 import { seededRandom } from '../utils/random';
 import { GENERATOR_VERSION, isLevelConfig } from './config';
 import type { LevelConfig } from './config';
+import { arrowCount, containsCell, shapeCells } from './shapes';
 
 export interface GeneratedLevel {
   readonly board: Board;
@@ -35,7 +36,11 @@ function reverseBoard(config: LevelConfig, random: () => number, target: number)
     let best: { x: number; y: number; direction: Direction; score: number } | null = null;
     for (let y = 0; y < height; y++)
       for (let x = 0; x < width; x++) {
-        if (occupied.has(y * width + x)) continue;
+        if (
+          occupied.has(y * width + x) ||
+          !containsCell(width, height, config.shape ?? 'square', x, y)
+        )
+          continue;
         for (const direction of DIRECTIONS) {
           const [dx, dy] = VECTORS[direction];
           let clear = true;
@@ -64,10 +69,7 @@ function reverseBoard(config: LevelConfig, random: () => number, target: number)
 }
 
 function fallbackBoard(config: LevelConfig, target: number, random: () => number): Board {
-  const cells = Array.from({ length: config.width * config.height }, (_, index) => ({
-    x: index % config.width,
-    y: Math.floor(index / config.width),
-  }));
+  const cells = shapeCells(config.width, config.height, config.shape);
   for (let i = cells.length - 1; i > 0; i--) {
     const j = Math.floor(random() * (i + 1));
     [cells[i], cells[j]] = [cells[j]!, cells[i]!];
@@ -110,7 +112,7 @@ export function generateLevel(seed: string, config: LevelConfig, maxAttempts = 4
   if (!isLevelConfig(config)) throw new Error('Configuración de nivel inválida.');
   if (!Number.isInteger(maxAttempts) || maxAttempts < 0 || maxAttempts > 10)
     throw new Error('Límite de generación inválido.');
-  const target = Math.max(1, Math.round(config.width * config.height * config.density));
+  const target = arrowCount(config);
   let best: { board: Board; solution: Solution } | null = null;
   let attempts = 0;
   for (; attempts < maxAttempts; attempts++) {

@@ -4,9 +4,9 @@ Capacitor 8 está configurado con `com.flechatrampa.game`, `FLECHA TRAMPA` y `di
 
 ## Descargar desde el móvil
 
-Abrir la [Release v0.1.1](https://github.com/MirkovicV2/flecha-trampa/releases/tag/v0.1.1) con una cuenta que tenga acceso al repositorio privado. En GitHub Mobile: Releases → v0.1.1 → Assets → `flecha-trampa-v0.1.1-android.apk`. Descargar el archivo y seguir el instalador de Android. También se incluyen `SHA256SUMS.txt` y la información pública del certificado de firma.
+Abrir la [Release v0.4.0](https://github.com/MirkovicV2/flecha-trampa/releases/tag/v0.4.0) con una cuenta que tenga acceso al repositorio privado. En GitHub Mobile: Releases → v0.4.0 → Assets → `flecha-trampa-v0.4.0-android.apk`. Descargar el archivo y seguir el instalador de Android. También se incluyen `SHA256SUMS.txt` y la información pública del certificado de firma.
 
-Es una APK universal de tipo release para Android 7.0/API 24 o posterior, con WebView actualizado. Incluye los archivos del juego y permite jugar clásico y diario sin conexión. No necesita cuentas dentro del juego. Es una distribución de prueba propia, sin anuncios, pagos ni publicación en Google Play.
+Es una APK universal de tipo release para Android 7.0/API 24 o posterior, con WebView actualizado. Incluye los archivos del juego y permite jugar clásico y diario sin conexión. No necesita cuentas dentro del juego. Es una distribución interna: incluye anuncios locales y Pase Plus de prueba etiquetados, sin redes publicitarias, cobros ni publicación en Google Play.
 
 ## Herramientas en este ordenador
 
@@ -39,11 +39,11 @@ En otro equipo, instalar Node 24, JDK 21 y SDK 36; `npm ci`, `npm run build` y `
 
 La misma clave permite instalar futuras APK como actualización y conservar el progreso. Perderla obliga a usar otra firma, lo que puede requerir desinstalar y perder los datos locales. Una clave existente nunca se sustituye automáticamente. Las compilaciones `debug` de desarrollo utilizan otra firma; para probar las actualizaciones de esta distribución, utilizar siempre las APK release publicadas.
 
-La versión Android 0.1.1 utiliza `versionCode 2`. Incrementar `versionCode` y `versionName` en `android/app/build.gradle`, junto con `package.json` y su lockfile, para una nueva versión. Antes de una publicación de tienda, preparar la firma de producción y Google Play App Signing.
+La versión Android 0.4.0 utiliza `versionCode 5`. Incrementar `versionCode` y `versionName` en `android/app/build.gradle`, junto con `package.json` y su lockfile, para una nueva versión. Antes de una publicación de tienda, preparar la firma de producción y Google Play App Signing.
 
 ## Pruebas Android
 
-El workflow [Android APK](../.github/workflows/android.yml) compila y analiza el proyecto con JDK 21. Después inicia un emulador API 35 y ejecuta `NativeGameSmokeTest` en la variante release: comprueba el WebView con el juego empaquetado, zonas seguras, interacciones de Espresso-Web, Preferences reales, pistas, recuperación tras recrear la actividad y el botón Atrás. Wi-Fi y datos del emulador se desactivan durante la prueba. Conserva informes y una captura del tablero; esa captura se escribe en el área de imágenes del emulador para sobrevivir a la limpieza de los datos de la app al terminar.
+El workflow [Android APK](../.github/workflows/android.yml) compila y analiza el proyecto con JDK 21. Después inicia un emulador API 35 y ejecuta `NativeGameSmokeTest` en la variante release: comprueba el WebView con el juego empaquetado, zonas seguras, interacciones de Espresso-Web, Preferences reales, pistas, recuperación tras recrear la actividad y el botón Atrás. También desbloquea el fondo navideño, activa el Pase Plus de prueba y comprueba que se restauran sin cambiar la energía o la partida guardada. Wi-Fi y datos del emulador se desactivan durante la prueba. Conserva informes y una captura del tablero; esa captura se escribe en el área de imágenes del emulador para sobrevivir a la limpieza de los datos de la app al terminar.
 
 El candidato release y su APK de pruebas se firman para la instrumentación con una clave efímera del runner. Esa clave temporal no se publica ni sirve para las actualizaciones de los usuarios. El instalador descargable utiliza la firma persistente local, comprobada con `apksigner` y `zipalign`, y se publica en Releases. El workflow conserva el candidato sin firmar y los informes, sin claves.
 

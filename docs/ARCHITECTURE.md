@@ -1,5 +1,11 @@
 # Arquitectura y garantías
 
+## Geometría y presentación cosmética
+
+`config/arrow-designs.ts` define caras y tintas originales en coordenadas normalizadas. SVG y Phaser consumen la misma geometría. `SkinMotionPreview` limita la vida de las animaciones del inspector; un identificador de generación impide que una finalización antigua borre una vista nueva. `home.ts` y las vistas previas de escenarios utilizan la pieza equipada.
+
+`ChestOpening` presenta un premio que `ProgressStore.openChest()` ya sorteó y guardó. `chest-reel.ts` separa tarjetas decorativas, encuadre y frenado de la economía. Saltar, ocultar, redimensionar y navegar cancelan temporizadores y animaciones, sin repetir transacciones. Los clics y acordes se sintetizan y se detienen al salir. Los ambientes de los escenarios son CSS acotado; se pausan tras modales y compras y se omiten con movimiento reducido. Ver [diseño y garantías](COSMETICS.md).
+
 ```mermaid
 flowchart LR
   UI[UI DOM y coordinación] --> Core[Reglas puras]
@@ -29,13 +35,23 @@ El solver no llama `findBlocker`: calcula relaciones geométricas por pares y re
 
 ## Sesiones y concurrencia
 
-Cada sesión conserva ID, modo, semilla, parámetros, versión, tablero inicial, estado, tiempo y banderas `counted`/`recorded`. El estado se aplica antes de animar. La entrada se bloquea hasta finalizar la animación. Un contador de montaje impide que una escena antigua modifique la siguiente pantalla.
+Cada sesión conserva ID, modo, semilla, parámetros, versión, tablero inicial, estado, tiempo y banderas `counted`/`recorded`. El estado se aplica de forma síncrona antes de animar. Los controles HTML se actualizan sin reconstruir las flechas restantes y aceptan otras jugadas mientras las animaciones se solapan. Solo la flecha bloqueada tiene un breve bloqueo local. `BoardInput` distingue taps de arrastres y evita el click duplicado. Un contador de montaje impide que una escena antigua modifique la siguiente pantalla.
+
+`energy.ts` contiene regeneración y consumo puros. `economy.ts`, `config/pass.ts` y `config/collection.ts` definen el inventario, la temporada y las probabilidades de cofres. `ProgressStore` cobra cada intento una vez, devuelve energía al ganar y registra XP y premios de forma idempotente. Los derechos de pago se consultan al adaptador de compras y no se infieren del guardado. `save-validation.ts` migra los perfiles anteriores sin borrar sus partidas. Ver [reglas y límites de economía](ECONOMY.md).
 
 El resultado se registra antes de animar el último movimiento. Al cargar, se reconcilian sesiones terminales no registradas. Reiniciar crea otro intento con el mismo tablero; continuar conserva el ID y no duplica partidas.
 
 El reloj usa `performance.now()`, excluye pausas y segundo plano y limita saltos de tick. La visibilidad del documento y App en Capacitor guardan y pausan. Android dispone de navegación atrás y minimización desde inicio.
 
 ## Guardados
+
+Los escenarios se definen en `config/worlds.ts`; los dibujos originales son SVG en `ui/world-art.ts`. `ProgressStore` registra sellos por primeras victorias y conserva los fondos adquiridos. La compra cosmética gratuita no toca energía, skins o paletas. `save-validation.ts` añade inventario y fondo inicial a perfiles anteriores.
+
+La distribución interna usa `PreviewAdsService` y `PreviewPurchasesService` con un puerto de presentación inyectado (`CommercePreviewPort`). El servicio es comprobable sin DOM; `CommercePreviewView` gestiona foco, segundo plano, temporizadores y cancelación. Los derechos de prueba están en una clave independiente y nunca sirven como recibos de tienda. El modo `disabled` vuelve a NoOp. Un proveedor comercial futuro deberá usar recibos y verificación reales; no debe aceptar el almacenamiento del simulador.
+
+`ComboEffects` contiene solo efectos decorativos sin entrada. Se acotan partículas y oleadas y se cancelan animaciones al cambiar de pantalla. No se desplaza la cámara ni el tablero. `config/combos.ts` define los hitos y el medidor reutiliza el tiempo de la cadena pura. La reducción de movimiento se consulta tanto en DOM como en Phaser.
+
+`BoardRenderer.setPaused()` duerme el TimeStep de Phaser detrás de un modal y al ocultar el documento; lo despierta al continuar. Así se evitan frames WebGL continuos detrás del desenfoque de pausa. El montaje respeta modales abiertos antes de que el canvas esté listo, el evento de visibilidad se aplica después del manejador propio de Phaser y la destrucción despierta el frame que procesa `pendingDestroy`. Los movimientos ya aplicados conservan sus animaciones pendientes y se completan al reanudar.
 
 Clave: `flecha-trampa:profile:v1`; copia anterior: sufijo `:backup`. La validación comprueba tipos, rangos, geometría, vidas, errores, movimientos, condición terminal, pertenencia al tablero inicial y solubilidad. Los primeros guardados de esquema 1 reciben campos diarios y compartidos mediante migración aditiva.
 

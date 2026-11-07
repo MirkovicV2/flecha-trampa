@@ -1,5 +1,41 @@
 # Changelog
 
+## 0.4.0 — 2026-11-07
+
+- Cofres con precinto, carrusel de 44 tarjetas, frenado, clics sincronizados y revelación por rareza; resultado guardado antes de animar.
+- Saltar, Atrás, Escape, rotación, segundo plano y recarga conservan el premio sin repetir consumos o compensaciones.
+- Ocho siluetas originales con caras, biseles y materiales compartidos entre SVG y Phaser. Metal base y núcleo de color en las ediciones especiales.
+- Firmas de salida propias: precisión, doble eco, electricidad, píxeles, cristal, órbitas, oro y plasma.
+- Colección renovada con fichas de taller, inspector animado, comprobación de orientaciones y filtros funcionales.
+- Nueva portada con la pieza equipada y tipografías locales Barlow Condensed y Manrope bajo licencia OFL.
+- Ambientes de nieve, pétalos, burbujas, luciérnagas, neón y faroles; miniaturas estáticas, pausa tras modales y respeto del movimiento reducido.
+- Inicio de partida vuelve a la parte superior; encabezados compactos y áreas táctiles conservadas.
+- Nuevas pruebas de integridad del carrusel, inventario, animaciones, interrupciones y navegación estrecha; Android prueba giro y revelación reales.
+- Android `versionCode 5`, misma identidad y certificado de actualización, sin reinicio del progreso ni cambios en probabilidades o monetización.
+
+## 0.3.0 — 2026-11-07
+
+- Seis escenarios originales de Navidad, Halloween, sakura, neón, océano y faroles, independientes de skins y paletas.
+- Galería con vistas previas y desbloqueo gratuito mediante sellos de progreso; persistencia compatible con la APK anterior.
+- Anuncios de prueba etiquetados, cancelación sin recompensa, energía/pistas tras completar y recoger, intersticiales entre victorias.
+- Pantalla de compra del Pase Plus de prueba a 0,00 €, activación de ventajas, restauración y restablecimiento. Sin cobros, tarjetas, anunciantes o SDKs comerciales.
+- Combos con cinco etapas, medidor, estelas, ondas, carteles de racha, partículas de pantalla y tono/vibración ascendentes; limpieza al pausar y reducción de movimiento.
+- Se conservan la geometría táctil y la firma de actualización Android. Versión Android 4.
+- Nuevas pruebas de escenarios, compras/anuncios, segundo plano, persistencia, partículas acotadas y controles estables.
+- Renderizado suspendido detrás de los modales, reanudación de animaciones en curso y limpieza de escenas dormidas.
+
+## 0.2.0 — 2026-11-07
+
+- Corrección táctil: controles estables, selección al soltar, rechazo de arrastres y pulsaciones simultáneas sin bloqueo global del tablero.
+- Ampliación del tablero para mejorar los objetivos táctiles en diez columnas.
+- Combos, animaciones simultáneas más rápidas, partículas acotadas, tono ascendente y mejor cadena guardada.
+- Energía persistente, recarga temporal, devolución al ganar y práctica gratuita sin energía.
+- Pase gratuito de diez niveles con XP, recompensas únicas y reservas de vida extra funcionales.
+- Ocho skins con rarezas, cofres gratuitos, probabilidades visibles, garantía épica y creación con fragmentos de duplicados.
+- Seis temas completos del juego, selección y persistencia de apariencias.
+- Preparación de Pase Plus verificado, sin anuncios ni compras reales.
+- Migración compatible con partidas de la APK anterior, versión Android 3 y firma de actualización conservada.
+
 ## 0.1.1 — 2026-11-06
 
 - APK Android release universal, firma de prueba persistente y descarga desde GitHub Releases.

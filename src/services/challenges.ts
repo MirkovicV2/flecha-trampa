@@ -29,6 +29,7 @@ export function createChallenge(seed: string, config: LevelConfig): ChallengeSpe
       height: config.height,
       density: config.density,
       complexity: config.complexity,
+      ...(config.shape === undefined ? {} : { shape: config.shape }),
     },
   };
 }

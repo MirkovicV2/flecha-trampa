@@ -19,6 +19,11 @@ export interface PlaySession {
   date: string | null;
   generatorVersion: string;
   counted: boolean;
+  energySpent?: boolean;
+  rewardXp?: number;
+  lifeTokenSpent?: boolean;
+  hintsUsed?: number;
+  bestCombo?: number;
 }
 
 export function newSession(
@@ -27,6 +32,7 @@ export function newSession(
   seed: string,
   config: LevelConfig,
   date: string | null = null,
+  initialLives: 3 | 4 = 3,
 ): PlaySession {
   const generated = generateLevel(seed, config);
   return {
@@ -36,12 +42,14 @@ export function newSession(
     seed,
     config,
     initialBoard: generated.board,
-    state: createGame(generated.board),
+    state: createGame(generated.board, mode === 'classic' ? initialLives : 3),
     elapsedMs: 0,
     recorded: false,
     date,
     generatorVersion: GENERATOR_VERSION,
     counted: false,
+    hintsUsed: 0,
+    bestCombo: 0,
   };
 }
 
@@ -68,5 +76,7 @@ export function tutorialSession(): PlaySession {
     date: null,
     generatorVersion: GENERATOR_VERSION,
     counted: false,
+    hintsUsed: 0,
+    bestCombo: 0,
   };
 }

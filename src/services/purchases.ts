@@ -1,11 +1,15 @@
 import type { ThemeName } from '../config/theme';
 
-export type Product = 'remove-ads' | 'cosmetic-theme';
+export type Product = 'remove-ads' | 'cosmetic-theme' | 'battle-pass';
 export interface Entitlements {
   readonly adsRemoved: boolean;
   readonly ownedThemes: readonly ThemeName[];
+  readonly battlePassSeason?: string;
 }
 export interface PurchasesService {
+  readonly preview?: boolean;
+  resetPreview?(): Promise<void>;
+  readonly available?: boolean;
   entitlements(): Promise<Entitlements>;
   purchase(product: Product): Promise<'unavailable' | 'cancelled' | 'purchased'>;
   restore(): Promise<Entitlements>;
@@ -13,6 +17,7 @@ export interface PurchasesService {
 
 /** A store adapter can replace this after products and receipt verification exist. */
 export class NoOpPurchasesService implements PurchasesService {
+  readonly available = false;
   async entitlements(): Promise<Entitlements> {
     return { adsRemoved: false, ownedThemes: ['aurora', 'ember'] };
   }
