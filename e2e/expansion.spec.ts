@@ -3,6 +3,7 @@ import { defaultProfile, SAVE_KEY } from '../src/services/progress';
 import { buildChallengeUrl, createChallenge } from '../src/services/challenges';
 import { generateLevel } from '../src/generator/generator';
 import { solve } from '../src/solver/solver';
+import { classicConfigForLevel } from '../src/generator/config';
 
 test('continues an old season, claims tier 40 on both tracks and keeps inventory after reload', async ({
   page,
@@ -81,4 +82,37 @@ test('plays an FT3 tactical challenge and resumes its exact board without energy
   expect(saved.sharedSave.config.tuning).toBe('chain-v2');
   expect(saved.economy.energy.amount).toBe(5);
   expect(saved.economy.pass.xp).toBe(0);
+});
+
+test('keeps earning chest milestones after completing the pass without refunding energy', async ({
+  page,
+}, info) => {
+  test.setTimeout(90000);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const profile = defaultProfile();
+  profile.tutorialDone = true;
+  profile.level = 5;
+  profile.economy.pass.xp = 4000;
+  await page.goto('/');
+  await page.evaluate(({ key, value }) => localStorage.setItem(key, JSON.stringify(value)), {
+    key: SAVE_KEY,
+    value: profile,
+  });
+  await page.reload();
+  await page.locator('[data-action=play]').click();
+  await expect(page.locator('.board-loading')).toHaveCount(0);
+  const board = generateLevel(`classic:${profile.runId}:5`, classicConfigForLevel(5)).board;
+  for (const id of solve(board).sequence) await page.locator(`[data-arrow="${id}"]`).click();
+  await expect(page.getByRole('dialog')).toContainText('+1 cofre');
+  let saved = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!), SAVE_KEY);
+  expect(saved.economy.collection.chests).toBe(2);
+  expect(saved.economy.energy.amount).toBe(4);
+  expect(saved.classicSave.rewardChests).toBe(1);
+  await page.screenshot({ path: `.artifacts/060-milestone-supply-${info.project.name}.png` });
+  await page.reload();
+  saved = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!), SAVE_KEY);
+  expect(saved.economy.collection.chests).toBe(2);
+  await page.getByRole('button', { name: 'Recompensas', exact: true }).click();
+  await page.getByRole('button', { name: 'Colección', exact: true }).click();
+  await expect(page.locator('.chest-vault')).toContainText('2 cofres disponibles');
 });

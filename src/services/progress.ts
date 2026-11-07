@@ -254,6 +254,14 @@ export class ProgressStore {
         this.profile.economy.pass.xp + session.rewardXp,
       );
       const stamps = firstClassic ? 1 : firstDaily ? 2 : 0;
+      // Keep every cosmetic obtainable through play after the finite pass ends.
+      if (firstClassic && session.level % 5 === 0 && this.profile.economy.collection.chests < 999) {
+        session.rewardChests = 1;
+        this.profile.economy.collection.chests = Math.min(
+          999,
+          this.profile.economy.collection.chests + 1,
+        );
+      }
       this.profile.events.stamps = Math.min(99999, this.profile.events.stamps + stamps);
       this.profile.events.earned = Math.min(99999, this.profile.events.earned + stamps);
       this.profile.stats.wins++;
