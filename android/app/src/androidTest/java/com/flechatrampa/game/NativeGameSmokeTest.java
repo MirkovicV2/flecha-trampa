@@ -152,17 +152,16 @@ public class NativeGameSmokeTest {
             assertEquals("true", evaluate(activity, "document.querySelector('.topbar').getBoundingClientRect().top >= (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--safe-top')) || 0)"));
 
             click(activity, "[data-action=hint]");
-            long saveDeadline = SystemClock.elapsedRealtime() + 15000;
-            while (SystemClock.elapsedRealtime() < saveDeadline && profile(preferences).optInt("hints", -1) != 2) {
-                SystemClock.sleep(100);
-            }
-            JSONObject saved = profile(preferences);
+            await(activity, "document.querySelector('[data-hints]').textContent === '2'");
+            // Stop the play clock's queued snapshots before waiting for Preferences.
+            InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
+            await(activity, "!!document.querySelector('[data-action=resume]')");
+            JSONObject saved = awaitHintSave(preferences, "classicSave");
             assertEquals(2, saved.getInt("hints"));
             assertTrue(saved.getBoolean("tutorialDone"));
             assertEquals(1, saved.getJSONObject("stats").getInt("played"));
             String arrows = saved.getJSONObject("classicSave").getJSONObject("state").getJSONObject("board").getJSONArray("arrows").toString();
 
-            InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
             await(activity, "!!document.querySelector('[data-action=resume]')");
             activity.recreate();
             await(activity, "!!document.querySelector('[data-action=play]') && !document.querySelector('[data-action=skip-tutorial]')");
@@ -285,12 +284,11 @@ public class NativeGameSmokeTest {
             await(activity, "!document.querySelector('.route-overlay svg')");
             click(activity, "[data-action=hint]");
             await(activity, "document.querySelector('[data-hints]').textContent === '2'");
-            long deadline = SystemClock.elapsedRealtime() + 15000;
-            while (SystemClock.elapsedRealtime() < deadline && profile(preferences).optInt("hints", -1) != 2) SystemClock.sleep(100);
-            assertEquals(1, profile(preferences).getJSONObject("sharedSave").getInt("hintsUsed"));
-            assertEquals(5, profile(preferences).getJSONObject("economy").getJSONObject("energy").getInt("amount"));
             InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
             await(activity, "!!document.querySelector('[data-action=resume]')");
+            JSONObject hinted = awaitHintSave(preferences, "sharedSave");
+            assertEquals(1, hinted.getJSONObject("sharedSave").getInt("hintsUsed"));
+            assertEquals(5, hinted.getJSONObject("economy").getJSONObject("energy").getInt("amount"));
             activity.recreate();
             await(activity, "!!document.querySelector('.hero-play')");
             click(activity, "[data-action=shared]");
@@ -373,6 +371,22 @@ public class NativeGameSmokeTest {
 
     private static JSONObject profile(SharedPreferences preferences) throws Exception {
         return new JSONObject(preferences.getString(SAVE_KEY, "{}"));
+    }
+
+    private static JSONObject awaitHintSave(SharedPreferences preferences, String field) throws Exception {
+        long deadline = SystemClock.elapsedRealtime() + 30000;
+        JSONObject snapshot;
+        do {
+            snapshot = profile(preferences);
+            JSONObject session = snapshot.optJSONObject(field);
+            if (snapshot.optInt("hints", -1) == 2 && session != null && session.optInt("hintsUsed", -1) == 1)
+                return snapshot;
+            SystemClock.sleep(100);
+        } while (SystemClock.elapsedRealtime() < deadline);
+        JSONObject session = snapshot.optJSONObject(field);
+        fail("Preferences did not persist the complete hint transaction: hints=" + snapshot.optInt("hints", -1)
+            + ", " + field + ".hintsUsed=" + (session == null ? "missing" : session.optInt("hintsUsed", -1)));
+        return snapshot;
     }
 
     /** Test-device setup only; the shipped Activity does not bypass a user's lock screen. */

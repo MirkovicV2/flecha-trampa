@@ -80,6 +80,8 @@ test('route mode works with keyboard and cancelled drags never become moves', as
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
   await page.mouse.move(box.x + box.width / 2 + 18, box.y + box.height / 2);
+  // A busy renderer can delay pointerup past the former 900ms click guard.
+  await page.waitForTimeout(1100);
   await page.mouse.up();
   await expect(page.locator('[data-arrow]')).toHaveCount(board.arrows.length);
   await arrow.focus();

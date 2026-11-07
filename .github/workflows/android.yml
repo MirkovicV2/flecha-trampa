@@ -2,7 +2,7 @@ name: Android APK
 on:
   workflow_dispatch:
   push:
-    branches: [main, develop, 'feature/**']
+    branches: [main, develop]
   pull_request:
     branches: [main, develop]
 permissions:
@@ -48,6 +48,10 @@ jobs:
           cp android/app/build/outputs/apk/release/app-release-unsigned.apk "$RUNNER_TEMP/flecha-release-unsigned.apk"
           echo "FLECHA_CI_TEST_KEYSTORE=$RUNNER_TEMP/android-smoke.p12" >> "$GITHUB_ENV"
           echo "FLECHA_CI_TEST_PASSWORD=$FLECHA_CI_TEST_PASSWORD" >> "$GITHUB_ENV"
+      # Compile before cold boot: competing Gradle/WebView/launcher work caused
+      # Quickstep ANRs that stole focus even with the default system image.
+      - name: Compile release instrumentation before emulator boot
+        run: ./android/gradlew --project-dir android --no-daemon --max-workers=2 :app:assembleReleaseAndroidTest
       - name: Test native launch, save, activity recreation and Android back
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
@@ -59,7 +63,13 @@ jobs:
           profile: pixel_5
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          script: bash scripts/run-android-smoke.sh
+          script: |
+            mkdir -p .artifacts/android-smoke
+            adb shell dumpsys window > .artifacts/android-smoke/preflight-windows.txt
+            adb shell screencap -p /sdcard/launcher-preflight.png
+            adb pull /sdcard/launcher-preflight.png .artifacts/android-smoke/launcher-preflight.png
+            adb shell am force-stop com.android.launcher3
+            bash scripts/run-android-smoke.sh
       - name: Retain unsigned release candidate
         uses: actions/upload-artifact@v7
         with:
