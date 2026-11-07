@@ -206,19 +206,19 @@ public class NativeGameSmokeTest {
                 for (int x = left; x < right; x += 4) {
                     int pixel = screenshot.getPixel(x, y);
                     int max = Math.max(Color.red(pixel), Math.max(Color.green(pixel), Color.blue(pixel)));
-                    int min = Math.min(Color.red(pixel), Math.min(Color.green(pixel), Color.blue(pixel)));
-                    if (max > 170 && max - min > 55) samples++;
+                    // Muted loading text stays below 190. White/metal skins must count too.
+                    if (max > 190) samples++;
                 }
             }
             if (samples >= 20) {
-                Log.i("FlechaSmoke", "Native board paint verified: " + samples + " colored samples in " + filename);
+                Log.i("FlechaSmoke", "Native board paint verified: " + samples + " bright samples in " + filename);
                 saveCapture(context, screenshot, filename);
                 return;
             }
             screenshot.recycle();
             SystemClock.sleep(200);
         } while (SystemClock.elapsedRealtime() < deadline);
-        fail("Native board did not paint arrow colors within 15s: " + samples + " samples");
+        fail("Native board did not paint arrow highlights within 15s: " + samples + " samples");
     }
 
     private static void saveCapture(Context context, Bitmap screenshot, String filename) throws Exception {
