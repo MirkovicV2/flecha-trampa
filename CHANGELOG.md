@@ -9,6 +9,7 @@
 - Combos con cinco etapas, medidor, estelas, ondas, carteles de racha, partículas de pantalla y tono/vibración ascendentes; limpieza al pausar y reducción de movimiento.
 - Se conservan la geometría táctil y la firma de actualización Android. Versión Android 4.
 - Nuevas pruebas de escenarios, compras/anuncios, segundo plano, persistencia, partículas acotadas y controles estables.
+- Renderizado suspendido detrás de los modales, reanudación de animaciones en curso y limpieza de escenas dormidas.
 
 ## 0.2.0 — 2026-11-07
 

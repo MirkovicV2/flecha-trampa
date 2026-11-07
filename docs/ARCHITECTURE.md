@@ -45,6 +45,8 @@ La distribución interna usa `PreviewAdsService` y `PreviewPurchasesService` con
 
 `ComboEffects` contiene solo efectos decorativos sin entrada. Se acotan partículas y oleadas y se cancelan animaciones al cambiar de pantalla. No se desplaza la cámara ni el tablero. `config/combos.ts` define los hitos y el medidor reutiliza el tiempo de la cadena pura. La reducción de movimiento se consulta tanto en DOM como en Phaser.
 
+`BoardRenderer.setPaused()` duerme el TimeStep de Phaser detrás de un modal y al ocultar el documento; lo despierta al continuar. Así se evitan frames WebGL continuos detrás del desenfoque de pausa. El montaje respeta modales abiertos antes de que el canvas esté listo, el evento de visibilidad se aplica después del manejador propio de Phaser y la destrucción despierta el frame que procesa `pendingDestroy`. Los movimientos ya aplicados conservan sus animaciones pendientes y se completan al reanudar.
+
 Clave: `flecha-trampa:profile:v1`; copia anterior: sufijo `:backup`. La validación comprueba tipos, rangos, geometría, vidas, errores, movimientos, condición terminal, pertenencia al tablero inicial y solubilidad. Los primeros guardados de esquema 1 reciben campos diarios y compartidos mediante migración aditiva.
 
 Se escribe primero la copia válida anterior y después el principal. Preferences serializa ese orden. Los fallos de permisos, cuota o plugin permiten continuar en memoria e informan al usuario. El almacenamiento no está cifrado ni concede derechos de pago.
