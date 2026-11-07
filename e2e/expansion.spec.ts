@@ -91,7 +91,7 @@ test('keeps earning chest milestones after completing the pass without refunding
   await page.emulateMedia({ reducedMotion: 'reduce' });
   const profile = defaultProfile();
   profile.tutorialDone = true;
-  profile.level = 5;
+  profile.level = 15;
   profile.economy.pass.xp = 4000;
   await page.goto('/');
   await page.evaluate(({ key, value }) => localStorage.setItem(key, JSON.stringify(value)), {
@@ -101,14 +101,14 @@ test('keeps earning chest milestones after completing the pass without refunding
   await page.reload();
   await page.locator('[data-action=play]').click();
   await expect(page.locator('.board-loading')).toHaveCount(0);
-  const board = generateLevel(`classic:${profile.runId}:5`, classicConfigForLevel(5)).board;
+  const board = generateLevel(`classic:${profile.runId}:15`, classicConfigForLevel(15)).board;
   for (const id of solve(board).sequence) await page.locator(`[data-arrow="${id}"]`).click();
   await expect(page.getByRole('dialog')).toContainText('+1 cofre');
   let saved = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!), SAVE_KEY);
   expect(saved.economy.collection.chests).toBe(2);
   expect(saved.economy.energy.amount).toBe(4);
   expect(saved.classicSave.rewardChests).toBe(1);
-  await page.screenshot({ path: `.artifacts/060-milestone-supply-${info.project.name}.png` });
+  await page.screenshot({ path: `.artifacts/070-milestone-supply-${info.project.name}.png` });
   await page.reload();
   saved = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!), SAVE_KEY);
   expect(saved.economy.collection.chests).toBe(2);

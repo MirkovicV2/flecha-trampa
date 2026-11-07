@@ -1,5 +1,12 @@
 import { ARROW_COLORS, THEME_LABELS, THEME_NAMES } from '../config/theme';
-import { SKINS, SKIN_COST, RARITY_LABELS, RARITY_CHANCES } from '../config/collection';
+import {
+  SKINS,
+  SKIN_COST,
+  RARITY_LABELS,
+  RARITY_CHANCES,
+  CHEST_LEVEL_INTERVAL,
+  KEY_WINS_REQUIRED,
+} from '../config/collection';
 import type { SkinId } from '../config/collection';
 import { PASS_TIERS, XP_PER_TIER, MAX_PASS_TIER } from '../config/pass';
 import type { Reward } from '../config/pass';
@@ -23,6 +30,7 @@ export function themeSwatches(theme: keyof typeof ARROW_COLORS): string {
 export function rewardLabel(reward: Reward): string {
   if (reward.kind === 'theme') return `Tema ${THEME_LABELS[reward.id]}`;
   if (reward.kind === 'skin') return `Skin ${SKINS.find((skin) => skin.id === reward.id)!.name}`;
+  if (reward.kind === 'chests' && reward.amount === 1) return '1 cofre';
   const labels = {
     energy: 'energía',
     hints: 'pistas',
@@ -79,11 +87,27 @@ export function themesContent(profile: PlayerProfile): string {
   }).join('')}</div>`;
 }
 
+function chestVault(profile: PlayerProfile): string {
+  const { chests, keys, keyProgress } = profile.economy.collection;
+  const completed = profile.level - 1;
+  const nextChestLevel = (Math.floor(completed / CHEST_LEVEL_INTERVAL) + 1) * CHEST_LEVEL_INTERVAL;
+  return `<section class="chest-vault ${keys < 1 ? 'vault-locked' : ''}">
+    <div class="chest-art" aria-hidden="true">${supplyCase()}<span class="vault-seal">${icon(keys > 0 ? 'key' : 'lock')}</span></div>
+    <div class="vault-copy"><div class="studio-kicker">SUMINISTRO 01 · CONSEGUIDO JUGANDO</div>
+      <h2>${chests} ${chests === 1 ? 'cofre disponible' : 'cofres disponibles'}</h2>
+      <p>Un cofre cada ${CHEST_LEVEL_INTERVAL} niveles clásicos nuevos. Próximo hito: nivel ${nextChestLevel}.</p>
+      <div class="key-wallet">${icon('key')}<strong data-key-count>${keys}</strong><span>${keys === 1 ? 'LLAVE DISPONIBLE' : 'LLAVES DISPONIBLES'}</span></div>
+      <p id="chest-opening-cost" class="vault-cost">Cada apertura consume 1 cofre y 1 llave.${keys < 1 ? ' Necesitas forjar una llave para abrir.' : chests < 1 ? ' Consigue otro cofre en clásico o en el pase.' : ''}</p>
+      <button class="primary-button" data-action="open-chest" aria-label="Abrir cofre" aria-describedby="chest-opening-cost" ${chests < 1 || keys < 1 ? 'disabled' : ''}>Abrir cofre <span>1 llave ${icon('key')}</span></button>
+    </div></section>
+    <section class="key-forge" aria-label="Forja de llaves"><div class="forge-emblem" aria-hidden="true">${icon('key')}</div><div class="forge-copy"><span class="studio-kicker">FORJA DE LLAVES</span><h3>${KEY_WINS_REQUIRED - keyProgress} ${KEY_WINS_REQUIRED - keyProgress === 1 ? 'victoria para la próxima llave' : 'victorias para la próxima llave'}</h3><div class="forge-meter"><progress value="${keyProgress}" max="${KEY_WINS_REQUIRED}" aria-label="Progreso de forja"></progress><span data-key-progress>${keyProgress} / ${KEY_WINS_REQUIRED}</span></div><p>Cada ${KEY_WINS_REQUIRED} victorias nuevas: 1 llave. Cuenta clásico nuevo y el primer diario de cada día. La práctica y las repeticiones no suman.</p></div><button class="secondary-button" data-action="play">Jugar y forjar ${icon('arrow')}</button></section>`;
+}
+
 function collectionContent(profile: PlayerProfile): string {
   const collection = profile.economy.collection;
   const equipped = SKINS.find((skin) => skin.id === profile.settings.skin)!;
   const design = ARROW_DESIGNS[equipped.id];
-  return `<div class="collection-masthead"><div><span class="studio-kicker">FLECHA TRAMPA / ATELIER 01</span><h2>Elige tu firma.</h2><p>32 piezas. Encuentra tu firma de movimiento.</p></div><span class="collection-count"><strong>${String(collection.ownedSkins.length).padStart(2, '0')}</strong><small>/ ${SKINS.length} EN COLECCIÓN</small></span></div><section class="equipped-showcase rarity-${equipped.rarity}"><div class="showcase-drawing"><span class="drawing-coordinate top">${design.serial}</span><div class="skin-plinth">${skinPreview(equipped.id)}</div><span class="drawing-coordinate bottom">${design.workshop}</span></div><div class="showcase-copy"><span class="studio-kicker">TU PIEZA EQUIPADA</span><h2>${equipped.name}</h2><span class="finish-label">${design.finish}</span><p>${design.description}</p><button class="text-button" data-action="preview-skin" data-value="${equipped.id}">Inspeccionar y probar ${icon('diagonal')}</button></div></section><section class="chest-vault"><div class="chest-art" aria-hidden="true">${supplyCase()}</div><div><div class="studio-kicker">SUMINISTRO 01 · CONSEGUIDO JUGANDO</div><h2>${collection.chests} ${collection.chests === 1 ? 'cofre disponible' : 'cofres disponibles'}</h2><p>Un cofre cada 5 niveles clásicos nuevos, también después del pase. Sin llaves, sin compras.</p><button class="primary-button" data-action="open-chest" ${collection.chests < 1 ? 'disabled' : ''}>Abrir cofre ${icon('arrow')}</button></div></section><div class="chest-odds">${Object.entries(
+  return `<div class="collection-masthead"><div><span class="studio-kicker">FLECHA TRAMPA / ATELIER 01</span><h2>Elige tu firma.</h2><p>32 piezas. Encuentra tu firma de movimiento.</p></div><span class="collection-count"><strong>${String(collection.ownedSkins.length).padStart(2, '0')}</strong><small>/ ${SKINS.length} EN COLECCIÓN</small></span></div><section class="equipped-showcase rarity-${equipped.rarity}"><div class="showcase-drawing"><span class="drawing-coordinate top">${design.serial}</span><div class="skin-plinth">${skinPreview(equipped.id)}</div><span class="drawing-coordinate bottom">${design.workshop}</span></div><div class="showcase-copy"><span class="studio-kicker">TU PIEZA EQUIPADA</span><h2>${equipped.name}</h2><span class="finish-label">${design.finish}</span><p>${design.description}</p><button class="text-button" data-action="preview-skin" data-value="${equipped.id}">Inspeccionar y probar ${icon('diagonal')}</button></div></section>${chestVault(profile)}<div class="chest-odds">${Object.entries(
     RARITY_CHANCES,
   )
     .map(
