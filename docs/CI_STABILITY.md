@@ -1,6 +1,6 @@
 # Estabilidad de CI e interfaz
 
-Fecha: 7 de noviembre de 2026. Copia asignada: `C:\Users\brank\orca\workspaces\FlechaTrampa\estabilidad-interfaz`, rama `MirkovicV2/estabilidad-interfaz`, base `afb376ec0480724bafceebeee09bcfec576f175a`. Trabajo local, sin push, merge, tags ni APK de publicación. El ajuste de contraste de la revisión independiente pertenece a otra copia y no está incluido aquí.
+Fecha: 7 de noviembre de 2026. Copia asignada: `C:\Users\brank\orca\workspaces\FlechaTrampa\estabilidad-interfaz`, rama `MirkovicV2/estabilidad-interfaz`, base `afb376ec0480724bafceebeee09bcfec576f175a`. Trabajo local, sin push, merge, tags ni APK de publicación. El ajuste de contraste se ha incorporado desde `86be808a20afd440c6638602a95814bfaa6a179f` mediante cherry-pick `d6285b1e8ddd78c0d1f670c7216e3351ea477a7c`, encima de `25be7f6`, sin conflictos y sin editar la copia ajena.
 
 Archivos: [entrada](../src/ui/board-input.ts), [rutas](../e2e/routes.spec.ts), [materiales](../e2e/cosmetics.spec.ts), [prueba de Preferences](../tests/platform.test.ts), [instrumentación nativa](../android/app/src/androidTest/java/com/flechatrampa/game/NativeGameSmokeTest.java), [CI web](../.github/workflows/ci.yml) y [CI Android](../.github/workflows/android.yml).
 
@@ -50,7 +50,7 @@ Ahora se pulsa Atrás tras la señal DOM de pista consumida, se comprueba la pau
 - Se revisaron las 19 suites de lógica y la batería web: generador y solver independientes, formas, progreso, transacciones, cofres/llaves, animaciones, teclado, hold, taps y scroll reales, pausa y recreación nativa. Los casos de resolución de formas siguen siendo compactos, con pruebas densas separadas. No se modifican reglas ni catálogo.
 - Los dos casos Android siguen siendo recorridos integrados de 240 s; no se ha incrementado ese límite. El historial documenta casos cercanos a 197 s, por lo que su margen con emulación lenta continúa siendo un riesgo que debe medirse en el candidato remoto.
 
-## Validación local
+## Validación local de la estabilización previa (`25be7f6`)
 
 Herramientas: Node portátil **24.22.2**, npm **11.19.1**, JDK **21.0.13+9**, SDK existente y Gradle **8.14.3**. No se añadieron dependencias ni se modificó el lockfile.
 
@@ -98,9 +98,58 @@ La primera orden estándar `npm run test:e2e:preview -- --project=desktop ...` c
 
 Evidencia local ignorada: `.artifacts/ci-investigation/` contiene los artefactos remotos completos y trazas expandidas; `.artifacts/web-production-output.log` recoge la ejecución completa. Los scripts locales de config/comprobación no forman parte del producto. Las capturas Android remotas prueban los fallos anteriores; las nuevas fuentes nativas solamente están compiladas. No se han probado teléfonos físicos ni iOS.
 
+## Candidato combinado (`d6285b1`)
+
+El coordinador solicitó integrar `86be808` tras cerrar la estabilización. Se incorporó por cherry-pick como `d6285b1`, preservando el commit `25be7f6` y todas sus aserciones; no hubo conflictos. El cambio recibido añade estados legibles de hover, foco y deshabilitado en [presentation.css](../src/ui/presentation.css), la prueba [hint-states.spec.ts](../e2e/hint-states.spec.ts) y su evidencia en [UI_REDESIGN.md](UI_REDESIGN.md).
+
+La batería anterior de 162 casos no incluía ese cambio. Se conserva su salida en `.artifacts/web-stability-25be7f6-output.log` y su resumen en `.artifacts/web-stability-25be7f6-summary.json`; la salida `.artifacts/web-production-output.log` corresponde ahora al candidato combinado.
+
+| Comprobación del candidato combinado                                           | Resultado                                                                                                            |
+| ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| `npm run check` y `npm run format:check`                                       | Correctos; **156 pruebas / 19 archivos**, Vitest 16,71 s, TypeScript y build                                         |
+| Batería web completa sobre producción                                          | **164/164** (82 móvil y 82 escritorio), 1040,223 s (17 min 20 s), 0 fallos, 0 omisiones y 0 casos flaky; sin retries |
+| Android `cap sync`, `lintRelease`, `assembleDebug`, `assembleDebugAndroidTest` | **BUILD SUCCESSFUL**, 31 s; 355 tareas (53 ejecutadas, 302 actualizadas)                                             |
+| Assets del APK debug                                                           | Los **16 archivos de `dist/`** coinciden por SHA-256 con `assets/public/` del APK debug                              |
+| Instrumentación Android                                                        | No ejecutada: sigue sin haber emulador ni AVD local; no se genera release de distribución                            |
+
+No se han modificado otra vez las reglas de entrada ni la instrumentación. La comprobación de assets usa el ZIP debug y hashes de cada archivo; no requiere ni lee claves de firma.
+
+Los 64 casos de materiales del candidato combinado tardan individualmente 4,243–6,352 s (media 5,062 s). Los estados de pistas medidos en ambos proyectos conservan contraste normal 12,77:1, foco 13,11:1 y deshabilitado 5,62:1; hover de escritorio 13,11:1 y hover/toque móvil 12,77:1. Se revisan las capturas móviles de foco y deshabilitado; no se detecta texto oculto ni pérdida del contorno de foco.
+
+## Preparación de fuentes 0.8.0
+
+Por instrucción posterior del coordinador se prepara `0.8.0`: `package.json`, las dos versiones del proyecto en `package-lock.json` y Android `versionName` quedan coherentes, con `versionCode 9 > 8`. `npm version 0.8.0 --no-git-tag-version --ignore-scripts` no crea tags ni commits automáticos. Una comparación estructural de ambos lockfiles, excluyendo únicamente las versiones raíz, confirma que todas las resoluciones y dependencias permanecen idénticas. Se añaden [changelog](../CHANGELOG.md) y [notas del candidato](RELEASE_CANDIDATE.md).
+
+La suite completa del apartado anterior sirve el build combinado de `d6285b1`, anterior al incremento de versión. No se sustituye ese build mientras se está ejecutando. Después se construye 0.8.0 y se comprueban los casos nuevos de contraste y el flujo existente de pistas/pausa en ambos proyectos; no se repite otra suite completa por el cambio de metadatos. En el código web la versión se interpola solamente en navegación y Ajustes. El gate completo del SHA final 0.8.0 será remoto.
+
+| Comprobación final 0.8.0                                                       | Resultado                                                                                                                    |
+| ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| `npm run check` y `npm run format:check`                                       | Correctos; **156 pruebas / 19 archivos**, Vitest 15,92 s, lint, TypeScript y build                                           |
+| Contraste y flujo de pistas/pausa sobre producción                             | **4/4**, 37,1 s, móvil y escritorio                                                                                          |
+| Coherencia de versión y lockfile                                               | Proyecto, lockfile y Android en 0.8.0; código 9; bundle de producción contiene la versión; sin cambios de dependencias       |
+| Android `cap sync`, `lintRelease`, `assembleDebug`, `assembleDebugAndroidTest` | **BUILD SUCCESSFUL**, 41 s; 355 tareas (67 ejecutadas, 288 actualizadas)                                                     |
+| APK debug de validación                                                        | `aapt`: paquete `com.flechatrampa.game`, versión 0.8.0 y código 9; sus **16 archivos web** coinciden por SHA-256 con `dist/` |
+| Instrumentación remota y distribución                                          | **Pendientes**; no hay emulador local, publicación, tag ni APK firmada de distribución                                       |
+
+Comandos adicionales de esta fase:
+
+```powershell
+npm version 0.8.0 --no-git-tag-version --ignore-scripts
+node .artifacts/check-version.mjs
+npm run check
+npm run format:check
+npx playwright test --config=.artifacts/playwright.local.config.ts e2e/hint-states.spec.ts e2e/game.spec.ts --grep 'hint retains|hints identify' --reporter=list
+npx cap sync android
+./android/gradlew.bat --project-dir android --no-daemon --max-workers=2 :app:lintRelease :app:assembleDebug :app:assembleDebugAndroidTest
+```
+
+La integración no elimina aserciones existentes: frente a `25be7f6`, el único cambio e2e de `d6285b1` son 109 líneas añadidas en `hint-states.spec.ts`, sin líneas retiradas. Las salidas finales están en `.artifacts/080-targeted-output.log` y `.artifacts/080-native-build.log`; el resumen de la suite combinada en `.artifacts/web-production-summary.json`. La comprobación del lockfile compara estructuralmente todas sus entradas, ignorando únicamente las dos versiones del proyecto.
+
+La instrumentación Android remota sigue pendiente. No se ha ejecutado `sign-android`, leído credenciales, generado firma de distribución ni cambiado el generador o los esquemas de progreso.
+
 ## Gate propuesto para la publicación
 
-1. Combinar esta corrección con el ajuste de contraste de la revisión independiente y fijar un SHA candidato; conservar árbol limpio y versión/firma aprobadas por el coordinador.
+1. Usar el candidato que ya combina estabilidad y contraste, fijar su SHA y conservar árbol limpio y versión/firma aprobadas por el coordinador.
 2. Exigir `validate`, `browser-tests (mobile)`, `browser-tests (desktop)` y `android-build-and-smoke` en ese mismo candidato remoto, una ejecución deliberada. Los dos casos Android deben terminar con cero fallos/errores/omisiones y capturas pintadas; comprobar foco real, `hintsUsed` restaurado y márgenes frente a los 240 s.
 3. Si reaparece ANR o falla la instantánea de pistas, conservar el artefacto y detener la publicación; este informe no considera esos fallos resueltos mediante una compilación local.
 4. Solo después construir y firmar la APK de distribución con la firma existente, verificar paquete/versión, alineación/firma y coincidencia de assets con el candidato probado; el coordinador gestiona su publicación.
