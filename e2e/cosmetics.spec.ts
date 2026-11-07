@@ -96,6 +96,7 @@ test('equipped materials render and animate real moves without changing touch ta
     'tide',
     'phoenix',
     'aurora',
+    'eclipse',
   ] as const) {
     await page.getByRole('button', { name: 'Recompensas', exact: true }).click();
     await page.getByRole('button', { name: 'Colección', exact: true }).click();

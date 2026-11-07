@@ -1,18 +1,26 @@
 # FLECHA TRAMPA
 
-**[Descargar APK para Android (v0.5.0)](https://github.com/MirkovicV2/flecha-trampa/releases/download/v0.5.0/flecha-trampa-v0.5.0-android.apk)**
+**[Descargar APK para Android (v0.6.0)](https://github.com/MirkovicV2/flecha-trampa/releases/download/v0.6.0/flecha-trampa-v0.6.0-android.apk)**
 
-**Abre camino.** Juego de puzles para móvil: flechas, tres vidas y el orden justo para despejar el tablero. Versión 0.5.0 para web y Android, con TypeScript estricto, Phaser 3, Vite, Vitest y Capacitor 8.
+**Abre camino.** Juego de puzles para móvil: flechas, tres vidas y el orden justo para despejar el tablero. Versión 0.6.0 para web y Android, con TypeScript estricto, Phaser 3, Vite, Vitest y Capacitor 8.
 
 ## Descargar e instalar la APK
 
-Pulsa **Descargar APK para Android** al principio de este README para descargar directamente el instalador. También puedes [ver la Release y sus archivos](https://github.com/MirkovicV2/flecha-trampa/releases/tag/v0.5.0).
+Pulsa **Descargar APK para Android** al principio de este README para descargar directamente el instalador. También puedes [ver la Release y sus archivos](https://github.com/MirkovicV2/flecha-trampa/releases/tag/v0.6.0).
 
 El enlace directo funciona también desde el README en GitHub Mobile. El repositorio es privado: iniciar sesión con la cuenta que tiene acceso. Abrir el archivo descargado y seguir el instalador de Android.
 
 Requiere Android 7.0 o posterior y Android System WebView actualizado. Es una APK universal de tipo release, firmada para pruebas, con el juego incluido para jugar sin conexión. La misma firma permite actualizar conservando las partidas. El modo clásico y el diario funcionan localmente; compartir retos fuera de la app necesita configurar una URL web pública. No es una publicación de Google Play. Ver [compilación, firma y alcance de las pruebas Android](docs/MOBILE.md).
 
 ## Novedades de esta versión
+
+El pase conserva tus XP y premios anteriores y se amplía a **40 niveles y 80 recompensas**, con 23 skins garantizadas entre sus dos rutas, cofres, pistas, vidas, fragmentos y sellos para fondos. Los hitos gratuitos incluyen Cero absoluto (20), Noche de brujas (25), Solsticio (30) y Fénix (40); la ruta Plus termina con Dragón imperial. Una skin ya conseguida se compensa con fragmentos. Cada cinco niveles clásicos nuevos recibes además un cofre, incluso después de terminar el pase; así la colección sigue creciendo.
+
+Los intentos clásicos nuevos usan cadenas de bloqueos más largas desde el nivel 2, más densidad y menos salidas iniciales. El solver comprueba cada tablero; los guardados, diarios y retos anteriores se conservan. En la muestra de niveles 31–60, la profundidad media pasa de 8,16 a 19,77 y las salidas iniciales del 44,18 % al 27,54 %. Consulta la metodología y ejecuta `npm run balance` en [balance](docs/BALANCE.md).
+
+**Energía:** cada intento clásico o diario nuevo cuesta 1 carga, ganes o pierdas. Continuar es gratis, se recupera 1 cada 10 minutos y la práctica sin energía sigue disponible. No se quitan cargas acumuladas. Los intentos guardados por versiones anteriores conservan el reembolso prometido.
+
+### Tablero, rutas y precisión
 
 Partida revisada a partir de las fichas y capturas oficiales de Slide Arrows Match y Arrow Slide Puzzle. **Cinco composiciones**: cuadrícula, diamante, cruz, órbita y reloj de arena. Los nuevos niveles clásicos alternan formas desde el nivel 3; los retos permiten elegirlas. Generación inversa, solver independiente, enlaces y guardados conservan sus garantías. Los diarios y retos anteriores mantienen el mismo tablero.
 
@@ -24,7 +32,7 @@ Partida revisada a partir de las fichas y capturas oficiales de Slide Arrows Mat
 
 Cofres con precinto animado, carrusel de piezas, clics sincronizados, frenado y revelación según rareza. El premio se guarda antes de animar: saltar, girar el móvil, pulsar Atrás o cerrar no repite el sorteo ni pierde la pieza. No hay llaves ni venta de cofres.
 
-Ocho flechas redibujadas con siluetas, biseles y materiales propios. Colección con fichas, filtros e inspector que permite probar cada firma de movimiento: ecos, descargas, píxeles, cristal, órbitas, oro y plasma. El mismo dibujo aparece en la colección, la portada y el tablero. Ver [diseño, animación y garantías de los cofres](docs/COSMETICS.md).
+32 skins con siluetas, biseles y materiales propios: 24 piezas nuevas, incluidas Escarcha, Caldera, Sakura, Noche de brujas, Solsticio, Fénix y Dragón imperial. Hay 16 familias de animación reales en el tablero. Colección con fichas, filtros por rareza e inspector para probar cada firma de movimiento. El mismo dibujo aparece en la colección, la portada y el tablero. Ver [diseño, animación y garantías de los cofres](docs/COSMETICS.md).
 
 Nueva identidad de taller con tipografías locales de licencia libre. Los fondos de Navidad, Halloween, sakura, neón, océano y faroles incorporan nieve, pétalos, burbujas y otros ambientes. Siguen desbloqueándose gratis por sellos, sin gastar ni dar energía. Los combos conservan Frenesí, Imparable y Leyenda y sus controles táctiles estables.
 
@@ -32,11 +40,13 @@ Hay anuncios locales y compra del Pase Plus **de prueba, sin cobro**, para revis
 
 ## Probar las novedades
 
+Para probar el nuevo generador: **Inicio → Reta a alguien → Complejidad → Maestro · Cadenas largas**, opcionalmente con densidad extrema del 95 %. El enlace usa FT3 y puede compartirse con esta versión.
+
 Para probar las nuevas formas directamente: **Inicio → Reta a alguien → Forma del tablero**, elige Diamante u Órbita, crea el reto y juega. Usa una semilla propia para repetirlo. En partida, mantén una flecha pulsada para consultar una ruta; prueba Rutas para alternar entre inspeccionar y jugar. Completa el tablero sin errores ni pistas para conseguir tres estrellas. Las estrellas no alteran los premios ni la energía.
 
 Los cofres, fondos y pase de prueba se prueban así:
 
-1. Recompensas → **Colección** → **Abrir cofre**. Activa su botón de sonido para escuchar precinto, tarjetas y revelación. Si ya gastaste el cofre de bienvenida, el nivel 2 del pase gratuito concede otro y los niveles 5 y 9 conceden dos cada uno.
+1. Recompensas → **Colección** → **Abrir cofre**. Activa su botón de sonido para escuchar precinto, tarjetas y revelación. Si ya gastaste el cofre de bienvenida, el nivel 2 del pase gratuito concede otro y los niveles 5 y 9 conceden dos cada uno. Cada cinco niveles clásicos nuevos también consigues un cofre.
 2. Pulsa la lupa de cualquier skin → **Probar animación**. Puedes inspeccionarlas todas aunque aún no sean tuyas; solo equipar o crear requiere propiedad o fragmentos.
 3. Inicio → **Navidad. Halloween. Tu mundo.**, o Recompensas → **Fondos y eventos**. Un sello de bienvenida permite desbloquear Navidad; puedes previsualizar todos los demás.
 4. Recompensas → Pase de temporada → **Probar Pase Plus · 0 €**. Cancelar, activar y restaurar funcionan. Ajustes → **Restablecer pase de prueba** permite repetir el flujo.
@@ -44,7 +54,7 @@ Los cofres, fondos y pase de prueba se prueban así:
 
 ## Estado de GitHub
 
-Repositorio privado verificado: [MirkovicV2/flecha-trampa](https://github.com/MirkovicV2/flecha-trampa). `main`, `develop` y las ramas de funcionalidad están publicadas. `v0.1.0` conserva el MVP web original; `v0.5.0` identifica la entrega de formas, rutas y dominio, conservando los cofres y cosméticos de la 0.4.0. Las fuentes comprobadas superan 116 pruebas de lógica, 82 de navegador y dos casos Android. La cuenta activa se comprobó con `gh auth status` y `gh api user`. La protección remota de `main` no está activa: GitHub exige Pro para habilitarla en este repositorio privado; la API vuelve a confirmar HTTP 403. Ver [estado y comprobaciones de GitHub](docs/REMOTE_STATUS.md).
+Repositorio privado verificado: [MirkovicV2/flecha-trampa](https://github.com/MirkovicV2/flecha-trampa). `main`, `develop` y las ramas de funcionalidad están publicadas. `v0.1.0` conserva el MVP web original; `v0.6.0` identifica la ampliación de colección, pase y dificultad. Las fuentes comprobadas superan **133 pruebas de lógica, 94 de navegador y dos casos Android**, con lint y compilación correctos. La cuenta activa se comprobó con `gh auth status` y `gh api user`. La protección remota de `main` no está activa: GitHub exige Pro para habilitarla en este repositorio privado; la API vuelve a confirmar HTTP 403. Ver [estado y comprobaciones de GitHub](docs/REMOTE_STATUS.md).
 
 ## Inicio rápido en este ordenador
 
@@ -135,7 +145,7 @@ El generador inserta flechas con trayectoria libre respecto al tablero parcial. 
 | Niveles 61–100     | 9 × 9   |
 | Desde el nivel 101 | 10 × 10 |
 
-Densidad y complejidad progresan por separado del tamaño. Desde el nivel clásico 3 se alternan cinco formas; la densidad se aplica a las celdas de su máscara y los huecos no bloquean las trayectorias. Las pruebas ejecutan las soluciones de 1.000 tableros rectangulares y 400 tableros con formas a través del motor real, sin errores ni pérdida de vidas; comprueban además 500 fallbacks para las máscaras. Los retos rectangulares conservan los enlaces FT1; las formas usan FT2 para que las APK antiguas no las interpreten como otro tablero. Ver [garantías y arquitectura](docs/ARCHITECTURE.md).
+Densidad y complejidad progresan por separado del tamaño. Desde el nivel clásico 3 se alternan cinco formas; la densidad se aplica a las celdas de su máscara y los huecos no bloquean las trayectorias. Las pruebas ejecutan las soluciones de 1.000 tableros rectangulares, 400 tableros con formas y 600 niveles tácticos por el motor real, sin errores ni pérdida de vidas; comprueban además 550 fallbacks de las dos revisiones. Los retos rectangulares conservan los enlaces FT1; las formas usan FT2 y los ajustes de cadenas FT3 para que las APK antiguas rechacen los parámetros desconocidos. Ver [garantías y arquitectura](docs/ARCHITECTURE.md).
 
 ## Progreso y recompensas
 
@@ -177,7 +187,7 @@ Antes de integrar: `npm run check`, `npm run format:check` y pruebas de navegado
 
 CI usa Node 24. Los trabajos `validate` y `browser-tests` instalan dependencias, ejecutan lint, formato, tests, build y pruebas de navegador. Admite push, pull request y ejecución manual. El resultado remoto está enlazado en [estado de GitHub](docs/REMOTE_STATUS.md). Ver [flujo y protección de ramas](docs/GIT_WORKFLOW.md), [validación](docs/VALIDATION.md) y [changelog](CHANGELOG.md).
 
-El workflow Android añade `android-build-and-smoke`: lint nativo, compilación release y pruebas en emulador de Preferences, recreación de actividad y la interfaz release mediante Espresso-Web. Las claves de firma de las APK publicadas permanecen en el ordenador.
+El workflow Android añade `android-build-and-smoke`: lint nativo, compilación release y pruebas en emulador de Preferences, recreación de actividad y la interfaz release mediante pulsaciones táctiles nativas. Las claves de firma de las APK publicadas permanecen en el ordenador.
 
 ## Android e iOS
 

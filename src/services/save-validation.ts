@@ -98,6 +98,14 @@ export function isSavedSession(
     return false;
   if (value.rewardXp !== undefined && !integer(value.rewardXp, 0, 175)) return false;
   if (
+    value.rewardChests !== undefined &&
+    (!integer(value.rewardChests, 0, 1) ||
+      mode !== 'classic' ||
+      !value.recorded ||
+      state.status !== 'won')
+  )
+    return false;
+  if (
     value.energyPolicy !== undefined &&
     (value.energyPolicy !== 'attempt-v2' || !value.energySpent)
   )

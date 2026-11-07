@@ -1,10 +1,22 @@
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
 import { PASS_SEASON, PASS_TIERS, MAX_PASS_TIER, parseRewardKey } from '../src/config/pass';
 import { ProgressStore, defaultProfile } from '../src/services/progress';
 import { decodeProfile } from '../src/services/save-validation';
 import { DUPLICATE_SHARDS } from '../src/config/collection';
 
 describe('40-tier continuing season', () => {
+  it('loads the native test fixture through the production validator', () => {
+    const fixture = readFileSync(
+      new URL('../android/app/src/androidTest/assets/season-profile.json', import.meta.url),
+      'utf8',
+    );
+    const profile = decodeProfile(fixture);
+    expect(profile).not.toBeNull();
+    expect(profile?.economy.pass.xp).toBe(4000);
+    expect(profile?.tutorialDone).toBe(true);
+    expect(profile?.economy.collection.ownedSkins).toEqual(['classic']);
+  });
   it('preserves earned season, XP and old claims without resetting inventory', () => {
     const old = defaultProfile();
     old.economy.pass = {

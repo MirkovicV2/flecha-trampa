@@ -26,10 +26,14 @@ jobs:
       - run: npm run test
       - run: npm run build
   browser-tests:
-    name: browser-tests
+    name: browser-tests (${{ matrix.project }})
     needs: validate
     runs-on: ubuntu-latest
     timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [mobile, desktop]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -38,12 +42,12 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e:preview
+      - run: npm run test:e2e:preview -- --project=${{ matrix.project }}
       - name: Retain browser failure evidence
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: browser-failures-${{ github.sha }}
+          name: browser-failures-${{ matrix.project }}-${{ github.sha }}
           path: |
             test-results/
             playwright-report/

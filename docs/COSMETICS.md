@@ -2,7 +2,7 @@
 
 ## Colección de flechas
 
-Los ocho diseños de la serie 01 son ilustraciones vectoriales originales. Cada uno tiene una silueta propia, caras, biseles, detalles de acabado y una firma de movimiento:
+El catálogo contiene 32 diseños vectoriales originales y 16 familias de animación. Cada pieza tiene silueta propia, caras, biseles, detalles de acabado y firma de movimiento. Las ocho piezas fundacionales de la serie 01 se conservan:
 
 | Pieza        | Acabado               | Salida                   |
 | ------------ | --------------------- | ------------------------ |
@@ -49,3 +49,23 @@ El carrusel usa Web Animations API y las salidas utilizan los tweens de Phaser 3
 ## Verificación
 
 `tests/chest-reel.test.ts` comprueba premios, independencia de las tarjetas vecinas, frenado, aleatoriedad inválida y encuadre. `e2e/cosmetics.spec.ts` verifica los inspectores, filtros y celdas táctiles estables; `e2e/chests.spec.ts` cubre el giro real, doble pulsación, duplicados, saltos, Escape, cambio de tamaño, recarga y movimiento reducido. La prueba nativa de Android espera tanto el giro como la revelación antes de equipar.
+
+## Ampliación 0.6
+
+El catálogo conserva las ocho piezas anteriores y añade 24 matrices originales:
+
+| Taller          | Piezas                                          | Firma nueva                                    |
+| --------------- | ----------------------------------------------- | ---------------------------------------------- |
+| Industrial      | Lanza, Ancla, Ala delta, Remache, Aguja, Cometa | Precisión, ecos, tensión, tinta, ondas, cintas |
+| Criolaboratorio | Escarcha, Cero absoluto, Solsticio              | Seis agujas de hielo                           |
+| Fundición       | Ascua, Caldera, Dragón imperial                 | Brasas y combustión                            |
+| Casa de tinta   | Ronin, Shogun                                   | Cortes diagonales                              |
+| Señal           | Circuito, Espectro                              | Bandas de desfase digital                      |
+| Botánica        | Flor de acero, Sakura                           | Pétalos en espiral                             |
+| Pelágico        | Marea, Abisal, Eclipse                          | Tres ondas concéntricas                        |
+| Mítico          | Noche de brujas, Fénix                          | Estelas de meteoros                            |
+| Celeste         | Aurora boreal                                   | Tres cintas ondulantes                         |
+
+Las 16 familias se ejecutan también en Phaser, con un máximo de siete elementos adicionales por salida cosmética y vida finita de hasta 550 ms. Las flechas mantienen sus objetivos DOM inmóviles. El inspector permite probar las piezas bloqueadas y cancela sus animaciones al cerrarse. El movimiento reducido omite partículas y deja una transición breve de opacidad. La colección incorpora filtros por todas las rarezas. Las skins estacionales también salen en cofres y se crean con fragmentos; no tienen caducidad ficticia ni conceden energía.
+
+El pase ampliado conserva temporada, XP y primeros diez niveles; añade vistas de premios, hitos gratuitos y navegación entre cuatro capítulos. Recoger una recompensa anima únicamente su tarjeta durante 700 ms. La transacción ocurre antes del efecto y no se repite al recargar.

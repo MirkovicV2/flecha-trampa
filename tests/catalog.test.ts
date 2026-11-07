@@ -1,12 +1,46 @@
 import { describe, expect, it } from 'vitest';
 import { SKINS, RARITIES } from '../src/config/collection';
 import { ARROW_DESIGNS } from '../src/config/arrow-designs';
+import type { Point } from '../src/config/arrow-designs';
 import { arrowArt } from '../src/ui/arrow-art';
 import { decodeProfile } from '../src/services/save-validation';
 import { defaultProfile } from '../src/services/progress';
 import { defaultEconomy, rollChest } from '../src/services/economy';
 
 describe('expanded original catalog', () => {
+  it('uses simple filled plates so SVG and WebGL can triangulate the same contours', () => {
+    const orientation = (a: Point, b: Point, c: Point) =>
+      (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+    const crosses = (a: Point, b: Point, c: Point, d: Point) => {
+      const o = [
+        orientation(a, b, c),
+        orientation(a, b, d),
+        orientation(c, d, a),
+        orientation(c, d, b),
+      ];
+      if (o[0]! * o[1]! < 0 && o[2]! * o[3]! < 0) return true;
+      if (!o.every((n) => n === 0)) return false;
+      const axis = a[0] === b[0] ? 1 : 0;
+      return (
+        Math.max(Math.min(a[axis], b[axis]), Math.min(c[axis], d[axis])) <
+        Math.min(Math.max(a[axis], b[axis]), Math.max(c[axis], d[axis]))
+      );
+    };
+    for (const skin of SKINS)
+      for (const layer of ARROW_DESIGNS[skin.id].layers) {
+        if (!layer.fill) continue;
+        const p = layer.points,
+          n = p.length;
+        for (let i = 0; i < n; i++)
+          for (let j = i + 2; j < n; j++) {
+            if (i === 0 && j === n - 1) continue;
+            expect(
+              crosses(p[i]!, p[(i + 1) % n]!, p[j]!, p[(j + 1) % n]!),
+              `${skin.id}: edges ${i},${j}`,
+            ).toBe(false);
+          }
+      }
+  });
   it('provides 32 unique dies, bounded coordinates and all four readable rotations', () => {
     expect(SKINS).toHaveLength(32);
     expect(new Set(SKINS.map((s) => s.id)).size).toBe(SKINS.length);

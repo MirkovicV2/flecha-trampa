@@ -53,23 +53,13 @@ jobs:
         with:
           api-level: 35
           arch: x86_64
-          target: google_apis
+          # This game uses Android/WebView APIs, not Google Play services. The
+          # Google image's Pixel Launcher raised ANR dialogs during cold CI boot.
+          target: default
           profile: pixel_5
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          script: |
-            adb shell settings put system screen_off_timeout 1800000
-            adb shell input keyevent KEYCODE_WAKEUP
-            adb shell wm dismiss-keyguard
-            # Keep window transitions disabled, but exercise actual WebView motion.
-            # A zero animator scale is exposed as prefers-reduced-motion by Android.
-            adb shell settings put global animator_duration_scale 1
-            adb shell svc wifi disable
-            adb shell svc data disable
-            ./android/gradlew --project-dir android --no-daemon --max-workers=2 :app:connectedReleaseAndroidTest
-            mkdir -p .artifacts/android-smoke
-            adb pull /sdcard/Pictures/FlechaTrampaTest/native-smoke.png .artifacts/android-smoke/native-release.png
-            adb pull /sdcard/Pictures/FlechaTrampaTest/native-silhouette.png .artifacts/android-smoke/native-silhouette.png
+          script: bash scripts/run-android-smoke.sh
       - name: Retain unsigned release candidate
         uses: actions/upload-artifact@v7
         with:

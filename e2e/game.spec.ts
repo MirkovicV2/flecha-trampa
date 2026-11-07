@@ -403,7 +403,7 @@ test('a classic win consumes one energy, earns pass XP and claims a reward only 
   await page.reload();
   await page.getByRole('button', { name: 'Recompensas', exact: true }).click();
   await expect(page.locator('[data-pass-xp]')).toHaveText('125 XP');
-  await expect(page.locator('[data-energy-amount]')).toHaveText('7/5');
+  await expect(page.locator('[data-energy-amount]')).toHaveText('6/5');
   await expect(
     page.getByRole('button', { name: 'Recogido gratis nivel 1', exact: true }),
   ).toBeDisabled();
