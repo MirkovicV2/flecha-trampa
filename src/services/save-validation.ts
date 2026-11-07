@@ -5,6 +5,51 @@ import type { PlayerProfile } from './progress';
 import type { PlaySession } from './session';
 import { defaultDailyProgress, isDailyProgress, isUtcDate } from './daily';
 import { integer, isRecord, nonNegative } from '../utils/validation';
+import { isSkinId } from '../config/collection';
+import { isThemeName } from '../config/theme';
+import { PASS_SEASON } from '../config/pass';
+import { defaultEconomy } from './economy';
+
+function isEconomy(value: unknown): boolean {
+  if (
+    !isRecord(value) ||
+    !isRecord(value.energy) ||
+    !isRecord(value.pass) ||
+    !isRecord(value.collection)
+  )
+    return false;
+  const { energy, pass, collection } = value;
+  return (
+    integer(energy.amount, 0, 99) &&
+    integer(energy.updatedAt) &&
+    pass.season === PASS_SEASON &&
+    integer(pass.xp, 0, 1000000) &&
+    Array.isArray(pass.claimed) &&
+    pass.claimed.length <= 20 &&
+    new Set(pass.claimed).size === pass.claimed.length &&
+    pass.claimed.every(
+      (key: unknown) =>
+        typeof key === 'string' &&
+        /^(free|premium):([1-9]|10)$/.test(key) &&
+        Number(key.split(':')[1]) * 100 <= Number(pass.xp),
+    ) &&
+    Array.isArray(collection.ownedSkins) &&
+    collection.ownedSkins.length <= 8 &&
+    collection.ownedSkins.includes('classic') &&
+    collection.ownedSkins.every(isSkinId) &&
+    new Set(collection.ownedSkins).size === collection.ownedSkins.length &&
+    Array.isArray(collection.ownedThemes) &&
+    collection.ownedThemes.length <= 6 &&
+    collection.ownedThemes.includes('aurora') &&
+    collection.ownedThemes.every(isThemeName) &&
+    new Set(collection.ownedThemes).size === collection.ownedThemes.length &&
+    integer(collection.lifeTokens, 0, 99) &&
+    integer(collection.shards, 0, 99999) &&
+    integer(collection.chests, 0, 999) &&
+    integer(collection.opened) &&
+    integer(collection.sinceEpic, 0, 9)
+  );
+}
 
 const text = (value: unknown): value is string =>
   typeof value === 'string' && value.length > 0 && value.length <= 128;
@@ -38,6 +83,21 @@ export function isSavedSession(
   const currentBoard = value.state.board;
   const { state, initialBoard, config } = value;
   if (
+    value.lifeTokenSpent !== undefined &&
+    (typeof value.lifeTokenSpent !== 'boolean' ||
+      (value.lifeTokenSpent && (mode !== 'classic' || !value.counted || state.initialLives !== 4)))
+  )
+    return false;
+  if (state.initialLives !== undefined && state.initialLives !== 3 && state.initialLives !== 4)
+    return false;
+  if (
+    value.energySpent !== undefined &&
+    (typeof value.energySpent !== 'boolean' ||
+      (value.energySpent && (!value.counted || mode === 'shared')))
+  )
+    return false;
+  if (value.rewardXp !== undefined && !integer(value.rewardXp, 0, 175)) return false;
+  if (
     config.width !== initialBoard.width ||
     config.height !== initialBoard.height ||
     initialBoard.arrows.length < 1
@@ -56,9 +116,10 @@ export function isSavedSession(
   )
     return false;
   if (
-    !integer(state.lives, 0, 3) ||
-    !integer(state.errors, 0, 3) ||
-    state.lives !== 3 - state.errors
+    !integer(state.lives, 0, Number(state.initialLives ?? 3)) ||
+    !integer(state.errors, 0, Number(state.initialLives ?? 3)) ||
+    state.lives !== Number(state.initialLives ?? 3) - state.errors ||
+    ![3, ...(mode === 'classic' ? [4] : [])].includes(Number(state.initialLives ?? 3))
   )
     return false;
   if (state.totalArrows !== initialBoard.arrows.length || !integer(state.moves)) return false;
@@ -115,9 +176,24 @@ export function decodeProfile(serialized: string | null): PlayerProfile | null {
       typeof value.settings.sound !== 'boolean' ||
       typeof value.settings.haptics !== 'boolean' ||
       typeof value.settings.reducedMotion !== 'boolean' ||
-      !['aurora', 'ember'].includes(String(value.settings.theme))
+      !isThemeName(value.settings.theme)
     )
       return null;
+    if (value.settings.skin === undefined) value.settings.skin = 'classic';
+    if (!isSkinId(value.settings.skin)) return null;
+    if (value.economy === undefined) value.economy = defaultEconomy();
+    if (
+      isRecord(value.economy) &&
+      isRecord(value.economy.collection) &&
+      value.economy.collection.lifeTokens === undefined
+    )
+      value.economy.collection.lifeTokens = 0;
+    if (!isEconomy(value.economy)) return null;
+    const economy = value.economy as unknown as PlayerProfile['economy'];
+    if (!economy.collection.ownedSkins.includes(value.settings.skin))
+      value.settings.skin = 'classic';
+    if (!economy.collection.ownedThemes.includes(value.settings.theme))
+      value.settings.theme = 'aurora';
     const stats = value.stats;
     if (
       !isRecord(stats) ||
@@ -129,6 +205,8 @@ export function decodeProfile(serialized: string | null): PlayerProfile | null {
     )
       return null;
     if (stats.flawless > stats.wins || stats.wins > stats.played) return null;
+    if (stats.bestCombo === undefined) stats.bestCombo = 0;
+    if (!integer(stats.bestCombo, 0, 100)) return null;
     return value as unknown as PlayerProfile;
   } catch {
     return null;
