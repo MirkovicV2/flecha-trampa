@@ -419,6 +419,7 @@ test('opens an earned chest, equips an actual skin and persists a full visual th
   await page.getByRole('button', { name: 'Colección', exact: true }).click();
   await expect(page.locator('.chest-odds')).toContainText('60%');
   await page.getByRole('button', { name: 'Abrir cofre', exact: true }).click();
+  await expect(page.locator('[data-case-phase]')).toHaveAttribute('data-case-phase', 'revealed');
   await expect(page.getByRole('dialog')).toContainText('NUEVA SKIN');
   await page.screenshot({ path: `.artifacts/chest-${testInfo.project.name}.png`, fullPage: true });
   await page.getByRole('button', { name: 'Equipar skin', exact: true }).click();
