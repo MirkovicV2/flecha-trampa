@@ -23,6 +23,7 @@ import { createGame } from '../core/game';
 import { mastery } from '../core/mastery';
 import { WORLDS, defaultEvents } from '../config/worlds';
 import type { EventCollection, WorldId } from '../config/worlds';
+import type { PowerKind } from '../core/special-arrow';
 
 export const SAVE_KEY = 'flecha-trampa:profile:v1';
 export interface StoragePort {
@@ -37,10 +38,12 @@ export interface PlayerProfile {
   level: number;
   hints: number;
   tutorialDone: boolean;
+  powerTutorialsSeen?: PowerKind[];
   settings: PlayerSettings;
   classicSave: PlaySession | null;
   dailySave: PlaySession | null;
   sharedSave: PlaySession | null;
+  endlessSave: PlaySession | null;
   economy: EconomyState;
   events: EventCollection;
   daily: DailyProgress;
@@ -66,6 +69,7 @@ export function defaultProfile(): PlayerProfile {
     classicSave: null,
     dailySave: null,
     sharedSave: null,
+    endlessSave: null,
     economy: defaultEconomy(),
     events: defaultEvents(),
     daily: defaultDailyProgress(),
@@ -140,6 +144,7 @@ export class ProgressStore {
       this.profile.classicSave,
       this.profile.dailySave,
       this.profile.sharedSave,
+      this.profile.endlessSave,
     ]) {
       if (saved && saved.state.status !== 'playing' && !saved.recorded) this.recordResult(saved);
     }
@@ -215,6 +220,7 @@ export class ProgressStore {
     if (session.mode === 'classic') this.profile.classicSave = session;
     if (session.mode === 'daily') this.profile.dailySave = session;
     if (session.mode === 'shared') this.profile.sharedSave = session;
+    if (session.mode === 'endless') this.profile.endlessSave = session;
     this.flush();
     return true;
   }
@@ -235,6 +241,8 @@ export class ProgressStore {
 
   recordResult(session: PlaySession): void {
     if (session.recorded || session.state.status === 'playing') return;
+    // A cleared survival wave is a resumable checkpoint, not the end of a run.
+    if (session.mode === 'endless' && session.state.status === 'won') return;
     session.recorded = true;
     if (session.mode === 'tutorial') {
       if (session.state.status === 'won') this.profile.tutorialDone = true;

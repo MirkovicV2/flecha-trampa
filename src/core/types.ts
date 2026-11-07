@@ -30,6 +30,8 @@ export interface MoveResult {
   readonly state: GameState;
   readonly arrow: Arrow | null;
   readonly blocker: Arrow | null;
+  /** Extra pieces cleared by the same successful special-arrow input. */
+  readonly additionalArrows?: readonly Arrow[];
 }
 
 export const VECTORS: Readonly<Record<Direction, readonly [number, number]>> = {

@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">FLECHA TRAMPA DEBUG</string>
+    <string name="package_name">com.flechatrampa.game.debug</string>
+    <string name="custom_url_scheme">com.flechatrampa.game.debug</string>
+</resources>

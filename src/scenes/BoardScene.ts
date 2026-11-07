@@ -18,6 +18,8 @@ class BoardScene extends Phaser.Scene {
   private settings: PlayerSettings;
   private readonly initialBoard: Board;
   private readonly readyCallback: () => void;
+  private specialArrowId: string | null = null;
+  private specialMarker: Phaser.GameObjects.Graphics | null = null;
 
   constructor(
     board: Board,
@@ -118,13 +120,21 @@ class BoardScene extends Phaser.Scene {
     }
   }
 
+  syncArrivals(board: Board): void {
+    for (const arrow of board.arrows) if (!this.views.has(arrow.id)) this.addArrow(arrow, board);
+  }
+
   animate(result: MoveResult, combo = 0): Promise<void> {
     const arrow = result.arrow;
     const view = arrow ? this.views.get(arrow.id) : undefined;
     if (!view || !arrow) return Promise.resolve();
     this.tweens.killTweensOf(view);
     view.setAlpha(1).setScale(1);
-    return new Promise((resolve) => {
+    const additional =
+      result.kind === 'removed'
+        ? this.clearAdditional(result.additionalArrows ?? [], view)
+        : Promise.resolve();
+    const primary = new Promise<void>((resolve) => {
       const done = () => {
         this.pending.delete(done);
         resolve();
@@ -231,9 +241,99 @@ class BoardScene extends Phaser.Scene {
         onComplete: () => {
           this.views.delete(arrow.id);
           view.destroy();
+          if (this.specialArrowId === arrow.id) {
+            this.specialArrowId = null;
+            this.specialMarker = null;
+          }
           done();
         },
       });
+    });
+    return Promise.all([primary, additional]).then(() => undefined);
+  }
+
+  setSpecialArrow(id: string | null): void {
+    const previous = this.specialArrowId ? this.views.get(this.specialArrowId) : undefined;
+    if (previous) {
+      (previous.list[1] as Phaser.GameObjects.Graphics).setScale(1);
+      previous.setDepth(0);
+    }
+    this.specialMarker?.destroy();
+    this.specialMarker = null;
+    this.specialArrowId = id;
+    const view = id ? this.views.get(id) : undefined;
+    if (!view) return;
+    (view.list[1] as Phaser.GameObjects.Graphics).setScale(1.18);
+    view.setDepth(1);
+    const marker = this.add.graphics();
+    marker.lineStyle(this.cell * 0.035, 0xffd58b, 0.95);
+    marker.strokeRoundedRect(
+      -this.cell * 0.45,
+      -this.cell * 0.45,
+      this.cell * 0.9,
+      this.cell * 0.9,
+      this.cell * 0.14,
+    );
+    marker.fillStyle(0xffd58b, 1);
+    marker.fillCircle(this.cell * 0.33, -this.cell * 0.33, this.cell * 0.045);
+    view.add(marker);
+    this.specialMarker = marker;
+  }
+
+  private clearAdditional(
+    arrows: readonly Arrow[],
+    source: Phaser.GameObjects.Container,
+  ): Promise<void> {
+    const targets = arrows.flatMap((arrow) => {
+      const view = this.views.get(arrow.id);
+      return view ? [{ arrow, view }] : [];
+    });
+    if (!targets.length) return Promise.resolve();
+    return new Promise<void>((resolve) => {
+      const done = () => {
+        this.pending.delete(done);
+        resolve();
+      };
+      this.pending.add(done);
+      let remaining = targets.length;
+      for (const { arrow, view } of targets) {
+        this.tweens.killTweensOf(view);
+        if (!this.settings.reducedMotion) {
+          const arc = this.add.graphics();
+          arc.lineStyle(this.cell * 0.035, 0xffd58b, 0.9);
+          arc.beginPath();
+          arc.moveTo(source.x, source.y);
+          arc.lineTo(view.x, view.y);
+          arc.strokePath();
+          this.tweens.add({
+            targets: arc,
+            alpha: 0,
+            duration: 220,
+            onComplete: () => arc.destroy(),
+          });
+          const pulse = this.add.circle(view.x, view.y, this.cell * 0.42, 0xffd58b, 0.25);
+          this.tweens.add({
+            targets: pulse,
+            scale: 1.35,
+            alpha: 0,
+            duration: 220,
+            onComplete: () => pulse.destroy(),
+          });
+        }
+        this.tweens.add({
+          targets: view,
+          alpha: 0,
+          scale: this.settings.reducedMotion ? 1 : 0.65,
+          duration: this.settings.reducedMotion ? 40 : 220,
+          ease: 'Cubic.Out',
+          onComplete: () => {
+            this.views.delete(arrow.id);
+            view.destroy();
+            remaining--;
+            if (!remaining) done();
+          },
+        });
+      }
     });
   }
 
@@ -437,6 +537,12 @@ export class BoardRenderer {
 
   animate(result: MoveResult, combo = 0): Promise<void> {
     return this.boardScene.animate(result, combo);
+  }
+  syncArrivals(board: Board): void {
+    this.boardScene.syncArrivals(board);
+  }
+  setSpecialArrow(id: string | null): void {
+    this.boardScene.setSpecialArrow(id);
   }
   hint(id: string): void {
     this.boardScene.hint(id);

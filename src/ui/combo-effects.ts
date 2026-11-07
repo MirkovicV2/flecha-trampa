@@ -16,7 +16,13 @@ export class ComboEffects {
     this.lastSurge = -Infinity;
   }
 
-  hit(count: number, settings: PlayerSettings, point: { x: number; y: number }, won = false): void {
+  hit(
+    count: number,
+    settings: PlayerSettings,
+    point: { x: number; y: number },
+    won = false,
+    power?: { name: string; color: string },
+  ): void {
     if (settings.reducedMotion || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     let layer = this.root.querySelector<HTMLElement>('.screen-fx');
     if (!layer) {
@@ -28,14 +34,19 @@ export class ComboEffects {
       this.root.append(layer);
     }
     const stage = comboStage(count);
-    layer.style.setProperty('--combo-color', stage.color);
+    const color = power?.color ?? stage.color;
+    layer.style.setProperty('--combo-color', color);
     layer.dataset.tier = stage.tier;
     const board = this.root.querySelector('.board-frame')?.getBoundingClientRect();
     const callout = layer.querySelector<HTMLElement>('.combo-callout')!;
     callout.style.top = `${Math.max(105, (board?.top ?? 200) - 4)}px`;
-    layer.querySelector('[data-fx-word]')!.textContent = won ? '¡TABLERO LIMPIO!' : stage.name;
+    layer.querySelector('[data-fx-word]')!.textContent = won
+      ? '¡TABLERO LIMPIO!'
+      : power
+        ? `¡${power.name.toUpperCase()}!`
+        : stage.name;
     layer.querySelector('[data-fx-count]')!.textContent = won ? '¡BRUTAL!' : `×${count}`;
-    if (count >= 2 || won) {
+    if (count >= 2 || won || power) {
       for (const animation of callout.getAnimations()) animation.cancel();
       this.animate(
         callout,
@@ -71,7 +82,7 @@ export class ComboEffects {
       );
     }
     const confetti = layer.querySelector('.combo-confetti')!;
-    const particles = won ? 40 : Math.max(4, stage.particles);
+    const particles = won ? 40 : Math.max(power ? 18 : 4, stage.particles);
     while (confetti.childElementCount + particles > MAX_PARTICLES) {
       const oldest = confetti.firstElementChild;
       if (!oldest) break;
@@ -85,7 +96,7 @@ export class ComboEffects {
       const distance = 45 + (i % 5) * 15 + Math.min(count, 15) * 6;
       spark.style.left = `${point.x}px`;
       spark.style.top = `${point.y}px`;
-      spark.style.background = i % 3 === 0 ? '#fff5d5' : stage.color;
+      spark.style.background = i % 3 === 0 ? '#fff5d5' : color;
       confetti.append(spark);
       this.animate(
         spark,

@@ -31,6 +31,9 @@ android {
         }
     }
     buildTypes {
+        debug {
+            applicationIdSuffix ".debug"
+        }
         release {
             if (ciTestKeyStore) { signingConfig signingConfigs.ciSmoke }
             debuggable false

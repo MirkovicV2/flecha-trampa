@@ -1,3 +1,4 @@
+import { arrivalInterval, CONGESTION_LIMIT_MS } from './survival';
 import { isBoard } from '../core/board';
 import { GENERATOR_VERSION, isLevelConfig } from '../generator/config';
 import { arrowCount, containsCell } from '../generator/shapes';
@@ -58,7 +59,7 @@ const text = (value: unknown): value is string =>
 
 export function isSavedSession(
   value: unknown,
-  mode: 'classic' | 'daily' | 'shared' = 'classic',
+  mode: 'classic' | 'daily' | 'shared' | 'endless' = 'classic',
 ): value is PlaySession {
   if (
     !isRecord(value) ||
@@ -122,6 +123,22 @@ export function isSavedSession(
     return false;
   if (value.hintsUsed !== undefined && !integer(value.hintsUsed, 0, 1000000)) return false;
   if (value.bestCombo !== undefined && !integer(value.bestCombo, 0, 100)) return false;
+  if (value.powerPolicy !== undefined && value.powerPolicy !== 'eligible-v1') return false;
+  if (
+    value.powerKind !== undefined &&
+    (mode !== 'classic' ||
+      typeof value.powerKind !== 'string' ||
+      !['pulse', 'ray', 'nova'].includes(value.powerKind))
+  )
+    return false;
+  if (
+    value.powerArrowId !== undefined &&
+    value.powerArrowId !== null &&
+    (mode !== 'classic' ||
+      typeof value.powerArrowId !== 'string' ||
+      !initialBoard.arrows.some((arrow) => arrow.id === value.powerArrowId))
+  )
+    return false;
   if (
     config.width !== initialBoard.width ||
     config.height !== initialBoard.height ||
@@ -150,13 +167,37 @@ export function isSavedSession(
   )
     return false;
   if (state.totalArrows !== initialBoard.arrows.length || !integer(state.moves)) return false;
+  let pending = 0;
+  if (value.survival !== undefined) {
+    const survival = value.survival;
+    if (
+      mode !== 'endless' ||
+      !isRecord(survival) ||
+      !Array.isArray(survival.pendingIds) ||
+      survival.pendingIds.length > initialBoard.arrows.length ||
+      new Set(survival.pendingIds).size !== survival.pendingIds.length ||
+      !survival.pendingIds.every(
+        (id: unknown) =>
+          typeof id === 'string' &&
+          initialBoard.arrows.some((arrow) => arrow.id === id) &&
+          !currentBoard.arrows.some((arrow) => arrow.id === id),
+      ) ||
+      !nonNegative(survival.arrivalInMs) ||
+      survival.arrivalInMs > arrivalInterval(Number(value.level)) ||
+      !nonNegative(survival.congestionMs) ||
+      survival.congestionMs >= CONGESTION_LIMIT_MS
+    )
+      return false;
+    pending = survival.pendingIds.length;
+  }
   const remaining = currentBoard.arrows.length;
-  if (state.moves !== initialBoard.arrows.length - remaining + state.errors) return false;
-  const expectedStatus = state.lives === 0 ? 'lost' : remaining === 0 ? 'won' : 'playing';
+  if (state.moves !== initialBoard.arrows.length - remaining - pending + state.errors) return false;
+  const expectedStatus = state.lives === 0 ? 'lost' : remaining + pending === 0 ? 'won' : 'playing';
   if (
     state.status !== expectedStatus ||
-    (state.lives === 0 && remaining === 0) ||
-    (value.recorded && state.status === 'playing')
+    (state.lives === 0 && remaining + pending === 0) ||
+    (value.recorded && state.status === 'playing') ||
+    (mode === 'endless' && value.recorded && state.status === 'won')
   )
     return false;
   const originals = new Map(initialBoard.arrows.map((arrow) => [arrow.id, arrow]));
@@ -188,10 +229,20 @@ export function decodeProfile(serialized: string | null): PlayerProfile | null {
       return null;
     if (!/^[a-f\d]{8}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{12}$/i.test(value.runId))
       return null;
+    if (
+      value.powerTutorialsSeen !== undefined &&
+      (!Array.isArray(value.powerTutorialsSeen) ||
+        value.powerTutorialsSeen.length > 3 ||
+        new Set(value.powerTutorialsSeen).size !== value.powerTutorialsSeen.length ||
+        !value.powerTutorialsSeen.every((kind) => ['pulse', 'ray', 'nova'].includes(kind)))
+    )
+      return null;
     if (value.classicSave !== null && !isSavedSession(value.classicSave)) return null;
     if (value.dailySave === undefined) value.dailySave = null;
     if (value.daily === undefined) value.daily = defaultDailyProgress();
     if (value.sharedSave === undefined) value.sharedSave = null;
+    if (value.endlessSave === undefined) value.endlessSave = null;
+    if (value.endlessSave !== null && !isSavedSession(value.endlessSave, 'endless')) return null;
     if (value.sharedSave !== null && !isSavedSession(value.sharedSave, 'shared')) return null;
     if (
       (value.dailySave !== null && !isSavedSession(value.dailySave, 'daily')) ||

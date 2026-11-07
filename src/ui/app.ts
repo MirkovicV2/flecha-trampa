@@ -1,5 +1,15 @@
+import {
+  tickSurvival,
+  arrivalInterval,
+  resumeSurvival,
+  keepSurvivalPlaying,
+  congestionThreshold,
+  arrivalSize,
+  CONGESTION_LIMIT_MS,
+} from '../services/survival';
 import { attemptMove } from '../core/game';
 import { availableMoves } from '../core/board';
+import { POWER_INFO, selectPowerArrow } from '../core/special-arrow';
 import { configForLevel, classicConfigForLevel } from '../generator/config';
 import { BOARD_SHAPES, SHAPE_LABELS, arrowCount, isBoardShape } from '../generator/shapes';
 import { FeedbackService } from '../services/feedback';
@@ -10,7 +20,7 @@ import type { ChallengeSpec } from '../services/challenges';
 import { ShareService } from '../services/share';
 import { MonetizationService } from '../services/monetization';
 import { bindNativeLifecycle, minimizeNativeApp } from '../services/platform';
-import { newSession, tutorialSession } from '../services/session';
+import { advanceEndlessSession, newSession, tutorialSession } from '../services/session';
 import type { PlaySession } from '../services/session';
 import type { BoardRenderer } from '../scenes/BoardScene';
 import { escapeHtml, formatTime } from '../utils/format';
@@ -43,7 +53,9 @@ import { masteryContent } from './mastery';
 import { mastery } from '../core/mastery';
 import { version } from '../../package.json';
 
-type Screen = 'home' | 'modes' | 'game' | 'stats' | 'daily' | 'shared' | 'rewards';
+import { campaignMap, chapterForLevel } from './campaign-map';
+
+type Screen = 'map' | 'home' | 'modes' | 'game' | 'stats' | 'daily' | 'shared' | 'rewards';
 type Overlay =
   | 'pause'
   | 'settings'
@@ -95,6 +107,15 @@ export class GameApp {
   private purchasing = false;
   private readonly routes: RouteInspector;
   private inspecting = false;
+  private mapChapter = 0;
+  private mapSelected: number | null = null;
+  private mapScroll = 0;
+  private mapCenterPending = false;
+  private mapOrigin: Screen = 'home';
+  private mapKnownLevel = 0;
+  private mapPointer: { x: number; y: number } | null = null;
+  private mapDragged = false;
+  private saveWarning = false;
 
   constructor(
     private readonly root: HTMLElement,
@@ -114,12 +135,35 @@ export class GameApp {
       this.commerceView.cancel();
       this.openOverlay('conflict');
     };
-    store.onError = () =>
+    store.onError = () => {
+      this.saveWarning = true;
+      this.showSaveWarning();
       this.toast(
         'No se pudo guardar. Tu partida sigue abierta, pero revisa el almacenamiento del dispositivo.',
       );
+    };
+    root.addEventListener('pointerdown', (event) => {
+      if (!(event.target as Element).closest('.map-scroll')) return;
+      this.mapPointer = { x: event.clientX, y: event.clientY };
+      this.mapDragged = false;
+    });
+    root.addEventListener('pointermove', (event) => {
+      if (
+        this.mapPointer &&
+        Math.hypot(event.clientX - this.mapPointer.x, event.clientY - this.mapPointer.y) > 8
+      )
+        this.mapDragged = true;
+    });
+    root.addEventListener('pointerup', () => {
+      this.mapPointer = null;
+    });
+    root.addEventListener('pointercancel', () => {
+      this.mapPointer = null;
+      this.mapDragged = true;
+    });
     root.addEventListener('click', (event) => {
       const target = (event.target as Element).closest<HTMLElement>('[data-action], [data-arrow]');
+      if (target?.dataset.action === 'map-select' && this.mapDragged && event.detail !== 0) return;
       if (!target || (target instanceof HTMLButtonElement && target.disabled)) return;
       if (target.dataset.arrow) {
         return;
@@ -207,6 +251,7 @@ export class GameApp {
           this.overlay === 'world-preview'
         )
           this.closeOverlay();
+        else if (this.screen === 'map') this.mapBack();
         else if (this.overlay || (this.screen !== 'home' && this.screen !== 'game'))
           this.go('home');
         else if (this.screen === 'game') this.pause();
@@ -235,6 +280,58 @@ export class GameApp {
       return;
     if (this.store.conflicted && action !== 'reload') return;
     switch (action) {
+      case 'power-dismiss': {
+        if (this.screen !== 'game' || this.session?.mode !== 'classic') break;
+        const kind = this.session.powerKind ?? 'pulse';
+        const seen = (this.store.profile.powerTutorialsSeen ??= []);
+        if (!seen.includes(kind)) seen.push(kind);
+        this.store.flush();
+        const note = this.root.querySelector<HTMLDetailsElement>('.power-arrow-note');
+        if (note) {
+          note.open = false;
+          note.querySelector('summary')?.focus();
+        }
+        break;
+      }
+      case 'map':
+        this.openMap();
+        break;
+      case 'save-map':
+        this.openMap();
+        break;
+      case 'map-back':
+        this.mapBack();
+        break;
+      case 'map-current':
+        this.mapCenterPending = true;
+        this.mapChapter = chapterForLevel(this.store.profile.level);
+        this.mapSelected = this.store.profile.level;
+        this.mapScroll = Math.max(0, ((this.store.profile.level - 1) % 10) * 101 - 100);
+        this.render();
+        break;
+      case 'map-chapter':
+        if (!Number.isSafeInteger(Number(value)) || Number(value) < 0 || Number(value) > 100000)
+          break;
+        this.mapChapter = Number(value);
+        this.mapScroll = 0;
+        this.mapSelected = null;
+        this.render();
+        break;
+      case 'map-select':
+        if (Number(value) < this.mapChapter * 10 + 1 || Number(value) > this.mapChapter * 10 + 10)
+          break;
+        this.mapScroll = this.root.querySelector('.map-scroll')?.scrollTop ?? 0;
+        this.mapSelected = Number(value);
+        this.render();
+        this.root
+          .querySelector<HTMLElement>(`[data-action="map-select"][data-value="${value}"]`)
+          ?.focus({ preventScroll: true });
+        break;
+      case 'map-play':
+        if (this.mapSelected !== this.store.profile.level) break;
+        this.mapScroll = this.root.querySelector('.map-scroll')?.scrollTop ?? 0;
+        this.playClassic();
+        break;
       case 'reload':
         location.reload();
         break;
@@ -249,6 +346,9 @@ export class GameApp {
         break;
       case 'daily-play':
         this.playDaily();
+        break;
+      case 'endless-play':
+        this.playEndless();
         break;
       case 'shared':
         this.go('shared');
@@ -497,16 +597,37 @@ export class GameApp {
       return;
     }
     const level = this.store.profile.level;
-    this.begin(
-      newSession(
-        'classic',
-        level,
-        `classic:${this.store.profile.runId}:${level}`,
-        classicConfigForLevel(level),
-        null,
-        this.store.hasPremium ? 4 : 3,
-      ),
+    const session = newSession(
+      'classic',
+      level,
+      `classic:${this.store.profile.runId}:${level}`,
+      classicConfigForLevel(level),
+      null,
+      this.store.hasPremium ? 4 : 3,
     );
+    this.begin(session);
+  }
+
+  private playEndless(forceNew = false): void {
+    const saved = this.store.profile.endlessSave;
+    if (!forceNew && saved && saved.state.status !== 'lost') {
+      if (saved.state.status === 'won') advanceEndlessSession(saved);
+      this.begin(saved, false);
+      return;
+    }
+    this.begin(
+      newSession('endless', 1, `endless:${crypto.randomUUID()}:1`, classicConfigForLevel(1)),
+    );
+  }
+
+  private advanceEndless(): void {
+    if (!this.session || !advanceEndlessSession(this.session)) return;
+    this.combo = emptyCombo();
+    this.lastTick = performance.now();
+    this.store.flush();
+    this.render();
+    this.toast(`Oleada ${this.session.level}. Conservas ${this.session.state.lives} vidas.`);
+    if (document.hidden) this.pause();
   }
 
   private async advanceClassic(): Promise<void> {
@@ -663,6 +784,19 @@ export class GameApp {
       }
       return;
     }
+    if (session.mode === 'endless') resumeSurvival(session);
+    // Upgrade untouched pre-introduction saves without granting a second spent pulse.
+    if (
+      session.mode === 'classic' &&
+      session.powerPolicy === undefined &&
+      (session.powerArrowId === undefined ||
+        (session.powerArrowId === null && session.state.moves === session.state.errors))
+    )
+      session.powerArrowId = selectPowerArrow(
+        session.state.board,
+        session.level,
+        session.powerKind,
+      );
     this.session = session;
     this.pendingEnergySession = null;
     this.screen = 'game';
@@ -678,20 +812,33 @@ export class GameApp {
   private restart(): void {
     const previous = this.session;
     if (!previous) return;
+    if (previous.mode === 'endless') {
+      this.playEndless(true);
+      return;
+    }
     if (previous.mode === 'tutorial') {
       this.begin(tutorialSession());
       return;
     }
-    this.begin(
-      newSession(
-        previous.mode,
-        previous.level,
-        previous.seed,
-        previous.config,
-        previous.date,
-        this.store.hasPremium ? 4 : 3,
-      ),
+    const restarted = newSession(
+      previous.mode,
+      previous.level,
+      previous.seed,
+      previous.config,
+      previous.date,
+      previous.mode === 'classic' && this.store.hasPremium ? 4 : 3,
     );
+    if (restarted.mode === 'classic') {
+      // Retrying an existing save keeps its original effect (legacy absence means pulse).
+      if (previous.powerKind === undefined) delete restarted.powerKind;
+      else restarted.powerKind = previous.powerKind;
+      restarted.powerArrowId =
+        previous.powerArrowId ??
+        selectPowerArrow(restarted.initialBoard, restarted.level, restarted.powerKind);
+      if (previous.powerPolicy === undefined) delete restarted.powerPolicy;
+      if (previous.powerPolicy && previous.powerKind === undefined) restarted.powerArrowId = null;
+    }
+    this.begin(restarted);
   }
 
   private practice(): void {
@@ -846,6 +993,41 @@ export class GameApp {
     } else if (result !== 'cancelled') this.toast('La recompensa no está disponible.');
   }
 
+  private showSaveWarning(): void {
+    if (!this.saveWarning && this.store.available) return;
+    if (this.root.querySelector('.save-warning')) return;
+    const warning = document.createElement('p');
+    warning.className = 'save-warning';
+    warning.setAttribute('role', 'alert');
+    warning.textContent =
+      'Guardado no disponible. Cerrar puede perder esta sesión. Mantén el juego abierto.';
+    this.root.querySelector('#main-content')?.prepend(warning);
+  }
+
+  private openMap(): void {
+    if (this.screen === 'game' && !this.overlay && this.session?.state.status === 'playing') {
+      this.pause();
+      return;
+    }
+    if (this.screen === 'home' || this.screen === 'stats') this.mapOrigin = this.screen;
+    if (this.mapKnownLevel !== this.store.profile.level) {
+      this.mapCenterPending = true;
+      this.mapKnownLevel = this.store.profile.level;
+      this.mapChapter = chapterForLevel(this.mapKnownLevel);
+      this.mapSelected = this.mapKnownLevel;
+      this.mapScroll = Math.max(0, ((this.mapKnownLevel - 1) % 10) * 101 - 100);
+    }
+    this.go('map');
+  }
+
+  private mapBack(): void {
+    this.mapScroll = this.root.querySelector('.map-scroll')?.scrollTop ?? this.mapScroll;
+    if (this.mapSelected !== null) {
+      this.mapSelected = null;
+      this.render();
+    } else this.go(this.mapOrigin);
+  }
+
   private go(screen: Screen): void {
     if (this.busy) return;
     this.tick();
@@ -900,6 +1082,30 @@ export class GameApp {
     )
       return;
     this.store.addPlayTime(this.session, delta);
+    if (!this.busy && this.renderer && this.session.mode === 'endless') {
+      const event = tickSurvival(this.session, delta);
+      if (event.arrived) {
+        this.routes.clear();
+        this.renderer.syncArrivals(this.session.state.board);
+        this.announce(`Refuerzos: +${event.arrived} flechas. Busca una salida libre.`, 'wave');
+      }
+      if (event.lifeLost) {
+        this.announce(
+          `Congestión: −1 vida. Quedan ${this.session.state.lives}. Despeja para bajar la presión.`,
+          'danger',
+        );
+        this.feedback.play('blocked', this.store.profile.settings);
+      }
+      this.updateSurvivalHud();
+      if (event.arrived || event.lifeLost) {
+        this.updateHud();
+        this.store.flush();
+      }
+      if (event.lifeLost && this.session.state.lives === 0) {
+        this.finish();
+        return;
+      }
+    }
     const timer = this.root.querySelector('[data-timer]');
     if (timer) timer.textContent = formatTime(this.session.elapsedMs);
     if (now - this.lastSave > 1000) {
@@ -920,11 +1126,21 @@ export class GameApp {
     )
       return;
     this.routes.clear();
-    const availableBefore = new Set(availableMoves(session.state.board).map((arrow) => arrow.id));
-    const result = attemptMove(session.state, id);
-    if (result.kind === 'ignored') return;
-    const hitRect = this.root.querySelector(`[data-arrow="${id}"]`)?.getBoundingClientRect();
     this.tick();
+    if (session.state.status !== 'playing') return;
+    this.busy = true;
+    const availableBefore = new Set(availableMoves(session.state.board).map((arrow) => arrow.id));
+    const result = attemptMove(
+      session.state,
+      id,
+      session.mode === 'classic' ? (session.powerArrowId ?? null) : null,
+      session.powerKind,
+    );
+    if (result.kind === 'ignored') {
+      this.busy = false;
+      return;
+    }
+    const hitRect = this.root.querySelector(`[data-arrow="${id}"]`)?.getBoundingClientRect();
     if (result.kind === 'blocked') this.blockedArrows.add(id);
     this.combo = advanceCombo(this.combo, result.kind === 'removed', performance.now());
     session.bestCombo = Math.max(session.bestCombo ?? 0, this.combo.count);
@@ -934,8 +1150,10 @@ export class GameApp {
         : null;
     const epoch = this.epoch;
     session.state = result.state;
+    if (session.mode === 'endless') keepSurvivalPlaying(session);
+    if (result.kind === 'removed' && id === session.powerArrowId) session.powerArrowId = null;
     if (result.kind === 'removed' && session.mode !== 'tutorial') {
-      this.store.profile.stats.arrowsCleared++;
+      this.store.profile.stats.arrowsCleared += 1 + (result.additionalArrows?.length ?? 0);
       this.store.profile.stats.bestCombo = Math.max(
         this.store.profile.stats.bestCombo,
         this.combo.best,
@@ -964,15 +1182,35 @@ export class GameApp {
         this.store.profile.settings,
         { x: hitRect.x + hitRect.width / 2, y: hitRect.y + hitRect.height / 2 },
         session.state.status === 'won',
+        result.additionalArrows?.length ? POWER_INFO[session.powerKind ?? 'pulse'] : undefined,
       );
     else if (result.kind === 'blocked') this.effects.clear();
-    if (result.kind === 'blocked') this.toast('Camino bloqueado. Busca qué flecha sale primero.');
+    if (result.kind === 'blocked')
+      this.announce(
+        `Bloqueo: −1 vida. Quedan ${session.state.lives}. Libera primero la flecha que corta la ruta.`,
+        'danger',
+      );
+    else if (result.additionalArrows?.length)
+      this.announce(
+        `${POWER_INFO[session.powerKind ?? 'pulse'].name}: +${result.additionalArrows.length} flechas. Una salida, ${1 + result.additionalArrows.length} despejadas.`,
+        'special',
+      );
+    else
+      this.announce(
+        session.state.status === 'won' ? '¡Tablero completado!' : 'Salida libre. Camino despejado.',
+        'clear',
+      );
     await this.renderer.animate(result, this.combo.count);
     if (epoch !== this.epoch) return;
+    this.busy = false;
     this.blockedArrows.delete(id);
     if (this.store.conflicted) return;
     this.updateHud();
-    if (result.state.status !== 'playing') {
+    if (session.state.status !== 'playing') {
+      if (session.mode === 'endless' && session.state.status === 'won') {
+        this.advanceEndless();
+        return;
+      }
       this.finish();
       return;
     }
@@ -1059,6 +1297,21 @@ export class GameApp {
     this.root.innerHTML = `<div class="world-backdrop" aria-hidden="true">${worldArt(this.store.profile.settings.world)}${this.store.profile.settings.world !== 'void' ? `<div class="world-landscape">${worldArt(this.store.profile.settings.world)}</div>` : ''}</div><div class="app-shell ${this.screen === 'game' ? 'is-playing' : ''}">${this.header()}${this.commercePreview ? '<div class="preview-notice" role="note">ANUNCIOS Y COMPRAS DE PRUEBA <span>· SIN COBRO</span></div>' : ''}<main id="main-content">${this.content()}</main>${this.screen !== 'game' ? this.nav() : ''}<div class="overlay-layer"></div><div class="toast" role="status" aria-live="polite"></div></div>`;
     if (this.screen === 'game') void this.mountBoard();
     this.renderOverlay();
+    this.showSaveWarning();
+    if (this.screen === 'map') {
+      const scroll = this.root.querySelector('.map-scroll');
+      if (scroll) {
+        if (this.mapCenterPending) {
+          this.mapScroll = Math.max(
+            0,
+            ((this.store.profile.level - 1) % 10) * 101 + 75 - scroll.clientHeight / 2,
+          );
+          this.mapCenterPending = false;
+        }
+        scroll.scrollTop = this.mapScroll;
+        if (!this.overlay && scroll instanceof HTMLElement) scroll.focus({ preventScroll: true });
+      }
+    }
   }
 
   private header(): string {
@@ -1068,6 +1321,8 @@ export class GameApp {
 
   private content(): string {
     switch (this.screen) {
+      case 'map':
+        return campaignMap(this.store.profile, this.mapChapter, this.mapSelected);
       case 'home':
         return this.homeContent();
       case 'modes':
@@ -1096,12 +1351,12 @@ export class GameApp {
   }
 
   private modesContent(): string {
-    return `<section class="page-section"><div class="eyebrow">CADA MENTE TIENE SU CAMINO</div><h1 class="page-title">A tu manera.</h1><p class="page-description">Elige cómo quieres poner a prueba tu ingenio.</p><div class="mode-list"><button class="mode-card" data-action="play"><span class="mode-number">01</span><div>${icon('grid')}<h2>Un poco más lejos.</h2><p>Niveles infinitos, dificultad progresiva y tres vidas para encontrar la salida.</p><span class="mode-label">CLÁSICO ${icon('arrow')}</span></div></button><button class="mode-card" data-action="daily"><span class="mode-number">02</span><div>${icon('calendar')}<h2>Una cita con tu ingenio.</h2><p>Un tablero al día, el mismo para todos. Suma pequeñas victorias y mantén tu racha.</p><span class="mode-label">DESAFÍO DIARIO ${icon('arrow')}</span></div></button><button class="mode-card" data-action="shared"><span class="mode-number">03</span><div>${icon('share')}<h2>Comparte el desafío.</h2><p>Crea un tablero, comparte el enlace y compara caminos. El mismo reto, otra mente.</p><span class="mode-label">RETOS COMPARTIDOS ${icon('arrow')}</span></div></button></div></section>`;
+    return `<section class="page-section"><div class="eyebrow">CADA MENTE TIENE SU CAMINO</div><h1 class="page-title">A tu manera.</h1><p class="page-description">Elige cómo quieres poner a prueba tu ingenio.</p><div class="mode-list"><button class="mode-card" data-action="endless-play"><span class="mode-number">∞</span><div>${icon('flame')}<h2>Hasta donde llegues.</h2><p>Llegan flechas mientras juegas. Diez segundos de congestión cuestan una vida; tres vidas para toda la sesión.</p><span class="mode-label">SUPERVIVENCIA ${icon('arrow')}</span></div></button><button class="mode-card" data-action="play"><span class="mode-number">01</span><div>${icon('grid')}<h2>Un poco más lejos.</h2><p>Niveles infinitos, dificultad progresiva y tres vidas para encontrar la salida.</p><span class="mode-label">CLÁSICO ${icon('arrow')}</span></div></button><button class="mode-card" data-action="daily"><span class="mode-number">02</span><div>${icon('calendar')}<h2>Una cita con tu ingenio.</h2><p>Un tablero al día, el mismo para todos. Suma pequeñas victorias y mantén tu racha.</p><span class="mode-label">DESAFÍO DIARIO ${icon('arrow')}</span></div></button><button class="mode-card" data-action="shared"><span class="mode-number">03</span><div>${icon('share')}<h2>Comparte el desafío.</h2><p>Crea un tablero, comparte el enlace y compara caminos. El mismo reto, otra mente.</p><span class="mode-label">RETOS COMPARTIDOS ${icon('arrow')}</span></div></button></div></section>`;
   }
 
   private statsContent(): string {
     const { stats, level, hints } = this.store.profile;
-    return `<section class="page-section"><div class="eyebrow">CADA MOVIMIENTO CUENTA</div><h1 class="page-title">Tu camino.</h1><p class="page-description">Las pequeñas victorias también merecen su espacio.</p><div class="progress-hero">${icon('trophy')}<span>NIVEL ACTUAL</span><strong>${String(level).padStart(2, '0')}</strong><p>${level - 1} niveles clásicos superados</p></div><div class="stat-grid">${[
+    return `<section class="page-section"><div class="eyebrow">CADA MOVIMIENTO CUENTA</div><h1 class="page-title">Tu camino.</h1><p class="page-description">Las pequeñas victorias también merecen su espacio.</p><button class="primary-button" data-action="map">Ver mapa de campaña →</button><div class="progress-hero">${icon('trophy')}<span>NIVEL ACTUAL</span><strong>${String(level).padStart(2, '0')}</strong><p>${level - 1} niveles clásicos superados</p></div><div class="stat-grid">${[
       [stats.played, 'Partidas jugadas', 'grid'],
       [stats.wins, 'Victorias', 'trophy'],
       [stats.flawless, 'Sin errores', 'shield'],
@@ -1140,6 +1395,7 @@ export class GameApp {
 
   private sessionLabel(): string {
     const session = this.session;
+    if (session?.mode === 'endless') return `OLEADA ${session.level}`;
     if (session?.mode === 'tutorial') return 'PRIMEROS PASOS';
     if (session?.mode === 'daily') return 'DIARIO · UTC';
     if (session?.mode === 'shared') return 'ENTRE AMIGOS';
@@ -1165,7 +1421,11 @@ export class GameApp {
   }
 
   private gameContent(): string {
-    return gameScreen(this.session!, this.store.profile.hints);
+    return gameScreen(
+      this.session!,
+      this.store.profile.hints,
+      this.store.profile.powerTutorialsSeen?.includes(this.session!.powerKind ?? 'pulse'),
+    );
   }
 
   private async mountBoard(): Promise<void> {
@@ -1190,6 +1450,9 @@ export class GameApp {
       );
       await this.renderer.ready;
       if (epoch !== this.epoch) return;
+      this.renderer.setSpecialArrow(
+        session.mode === 'classic' ? (session.powerArrowId ?? null) : null,
+      );
       this.renderer.setPaused(this.overlay !== null || document.hidden);
       this.busy = false;
       this.visualSettingsDirty = false;
@@ -1203,6 +1466,41 @@ export class GameApp {
         loading.innerHTML =
           'No se pudo iniciar el tablero. <button class="text-button" data-action="restart">Volver a intentar</button>';
     }
+  }
+
+  private announce(message: string, kind: string): void {
+    const status = this.root.querySelector<HTMLElement>('[data-game-status]');
+    if (status) {
+      status.textContent = message;
+      status.dataset.kind = kind;
+    }
+  }
+
+  private updateSurvivalHud(): void {
+    const session = this.session;
+    if (!session?.survival) return;
+    const status = this.root.querySelector<HTMLElement>('[data-survival]');
+    if (!status) return;
+    const crowded = session.state.board.arrows.length >= congestionThreshold(session);
+    if (crowded && status.dataset.crowded !== 'true')
+      this.announce(
+        '¡Congestión! Tienes diez segundos para despejar o perderás una vida.',
+        'danger',
+      );
+    status.dataset.crowded = String(crowded);
+    const text = status.querySelector('[data-survival-status]');
+    if (text)
+      text.textContent = crowded
+        ? `¡Congestión! Despeja antes de ${Math.ceil((CONGESTION_LIMIT_MS - session.survival.congestionMs) / 1000)} s o pierdes 1 vida.`
+        : session.survival.pendingIds.length
+          ? `+${Math.min(session.survival.pendingIds.length, arrivalSize(session.level))} en camino · entrada en ${Math.ceil(session.survival.arrivalInMs / 1000)} s · ${session.survival.pendingIds.length} en reserva`
+          : 'Últimas flechas de la oleada. Despeja para avanzar.';
+    const cadence = status.querySelector('[data-survival-cadence]');
+    if (cadence)
+      cadence.textContent = `Ritmo: ${(arrivalInterval(session.level, session.elapsedMs) / 1000).toFixed(1)} s entre entradas · Presión +${Math.round((1 - arrivalInterval(session.level, session.elapsedMs) / 5000) * 100)}%`;
+    const load = status.querySelector('[data-survival-load]');
+    if (load)
+      load.textContent = `${session.state.board.arrows.length} / ${congestionThreshold(session)} para congestión`;
   }
 
   private updateHud(): void {
@@ -1219,7 +1517,11 @@ export class GameApp {
       lives.setAttribute('aria-label', `${session.state.lives} vidas`);
     }
     const count = this.root.querySelector('[data-counter]');
-    const removed = session.state.totalArrows - session.state.board.arrows.length;
+    this.updateSurvivalHud();
+    const removed =
+      session.state.totalArrows -
+      session.state.board.arrows.length -
+      (session.survival?.pendingIds.length ?? 0);
     if (count) count.textContent = `${removed} / ${session.state.totalArrows}`;
     const progress = this.root.querySelector<HTMLElement>('[data-progress]');
     if (progress) progress.style.width = `${(removed / session.state.totalArrows) * 100}%`;
@@ -1261,6 +1563,18 @@ export class GameApp {
           controls.append(button);
         }
         button.disabled = this.busy || !!this.overlay || this.blockedArrows.has(arrow.id);
+        const special = session.mode === 'classic' && session.powerArrowId === arrow.id;
+        button.dataset.special = String(special);
+        button.dataset.power = special ? (session.powerKind ?? 'pulse') : '';
+        button.innerHTML = special
+          ? `<span class="special-badge" aria-hidden="true">${POWER_INFO[session.powerKind ?? 'pulse'].symbol}</span>`
+          : '';
+        button.setAttribute(
+          'aria-label',
+          special
+            ? `Flecha especial ${POWER_INFO[session.powerKind ?? 'pulse'].name} ${DIRECTION_LABEL[arrow.direction]}, fila ${arrow.y + 1}, columna ${arrow.x + 1}. ${POWER_INFO[session.powerKind ?? 'pulse'].description} Se activa solo con salida libre.`
+            : `Flecha ${DIRECTION_LABEL[arrow.direction]}, fila ${arrow.y + 1}, columna ${arrow.x + 1}`,
+        );
       }
     }
     this.root
@@ -1426,7 +1740,7 @@ export class GameApp {
     if (this.overlay === 'conflict')
       content = `<div class="modal-symbol lavender">${icon('shield')}</div><div class="eyebrow">PROGRESO PROTEGIDO</div><h2>Tu camino<br>ha continuado.</h2><p>Otra pestaña ha actualizado el progreso. Recarga para continuar desde el guardado más reciente.</p><button class="primary-button" data-action="reload">Recuperar el progreso ${icon('retry')}</button>`;
     if (this.overlay === 'pause')
-      content = `<div class="modal-symbol lavender">${icon('pause')}</div><div class="eyebrow">SIN PRISA</div><h2>Un pequeño<br>respiro.</h2><p>Tu tablero te espera justo donde lo dejaste.</p><button class="primary-button" data-action="resume">Continuar ${icon('play')}</button><button class="secondary-button" data-action="restart">Reiniciar nivel ${icon('retry')}</button><div class="modal-links"><button class="text-button" data-action="settings">Ajustes</button><button class="text-button" data-action="home">Volver al inicio</button></div>`;
+      content = `<div class="modal-symbol lavender">${icon('pause')}</div><div class="eyebrow">SIN PRISA</div><h2>Un pequeño<br>respiro.</h2><p>Tu tablero te espera justo donde lo dejaste.</p><button class="primary-button" data-action="resume">Seguir jugando ${icon('play')}</button><button class="secondary-button" data-action="save-map">Guardar y volver al mapa</button><button class="secondary-button" data-action="restart">Reiniciar nivel ${icon('retry')}</button><div class="modal-links"><button class="text-button" data-action="settings">Ajustes</button><button class="text-button" data-action="home">Volver al inicio</button></div>`;
     if (this.overlay === 'settings') {
       const settings = this.store.profile.settings;
       content = `${close}<div class="eyebrow">A TU GUSTO</div><h2>Tu espacio.</h2><p>Pequeños detalles para pensar mejor.</p><div class="settings-list">${[
@@ -1488,6 +1802,10 @@ export class GameApp {
 
   private resultContent(): string {
     const session = this.session!;
+    if (session.mode === 'endless') {
+      const waves = Math.max(0, session.level - 1);
+      return `<div class="result-burst defeat">${icon('flame')}</div><div class="eyebrow">SUPERVIVENCIA</div><h2>${waves ? 'Has abierto<br>mucho camino.' : 'Cada intento<br>te lleva más lejos.'}</h2><p>Las tres vidas cuentan para toda la sesión. Vuelve a empezar y supera tu recorrido.</p><div class="result-stats"><div><strong>${waves}</strong><span>OLEADAS SUPERADAS</span></div><div><strong>${formatTime(session.elapsedMs)}</strong><span>TIEMPO TOTAL</span></div><div><strong>${session.bestCombo ?? 0}</strong><span>MEJOR COMBO</span></div></div><button class="primary-button" data-action="restart">Nueva supervivencia ${icon('retry')}</button><p class="daily-fineprint">Una energía por sesión nueva. Continuar una sesión guardada es gratis.</p><button class="text-button centered" data-action="home">Volver al inicio</button>`;
+    }
     const won = session.state.status === 'won';
     const tutorial = session.mode === 'tutorial';
     const nextAction = won
@@ -1510,10 +1828,36 @@ export class GameApp {
             ? 'Volver al reto'
             : 'Siguiente nivel'
       : 'Volver a intentarlo';
-    return `<div class="result-burst ${won ? '' : 'defeat'}">${icon(won ? 'spark' : 'retry')}</div><div class="eyebrow">${won ? (tutorial ? 'YA TIENES LA CLAVE' : 'CAMINO DESPEJADO') : 'TÓMATE OTRO INTENTO'}</div><h2>${won ? (tutorial ? 'Ahora, a<br>tu manera.' : session.state.errors === 0 ? 'Así de<br>impecable.' : 'Una pequeña<br>gran victoria.') : 'La salida<br>sigue ahí.'}</h2><p>${won ? (tutorial ? 'Busca caminos libres. Cada flecha que sale abre nuevas posibilidades.' : session.state.errors === 0 ? 'Ni un solo error. A veces, todo encaja.' : 'Has encontrado el orden. Disfruta ese momento.') : 'Ya conoces mejor el tablero. ¿Lo vuelves a intentar?'}</p>${masteryContent(session)}<div class="result-stats"><div><strong>${formatTime(session.elapsedMs)}</strong><span>TIEMPO</span></div><div><strong>${session.state.errors}</strong><span>ERRORES</span></div><div><strong>${session.state.totalArrows - session.state.board.arrows.length}</strong><span>FLECHAS</span></div></div>${won && !tutorial && this.store.profile.stats.wins % 3 === 0 ? '<div class="reward-note">+1 pista · Cada victoria abre caminos.</div>' : ''}${session.rewardChests ? '<div class="reward-note chest-milestone">+1 cofre · Hito de clásico completado.</div>' : ''}${session.forgeReward ? `<div class="reward-note forge-reward ${session.forgeReward === 'key' ? 'key-complete' : ''}">${icon('key')}${session.forgeReward === 'key' ? '+1 llave · Forja completada.' : `+1 avance de forja · ${this.store.profile.economy.collection.keyProgress} / ${KEY_WINS_REQUIRED} victorias.`}</div>` : ''}${session.rewardXp ? `<div class="reward-note">+${session.rewardXp} XP para el pase${session.energySpent && session.energyPolicy !== 'attempt-v2' ? ' · Energía recuperada del intento antiguo' : ''}</div>` : ''}<button class="primary-button" data-action="${nextAction}">${nextLabel} ${icon(won ? 'arrow' : 'retry')}</button>${!tutorial ? `<button class="secondary-button" data-action="share-result">Compartir resultado ${icon('share')}</button>` : ''}${this.manualShareText ? `<textarea class="manual-copy" readonly aria-label="Resultado para copiar">${escapeHtml(this.manualShareText)}</textarea>` : ''}<button class="text-button centered" data-action="home">Volver al inicio</button>`;
+    return `<div class="result-burst ${won ? '' : 'defeat'}">${icon(won ? 'spark' : 'retry')}</div><div class="eyebrow">${won ? (tutorial ? 'YA TIENES LA CLAVE' : 'CAMINO DESPEJADO') : 'TÓMATE OTRO INTENTO'}</div><h2>${won ? (tutorial ? 'Ahora, a<br>tu manera.' : session.state.errors === 0 ? 'Así de<br>impecable.' : 'Una pequeña<br>gran victoria.') : 'La salida<br>sigue ahí.'}</h2><p>${won ? (tutorial ? 'Busca caminos libres. Cada flecha que sale abre nuevas posibilidades.' : session.state.errors === 0 ? 'Ni un solo error. A veces, todo encaja.' : 'Has encontrado el orden. Disfruta ese momento.') : 'Ya conoces mejor el tablero. ¿Lo vuelves a intentar?'}</p>${masteryContent(session)}<div class="result-stats"><div><strong>${formatTime(session.elapsedMs)}</strong><span>TIEMPO</span></div><div><strong>${session.state.errors}</strong><span>ERRORES</span></div><div><strong>${session.state.totalArrows - session.state.board.arrows.length}</strong><span>FLECHAS</span></div></div>${won && !tutorial && this.store.profile.stats.wins % 3 === 0 ? '<div class="reward-note">+1 pista · Cada victoria abre caminos.</div>' : ''}${session.rewardChests ? '<div class="reward-note chest-milestone">+1 cofre · Hito de clásico completado.</div>' : ''}${session.forgeReward ? `<div class="reward-note forge-reward ${session.forgeReward === 'key' ? 'key-complete' : ''}">${icon('key')}${session.forgeReward === 'key' ? '+1 llave · Forja completada.' : `+1 avance de forja · ${this.store.profile.economy.collection.keyProgress} / ${KEY_WINS_REQUIRED} victorias.`}</div>` : ''}${session.rewardXp ? `<div class="reward-note">+${session.rewardXp} XP para el pase${session.energySpent && session.energyPolicy !== 'attempt-v2' ? ' · Energía recuperada del intento antiguo' : ''}</div>` : ''}<button class="primary-button" data-action="${nextAction}">${nextLabel} ${icon(won ? 'arrow' : 'retry')}</button>${!tutorial ? `<button class="secondary-button" data-action="share-result">Compartir resultado ${icon('share')}</button>` : ''}${this.manualShareText ? `<textarea class="manual-copy" readonly aria-label="Resultado para copiar">${escapeHtml(this.manualShareText)}</textarea>` : ''}${session.mode === 'classic' ? '<button class="secondary-button" data-action="map">Ver mapa</button>' : ''}<button class="text-button centered" data-action="home">Volver al inicio</button>`;
   }
 
   private handleKey(event: KeyboardEvent): void {
+    if (this.screen === 'map' && !this.overlay) {
+      if (event.key === 'Escape') {
+        this.mapBack();
+        return;
+      }
+      if (
+        ['ArrowDown', 'ArrowRight', 'ArrowUp', 'ArrowLeft', 'Home', 'End'].includes(event.key) &&
+        (event.target as Element).closest('.map-scroll')
+      ) {
+        event.preventDefault();
+        const nodes = [...this.root.querySelectorAll<HTMLElement>('.map-node')];
+        const index = nodes.indexOf(document.activeElement as HTMLElement);
+        const next =
+          event.key === 'Home'
+            ? 0
+            : event.key === 'End'
+              ? 9
+              : Math.max(
+                  0,
+                  Math.min(9, index + (['ArrowDown', 'ArrowRight'].includes(event.key) ? 1 : -1)),
+                );
+        nodes[next]?.focus();
+        nodes[next]?.scrollIntoView({ block: 'nearest' });
+        return;
+      }
+    }
     if (event.key === 'Escape') {
       if (
         this.overlay === 'settings' ||

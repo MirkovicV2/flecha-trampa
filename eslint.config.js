@@ -8,6 +8,8 @@ export default tseslint.config(
       'dist/**',
       'node_modules/**',
       '.tools/**',
+      '.gradle-home/**',
+      '.android-home/**',
       '.artifacts/**',
       'coverage/**',
       'playwright-report/**',

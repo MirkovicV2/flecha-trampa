@@ -8,6 +8,8 @@ import './ui/presentation.css';
 import './ui/arena.css';
 import './ui/mastery.css';
 import './ui/pass.css';
+import './ui/mobile-flow.css';
+import './ui/campaign-map.css';
 import { GameApp } from './ui/app';
 import { createProgressStore } from './services/platform';
 

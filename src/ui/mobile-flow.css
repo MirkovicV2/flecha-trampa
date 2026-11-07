@@ -1,0 +1,209 @@
+.game-status {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  margin: 12px 0 5px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  border: 1px solid #9aaac447;
+  background: #1e2936;
+  color: #e3eaf3;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.game-status[data-kind='danger'] {
+  background: #442820;
+  border-color: #ffad8d;
+  color: #ffdbc9;
+}
+.game-status[data-kind='clear'] {
+  background: #243321;
+  border-color: #b6d78d;
+  color: #def4be;
+}
+.game-status[data-kind='special'] {
+  background: #3c301b;
+  border-color: #ffd181;
+  color: #ffe4b4;
+}
+.game-status[data-kind='wave'] {
+  background: #233148;
+  border-color: #a0c6ff;
+  color: #d7e7ff;
+}
+.power-arrow-note {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: #ffe3af;
+  border-color: #dfb96b;
+}
+.power-arrow-note b {
+  display: block;
+  margin-bottom: 4px;
+  letter-spacing: 1px;
+}
+.board-cell[data-special='true'] {
+  border: 2px solid #ffda87;
+  border-radius: 14%;
+  box-shadow:
+    inset 0 0 14px #ffd18133,
+    0 0 10px #ffd18133;
+}
+.special-badge {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  display: grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: #ffda87;
+  color: #241b0b;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
+  pointer-events: none;
+}
+.survival-console {
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  border-radius: 15px;
+  border: 1px solid #93b7f7;
+  color: #dce9ff;
+  background: linear-gradient(120deg, #23324a, #182331);
+}
+.survival-console > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  font-size: 11px;
+}
+.survival-console strong {
+  letter-spacing: 1px;
+}
+.survival-console p {
+  margin: 9px 0 7px;
+  font-size: 13px;
+  line-height: 1.4;
+  font-weight: 700;
+}
+.survival-console small {
+  display: block;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #bbcde5;
+}
+.survival-console[data-crowded='true'] {
+  border-color: #ffac8a;
+  background: #42271f;
+  color: #ffe0d0;
+}
+.survival-console[data-crowded='true'] small {
+  color: #ffd0b9;
+}
+.survival-game .frenzy-console {
+  display: none;
+}
+.campaign-node small {
+  font-size: 10px;
+  letter-spacing: 0.3px;
+}
+.campaign-card > p {
+  font-size: 12px;
+}
+.campaign-heading small {
+  font-size: 10px;
+}
+@media (max-width: 640px) {
+  .atelier-hero {
+    position: relative;
+    grid-template-rows: auto auto;
+    gap: 20px;
+    padding: 26px 0 18px;
+    overflow: hidden;
+  }
+  .atelier-hero .hero-copy {
+    position: relative;
+    z-index: 1;
+  }
+  .atelier-hero h1 {
+    font-size: clamp(72px, 22vw, 106px);
+    margin-top: 20px;
+  }
+  .atelier-hero .hero-description {
+    font-size: 14px;
+    max-width: 70%;
+  }
+  .atelier-hero .eyebrow {
+    font-size: 9px;
+    letter-spacing: 1px;
+  }
+  .atelier-hero .hero-equipment {
+    position: absolute;
+    width: 155px;
+    right: -45px;
+    top: 174px;
+    opacity: 0.3;
+    pointer-events: none;
+  }
+  .hero-art-meta,
+  .hero-art-footer {
+    display: none;
+  }
+  .atelier-hero .hero-actions {
+    grid-row: 2;
+    position: relative;
+    z-index: 1;
+  }
+  .atelier-hero .hero-play {
+    min-height: 74px;
+    border-radius: 18px;
+    box-shadow: 0 8px 30px #d6ff8929;
+    font-size: 18px;
+  }
+  .atelier-hero .hero-play small,
+  .atelier-hero .hero-caption {
+    font-size: 11px;
+    letter-spacing: 0.3px;
+  }
+  .campaign-card {
+    margin: 0 0 23px;
+  }
+  .campaign-node small {
+    font-size: 9px;
+  }
+  .campaign-node i {
+    width: 34px;
+    height: 34px;
+    font-size: 11px;
+  }
+  .campaign-trail::before {
+    top: 17px;
+  }
+  .mode-preview {
+    border-radius: 18px;
+  }
+  .mode-preview small,
+  .mode-preview > span > span {
+    font-size: 11px;
+  }
+  .is-playing .game-description {
+    display: none;
+  }
+  .is-playing .game-layout {
+    gap: 8px;
+  }
+  .is-playing .game-title {
+    font-size: 24px;
+    margin-bottom: 4px;
+  }
+  .is-playing .game-tools button,
+  .is-playing .board-feedback button {
+    min-height: 44px;
+  }
+  .is-playing .game-status {
+    font-size: 12px;
+  }
+}
