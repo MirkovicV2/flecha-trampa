@@ -14,6 +14,8 @@ import type { PlaySession } from '../services/session';
 import type { BoardRenderer } from '../scenes/BoardScene';
 import { escapeHtml, formatTime } from '../utils/format';
 import { icon } from './icons';
+import { BoardInput } from './board-input';
+import { advanceCombo, COMBO_WINDOW_MS, emptyCombo } from '../core/combo';
 
 type Screen = 'home' | 'modes' | 'game' | 'stats' | 'daily' | 'shared';
 type Overlay = 'pause' | 'settings' | 'result' | 'onboarding' | 'hints' | 'conflict' | null;
@@ -40,6 +42,8 @@ export class GameApp {
   private manualShareText: string | null = null;
   private readonly monetization = new MonetizationService();
   private pendingArrowFocus: string | null = null;
+  private readonly blockedArrows = new Set<string>();
+  private combo = emptyCombo();
 
   constructor(
     private readonly root: HTMLElement,
@@ -54,10 +58,12 @@ export class GameApp {
       const target = (event.target as Element).closest<HTMLElement>('[data-action], [data-arrow]');
       if (!target || (target instanceof HTMLButtonElement && target.disabled)) return;
       if (target.dataset.arrow) {
-        void this.selectArrow(target.dataset.arrow);
         return;
       }
       this.action(target.dataset.action ?? '', target.dataset.value);
+    });
+    new BoardInput(root, (id) => {
+      void this.selectArrow(id);
     });
     root.addEventListener('keydown', (event) => this.handleKey(event));
     document.addEventListener('visibilitychange', () => {
@@ -196,6 +202,14 @@ export class GameApp {
       case 'hint':
         this.hint();
         break;
+      case 'zoom-board': {
+        const viewport = this.root.querySelector('.board-viewport');
+        const zoomed = viewport?.classList.toggle('zoomed') ?? false;
+        const button = this.root.querySelector('[data-action="zoom-board"]');
+        button?.setAttribute('aria-pressed', String(zoomed));
+        if (button) button.textContent = zoomed ? 'Ver tablero completo' : 'Ampliar tablero';
+        break;
+      }
       case 'toggle':
         this.toggleSetting(value);
         break;
@@ -374,6 +388,7 @@ export class GameApp {
     this.screen = 'game';
     this.overlay = null;
     this.busy = false;
+    this.combo = emptyCombo();
     this.lastTick = performance.now();
     this.store.flush();
     this.render();
@@ -411,6 +426,7 @@ export class GameApp {
   }
 
   private pause(): void {
+    this.combo = { ...this.combo, count: 0, lastMoveAt: 0 };
     if (this.screen === 'game' && this.session?.state.status === 'playing' && !this.overlay)
       this.openOverlay('pause');
   }
@@ -419,6 +435,10 @@ export class GameApp {
     const now = performance.now();
     const delta = Math.max(0, Math.min(now - this.lastTick, 1500));
     this.lastTick = now;
+    if (this.combo.count && now - this.combo.lastMoveAt > COMBO_WINDOW_MS) {
+      this.combo = { ...this.combo, count: 0 };
+      this.updateCombo();
+    }
     if (this.screen === 'daily') {
       if (this.displayedDailyDate !== utcDate()) {
         this.render();
@@ -446,11 +466,20 @@ export class GameApp {
 
   private async selectArrow(id: string): Promise<void> {
     const session = this.session;
-    if (!session || this.screen !== 'game' || this.overlay || this.busy || !this.renderer) return;
+    if (
+      !session ||
+      this.screen !== 'game' ||
+      this.overlay ||
+      this.busy ||
+      !this.renderer ||
+      this.blockedArrows.has(id)
+    )
+      return;
     const result = attemptMove(session.state, id);
     if (result.kind === 'ignored') return;
     this.tick();
-    this.busy = true;
+    if (result.kind === 'blocked') this.blockedArrows.add(id);
+    this.combo = advanceCombo(this.combo, result.kind === 'removed', performance.now());
     this.pendingArrowFocus =
       document.activeElement instanceof HTMLElement && document.activeElement.dataset.arrow
         ? id
@@ -461,13 +490,18 @@ export class GameApp {
       this.store.profile.stats.arrowsCleared++;
     if (session.state.status !== 'playing') this.store.recordResult(session);
     this.store.flush();
-    this.feedback.play(result.kind === 'removed' ? 'tap' : 'blocked', this.store.profile.settings);
+    this.feedback.play(
+      result.kind === 'removed' ? 'tap' : 'blocked',
+      this.store.profile.settings,
+      this.combo.count,
+    );
     this.updateHud();
+    this.updateCombo();
     if (result.kind === 'blocked') this.toast('Camino bloqueado. Busca qué flecha sale primero.');
-    await this.renderer.animate(result);
+    await this.renderer.animate(result, this.combo.count);
     if (epoch !== this.epoch) return;
+    this.blockedArrows.delete(id);
     if (this.store.conflicted) return;
-    this.busy = false;
     this.updateHud();
     if (session.state.status !== 'playing') {
       this.finish();
@@ -523,6 +557,7 @@ export class GameApp {
 
   private render(): void {
     this.epoch++;
+    this.blockedArrows.clear();
     this.renderer?.destroy();
     this.renderer = null;
     document.documentElement.dataset.motion = this.store.profile.settings.reducedMotion
@@ -631,7 +666,7 @@ export class GameApp {
   private gameContent(): string {
     const session = this.session!;
     const tutorial = session.mode === 'tutorial';
-    return `<section class="game-layout"><div class="game-intro"><div class="eyebrow">${tutorial ? 'APRENDER HACIENDO' : session.mode === 'classic' ? 'MODO CLÁSICO' : session.mode === 'daily' ? 'DESAFÍO DIARIO' : 'RETO COMPARTIDO'}</div><h1 class="game-title">${tutorial ? 'Todo tiene<br> un orden.' : 'Una flecha.<br> Un paso más.'}</h1><p class="game-description">Observa el tablero. Libera los caminos.<br>La siguiente salida está ahí.</p><div class="desktop-tip">${icon('help')}<p>Una flecha solo puede salir si no hay otra en su trayectoria. Cada intento bloqueado cuesta una vida.</p></div></div><div class="play-area"><div class="game-hud"><div class="lives" role="img" aria-label="3 vidas" data-lives></div><span class="game-timer">${icon('clock')}<span data-timer>${formatTime(session.elapsedMs)}</span></span></div><div class="board-frame"><div class="board-corner corner-tl"></div><div class="board-corner corner-br"></div><div class="board-host" aria-hidden="true"></div><div class="board-controls" role="group" aria-label="Tablero de flechas"></div><div class="board-loading">Preparando tu camino…</div></div><div class="board-progress"><span>FLECHAS LIBERADAS</span><strong data-counter></strong><div class="progress-track"><i data-progress></i></div></div><div class="tutorial-instruction" ${tutorial ? '' : 'hidden'}></div><div class="game-tools"><button class="hint-button" data-action="hint">${icon('spark')}<span>Una pista</span><span class="hint-count" data-hints>${this.store.profile.hints}</span></button><button class="text-button" data-action="pause">Tomar un respiro ${icon('pause')}</button></div><p class="board-caption">${icon('arrow')} Toca una flecha para liberarla.</p></div></section>`;
+    return `<section class="game-layout"><div class="game-intro"><div class="eyebrow">${tutorial ? 'APRENDER HACIENDO' : session.mode === 'classic' ? 'MODO CLÁSICO' : session.mode === 'daily' ? 'DESAFÍO DIARIO' : 'RETO COMPARTIDO'}</div><h1 class="game-title">${tutorial ? 'Todo tiene<br> un orden.' : 'Una flecha.<br> Un paso más.'}</h1><p class="game-description">Observa el tablero. Libera los caminos.<br>La siguiente salida está ahí.</p><div class="desktop-tip">${icon('help')}<p>Una flecha solo puede salir si no hay otra en su trayectoria. Cada intento bloqueado cuesta una vida.</p></div></div><div class="play-area"><div class="game-hud"><div class="lives" role="img" aria-label="3 vidas" data-lives></div><span class="game-timer">${icon('clock')}<span data-timer>${formatTime(session.elapsedMs)}</span></span></div><div class="board-viewport"><div class="board-frame"><div class="board-corner corner-tl"></div><div class="board-corner corner-br"></div><div class="board-host" aria-hidden="true"></div><div class="board-controls" role="group" aria-label="Tablero de flechas"></div><div class="board-loading">Preparando tu camino…</div></div></div><div class="board-feedback"><strong class="combo-badge" data-combo hidden></strong><button class="text-button zoom-button" data-action="zoom-board" aria-pressed="false">Ampliar tablero</button></div><div class="board-progress"><span>FLECHAS LIBERADAS</span><strong data-counter></strong><div class="progress-track"><i data-progress></i></div></div><div class="tutorial-instruction" ${tutorial ? '' : 'hidden'}></div><div class="game-tools"><button class="hint-button" data-action="hint">${icon('spark')}<span>Una pista</span><span class="hint-count" data-hints>${this.store.profile.hints}</span></button><button class="text-button" data-action="pause">Tomar un respiro ${icon('pause')}</button></div><p class="board-caption">${icon('arrow')} Toca una flecha para liberarla.</p></div></section>`;
   }
 
   private async mountBoard(): Promise<void> {
@@ -643,19 +678,12 @@ export class GameApp {
     try {
       const { BoardRenderer } = await import('../scenes/BoardScene');
       if (epoch !== this.epoch || !host.isConnected) return;
-      this.renderer = new BoardRenderer(
-        host,
-        session.state.board,
-        {
-          ...this.store.profile.settings,
-          reducedMotion:
-            this.store.profile.settings.reducedMotion ||
-            matchMedia('(prefers-reduced-motion: reduce)').matches,
-        },
-        (id) => {
-          void this.selectArrow(id);
-        },
-      );
+      this.renderer = new BoardRenderer(host, session.state.board, {
+        ...this.store.profile.settings,
+        reducedMotion:
+          this.store.profile.settings.reducedMotion ||
+          matchMedia('(prefers-reduced-motion: reduce)').matches,
+      });
       await this.renderer.ready;
       if (epoch !== this.epoch) return;
       this.busy = false;
@@ -696,12 +724,39 @@ export class GameApp {
     if (controls) {
       const board = session.state.board;
       const cell = 664 / Math.max(board.width, board.height);
-      controls.innerHTML = board.arrows
-        .map(
-          (arrow) =>
-            `<button class="board-cell" data-arrow="${escapeHtml(arrow.id)}" data-x="${arrow.x}" data-y="${arrow.y}" data-direction="${arrow.direction}" aria-label="Flecha ${DIRECTION_LABEL[arrow.direction]}, fila ${arrow.y + 1}, columna ${arrow.x + 1}" style="left:${(((720 - board.width * cell) / 2 + arrow.x * cell) / 720) * 100}%;top:${(((720 - board.height * cell) / 2 + arrow.y * cell) / 720) * 100}%;width:${(cell / 720) * 100}%;height:${(cell / 720) * 100}%" ${this.busy || this.overlay ? 'disabled' : ''}></button>`,
-        )
-        .join('');
+      const ids = new Set(board.arrows.map((arrow) => arrow.id));
+      const existing = new Map(
+        [...controls.querySelectorAll<HTMLButtonElement>('[data-arrow]')].map((button) => [
+          button.dataset.arrow!,
+          button,
+        ]),
+      );
+      for (const [id, button] of existing) if (!ids.has(id)) button.remove();
+      for (const arrow of board.arrows) {
+        let button = existing.get(arrow.id);
+        if (!button) {
+          button = document.createElement('button');
+          button.className = 'board-cell';
+          Object.assign(button.dataset, {
+            arrow: arrow.id,
+            x: String(arrow.x),
+            y: String(arrow.y),
+            direction: arrow.direction,
+          });
+          button.setAttribute(
+            'aria-label',
+            `Flecha ${DIRECTION_LABEL[arrow.direction]}, fila ${arrow.y + 1}, columna ${arrow.x + 1}`,
+          );
+          Object.assign(button.style, {
+            left: `${(((720 - board.width * cell) / 2 + arrow.x * cell) / 720) * 100}%`,
+            top: `${(((720 - board.height * cell) / 2 + arrow.y * cell) / 720) * 100}%`,
+            width: `${(cell / 720) * 100}%`,
+            height: `${(cell / 720) * 100}%`,
+          });
+          controls.append(button);
+        }
+        button.disabled = this.busy || !!this.overlay || this.blockedArrows.has(arrow.id);
+      }
     }
     this.root
       .querySelectorAll<HTMLButtonElement>('[data-action="pause"], [data-action="hint"]')
@@ -715,6 +770,20 @@ export class GameApp {
       next?.focus({ preventScroll: true });
       this.pendingArrowFocus = null;
     }
+  }
+
+  private updateCombo(): void {
+    const badge = this.root.querySelector<HTMLElement>('[data-combo]');
+    if (!badge) return;
+    badge.hidden = this.combo.count < 2;
+    badge.textContent = `COMBO ×${this.combo.count}`;
+    badge.dataset.intensity = String(Math.min(5, this.combo.count));
+    if (
+      !this.store.profile.settings.reducedMotion &&
+      !matchMedia('(prefers-reduced-motion: reduce)').matches &&
+      this.combo.count >= 2
+    )
+      badge.animate([{ transform: 'scale(1.2)' }, { transform: 'scale(1)' }], { duration: 180 });
   }
 
   private highlightTutorial(): void {

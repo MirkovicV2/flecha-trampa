@@ -10,6 +10,7 @@ async function skipTutorial(page: Page): Promise<void> {
 }
 
 async function readBoard(page: Page): Promise<Board> {
+  await expect(page.locator('[data-arrow]').first()).toBeVisible();
   await expect(page.locator('.board-loading')).toHaveCount(0);
   const arrows = await page.locator('[data-arrow]').evaluateAll((buttons) =>
     buttons.map((button) => {
@@ -285,4 +286,65 @@ test('portrait layouts keep a dense board inside the viewport', async ({ page },
     await page.getByRole('button', { name: 'Pausar', exact: true }).click();
     await page.getByRole('button', { name: 'Volver al inicio', exact: true }).click();
   }
+});
+
+test.describe('finger input', () => {
+  test.use({ hasTouch: true });
+
+  test('accepts several real taps while arrows are flying and keeps a combo', async ({ page }) => {
+    await skipTutorial(page);
+    await page.getByRole('button', { name: /Jugar ahora/ }).click();
+    const board = await readBoard(page);
+    const sequence = solve(board).sequence.slice(0, 3);
+    const untouched = board.arrows.find((arrow) => !sequence.includes(arrow.id))!;
+    const stable = await page.locator(`[data-arrow="${untouched.id}"]`).elementHandle();
+    const points = await page.locator('[data-arrow]').evaluateAll((buttons) =>
+      buttons.map((button) => {
+        const rect = button.getBoundingClientRect();
+        return {
+          id: (button as HTMLElement).dataset.arrow,
+          x: rect.x + rect.width / 2,
+          y: rect.y + rect.height / 2,
+        };
+      }),
+    );
+    for (const id of sequence) {
+      const point = points.find((item) => item.id === id)!;
+      await page.touchscreen.tap(point.x, point.y);
+    }
+    await expect(page.locator('[data-arrow]')).toHaveCount(board.arrows.length - 3);
+    await expect(page.locator('[data-lives]')).toHaveAttribute('aria-label', '3 vidas');
+    await expect(page.locator('[data-combo]')).toHaveText('COMBO ×3');
+    expect(await stable!.evaluate((button) => button.isConnected)).toBe(true);
+  });
+
+  test('scrolling a finger over an arrow never consumes a move and zoom enlarges targets', async ({
+    page,
+  }) => {
+    await skipTutorial(page);
+    await page.getByRole('button', { name: /Jugar ahora/ }).click();
+    const board = await readBoard(page);
+    const box = (await page.locator('[data-arrow]').first().boundingBox())!;
+    const cdp = await page.context().newCDPSession(page);
+    const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [point] });
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchMove',
+      touchPoints: [{ x: point.x, y: point.y - 50 }],
+    });
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await expect(page.locator('[data-arrow]')).toHaveCount(board.arrows.length);
+    await expect(page.locator('[data-lives]')).toHaveAttribute('aria-label', '3 vidas');
+    await page.getByRole('button', { name: 'Ampliar tablero' }).click();
+    await expect(page.getByRole('button', { name: 'Ver tablero completo' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    const enlarged = (await page.locator('[data-arrow]').first().boundingBox())!;
+    expect(enlarged.width).toBeGreaterThanOrEqual(44);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    await cdp.detach();
+  });
 });

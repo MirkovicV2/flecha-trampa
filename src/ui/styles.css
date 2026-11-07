@@ -766,6 +766,39 @@ h1 {
 }
 .board-host canvas {
   display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+.board-viewport {
+  overflow: auto;
+  border-radius: 25px;
+  overscroll-behavior: contain;
+}
+.board-viewport.zoomed {
+  max-height: min(65dvh, 520px);
+}
+.board-viewport.zoomed .board-frame {
+  width: max(100%, 500px);
+}
+.board-feedback {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  gap: 12px;
+}
+.zoom-button {
+  margin-left: auto;
+  font-size: 12px;
+  min-height: 44px;
+}
+.combo-badge {
+  color: var(--lime);
+  font-size: 14px;
+  letter-spacing: 1px;
+}
+.combo-badge[data-intensity='5'] {
+  color: var(--coral);
 }
 .board-controls {
   position: absolute;
@@ -779,6 +812,10 @@ h1 {
   background: transparent;
   padding: 0;
   border: 4px solid transparent;
+  touch-action: pan-x pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 .board-cell:hover:not(:disabled) {
   background: #ffffff08;

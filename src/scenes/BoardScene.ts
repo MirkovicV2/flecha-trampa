@@ -15,18 +15,11 @@ class BoardScene extends Phaser.Scene {
   private settings: PlayerSettings;
   private readonly initialBoard: Board;
   private readonly readyCallback: () => void;
-  private readonly select: (id: string) => void;
 
-  constructor(
-    board: Board,
-    settings: PlayerSettings,
-    select: (id: string) => void,
-    ready: () => void,
-  ) {
+  constructor(board: Board, settings: PlayerSettings, ready: () => void) {
     super({ key: 'Board' });
     this.initialBoard = board;
     this.settings = settings;
-    this.select = select;
     this.readyCallback = ready;
   }
 
@@ -85,11 +78,6 @@ class BoardScene extends Phaser.Scene {
     glyph.rotation = ROTATION[arrow.direction];
     const container = this.add.container(x, y, [tile, glyph]);
     container.setSize(size, size);
-    container.setInteractive(
-      new Phaser.Geom.Rectangle(-size / 2, -size / 2, size, size),
-      Phaser.Geom.Rectangle.Contains,
-    );
-    container.on('pointerdown', () => this.select(arrow.id));
     this.views.set(arrow.id, container);
     if (!this.settings.reducedMotion) {
       container.setAlpha(0).setScale(0.85);
@@ -104,11 +92,12 @@ class BoardScene extends Phaser.Scene {
     }
   }
 
-  animate(result: MoveResult): Promise<void> {
+  animate(result: MoveResult, combo = 0): Promise<void> {
     const arrow = result.arrow;
     const view = arrow ? this.views.get(arrow.id) : undefined;
     if (!view || !arrow) return Promise.resolve();
     this.tweens.killTweensOf(view);
+    view.setAlpha(1).setScale(1);
     return new Promise((resolve) => {
       const done = () => {
         this.pending.delete(done);
@@ -121,7 +110,7 @@ class BoardScene extends Phaser.Scene {
           targets: view,
           x: view.x + dx * this.cell * 0.1,
           y: view.y + dy * this.cell * 0.1,
-          duration: this.settings.reducedMotion ? 30 : 65,
+          duration: this.settings.reducedMotion ? 25 : 45,
           yoyo: true,
           repeat: 1,
           ease: 'Sine.InOut',
@@ -131,21 +120,27 @@ class BoardScene extends Phaser.Scene {
       }
       const [dx, dy] = VECTORS[arrow.direction];
       if (!this.settings.reducedMotion) {
-        for (let index = 0; index < 6; index++) {
-          const spark = this.add.circle(
-            view.x,
-            view.y,
-            2 + (index % 3),
-            ARROW_COLORS[this.settings.theme][arrow.direction],
-            0.75,
-          );
+        const particles = 6 + Math.min(10, combo * 2);
+        const color = ARROW_COLORS[this.settings.theme][arrow.direction];
+        const ring = this.add
+          .circle(view.x, view.y, this.cell * 0.22)
+          .setStrokeStyle(2, color, 0.6);
+        this.tweens.add({
+          targets: ring,
+          scale: 2.1,
+          alpha: 0,
+          duration: 200,
+          onComplete: () => ring.destroy(),
+        });
+        for (let index = 0; index < particles; index++) {
+          const spark = this.add.circle(view.x, view.y, 2 + (index % 3), color, 0.75);
           this.tweens.add({
             targets: spark,
-            x: view.x + Math.cos((index * Math.PI) / 3) * 35,
-            y: view.y + Math.sin((index * Math.PI) / 3) * 35,
+            x: view.x + Math.cos((index * Math.PI * 2) / particles) * (30 + Math.min(combo, 8) * 4),
+            y: view.y + Math.sin((index * Math.PI * 2) / particles) * (30 + Math.min(combo, 8) * 4),
             alpha: 0,
             scale: 0.2,
-            duration: 400,
+            duration: 260,
             onComplete: () => spark.destroy(),
           });
         }
@@ -155,8 +150,8 @@ class BoardScene extends Phaser.Scene {
         x: view.x + dx * (SIDE + this.cell),
         y: view.y + dy * (SIDE + this.cell),
         alpha: 0,
-        duration: this.settings.reducedMotion ? 50 : 340,
-        ease: 'Cubic.In',
+        duration: this.settings.reducedMotion ? 40 : Math.max(150, 240 - combo * 12),
+        ease: 'Quad.In',
         onComplete: () => {
           this.views.delete(arrow.id);
           view.destroy();
@@ -188,17 +183,12 @@ export class BoardRenderer {
   private readonly game: Phaser.Game;
   private readonly boardScene: BoardScene;
 
-  constructor(
-    host: HTMLElement,
-    board: Board,
-    settings: PlayerSettings,
-    onSelect: (id: string) => void,
-  ) {
+  constructor(host: HTMLElement, board: Board, settings: PlayerSettings) {
     let onReady: () => void = () => undefined;
     this.ready = new Promise<void>((resolve) => {
       onReady = resolve;
     });
-    this.boardScene = new BoardScene(board, settings, onSelect, onReady);
+    this.boardScene = new BoardScene(board, settings, onReady);
     this.game = new Phaser.Game({
       type: Phaser.AUTO,
       parent: host,
@@ -207,14 +197,15 @@ export class BoardRenderer {
       transparent: true,
       scene: [this.boardScene],
       audio: { noAudio: true },
+      input: { mouse: false, touch: false, keyboard: false, gamepad: false },
       scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
       render: { antialias: true, powerPreference: 'low-power' },
       banner: false,
     });
   }
 
-  animate(result: MoveResult): Promise<void> {
-    return this.boardScene.animate(result);
+  animate(result: MoveResult, combo = 0): Promise<void> {
+    return this.boardScene.animate(result, combo);
   }
   hint(id: string): void {
     this.boardScene.hint(id);
