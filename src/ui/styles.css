@@ -1147,7 +1147,8 @@ h1 {
   margin: 22px 0 15px;
 }
 .theme-options {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 .theme-option {
@@ -2213,5 +2214,557 @@ html[data-motion='reduced'] *::after {
 @media (max-width: 640px) {
   .app-shell:not(.is-playing) .toast {
     bottom: calc(90px + var(--safe-bottom));
+  }
+}
+
+:root {
+  background: var(--bg);
+  --board-top: #1c2029;
+  --board-bottom: #171a22;
+}
+:root[data-theme='ember'] {
+  --bg: #191315;
+  --panel: #251d22;
+  --lime: #ffd581;
+  --board-top: #30222b;
+  --board-bottom: #21191f;
+}
+:root[data-theme='arctic'] {
+  --bg: #101920;
+  --panel: #172731;
+  --lime: #a5edff;
+  --board-top: #203440;
+  --board-bottom: #14242d;
+}
+:root[data-theme='neon'] {
+  --bg: #11101e;
+  --panel: #201b32;
+  --lime: #d5ff52;
+  --board-top: #2b2043;
+  --board-bottom: #171426;
+}
+:root[data-theme='midnight'] {
+  --bg: #111326;
+  --panel: #1c2140;
+  --lime: #d7cbff;
+  --board-top: #292d51;
+  --board-bottom: #191c36;
+}
+:root[data-theme='solar'] {
+  --bg: #1c1711;
+  --panel: #2b2419;
+  --lime: #ffdf7f;
+  --board-top: #3a2e23;
+  --board-bottom: #271f17;
+}
+.board-frame {
+  background: radial-gradient(ellipse at 60% 20%, var(--board-top), var(--board-bottom) 70%);
+}
+.energy-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 44px;
+  padding: 7px 11px;
+  border: 1px solid #d6ff8940;
+  border-radius: 14px;
+  color: var(--lime);
+  background: #d6ff8909;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.energy-chip .icon {
+  width: 16px;
+  height: 16px;
+}
+.energy-total {
+  display: block;
+  font-size: 42px;
+  color: var(--lime);
+  margin: 20px 0;
+}
+.bonus-life-note {
+  color: var(--coral);
+  font-size: 11px;
+  line-height: 1.6;
+  margin: 14px 0;
+}
+.bonus-life-note .icon {
+  width: 16px;
+  height: 16px;
+  margin-right: 5px;
+}
+.energy-next strong {
+  color: var(--lime);
+}
+.rewards-shortcuts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 18px;
+}
+.rewards-shortcuts button {
+  min-height: 76px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  text-align: left;
+}
+.rewards-shortcuts button > .icon:first-child {
+  color: var(--lavender);
+}
+.rewards-shortcuts button > .icon:last-child {
+  margin-left: auto;
+  width: 18px;
+}
+.rewards-shortcuts span {
+  font-size: 13px;
+  font-weight: 600;
+}
+.rewards-shortcuts small {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 400;
+}
+.rewards-page {
+  max-width: 900px;
+  margin: auto;
+}
+.rewards-page h2 {
+  font-size: 26px;
+  letter-spacing: -0.7px;
+}
+.rewards-tabs {
+  display: flex;
+  padding: 5px;
+  gap: 5px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  margin: 26px 0;
+}
+.rewards-tabs button {
+  flex: 1;
+  min-height: 48px;
+  padding: 10px;
+  border-radius: 11px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.rewards-tabs button.selected {
+  color: #161b10;
+  background: var(--lime);
+  font-weight: 700;
+}
+.pass-summary,
+.premium-summary,
+.chest-vault {
+  padding: 28px;
+  border-radius: 24px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  margin-bottom: 20px;
+}
+.pass-summary h2 {
+  font-size: clamp(32px, 5vw, 48px);
+  margin: 18px 0;
+}
+.pass-summary p,
+.premium-summary p,
+.chest-vault p {
+  color: #adb3c1;
+  line-height: 1.7;
+  font-size: 13px;
+  margin: 12px 0;
+}
+.pass-xp {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 24px;
+  font-size: 13px;
+}
+.pass-xp span {
+  color: var(--lime);
+}
+.pass-summary progress {
+  width: 100%;
+  height: 8px;
+  border: 0;
+  margin: 12px 0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--border);
+  accent-color: var(--lime);
+}
+.pass-summary progress::-webkit-progress-bar {
+  background: var(--border);
+}
+.pass-summary progress::-webkit-progress-value {
+  background: var(--lime);
+}
+.fine-print,
+.pass-summary .fine-print,
+.premium-summary .fine-print {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.7;
+}
+.premium-summary {
+  border-color: #b9a5ff50;
+}
+.premium-summary > div > .icon {
+  color: var(--lavender);
+  margin-right: 10px;
+}
+.premium-summary .secondary-button {
+  width: 100%;
+  margin: 12px 0;
+}
+.premium-summary .text-button {
+  min-height: 44px;
+}
+.pass-rewards {
+  display: grid;
+  gap: 12px;
+}
+.pass-tier {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+  align-items: stretch;
+}
+.tier-number {
+  align-self: center;
+  font-size: 27px;
+  color: var(--lime);
+}
+.tier-number small {
+  display: block;
+  font-size: 9px;
+  font-weight: 400;
+  color: var(--muted);
+  margin-top: 5px;
+}
+.pass-track {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--panel);
+}
+.pass-track.premium {
+  border-color: #b9a5ff40;
+  background: linear-gradient(135deg, #b9a5ff0b, var(--panel));
+}
+.pass-track .eyebrow {
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: var(--muted);
+}
+.pass-track.free .eyebrow {
+  color: var(--lime);
+}
+.pass-track > strong {
+  font-size: 14px;
+  line-height: 1.4;
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+.pass-track button {
+  min-height: 44px;
+  width: 100%;
+  min-width: 0;
+  padding: 10px 8px;
+  font-size: 12px;
+}
+.pass-track button:disabled,
+.premium-summary button:disabled {
+  opacity: 0.6;
+}
+.chest-vault {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+.chest-art {
+  display: grid;
+  place-items: center;
+  width: 140px;
+  height: 140px;
+  flex-shrink: 0;
+  color: var(--lime);
+  background: radial-gradient(circle, #d6ff891a, transparent 70%);
+}
+.chest-art .icon {
+  width: 100px;
+  height: 100px;
+  stroke-width: 1;
+  transform: rotate(-8deg);
+}
+.chest-vault .primary-button {
+  width: 100%;
+  margin-top: 15px;
+}
+.chest-vault .primary-button:disabled {
+  opacity: 0.45;
+}
+.rewards-page .theme-options {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.chest-odds {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  margin: 18px 0 10px;
+}
+.chest-odds strong {
+  margin-left: 4px;
+}
+.rewards-page .section-heading {
+  margin: 30px 0 20px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.shard-balance {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--lavender);
+}
+.shard-balance .icon {
+  width: 16px;
+  height: 16px;
+}
+.skin-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.skin-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 20px 12px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--panel);
+}
+.skin-card.selected {
+  border-color: currentColor;
+  box-shadow: inset 0 0 30px #d6ff8908;
+}
+.skin-preview {
+  width: 80px;
+  height: 80px;
+  margin-bottom: 12px;
+}
+.skin-card .eyebrow {
+  font-size: 8px;
+  letter-spacing: 1px;
+}
+.skin-card h3 {
+  font-size: 14px;
+  margin: 9px 0 18px;
+  color: #f2f3ee;
+}
+.skin-card button {
+  font-size: 10px;
+  min-height: 44px;
+  width: 100%;
+  padding: 10px 5px;
+  margin-top: auto;
+  color: #eceef5;
+}
+.skin-card button:disabled {
+  opacity: 0.5;
+}
+.rarity-common {
+  color: #b0b9cb;
+}
+.rarity-rare {
+  color: #87dce8;
+}
+.rarity-epic {
+  color: #c0a3ff;
+}
+.rarity-legendary {
+  color: #ffdb7d;
+}
+.collection-themes-title {
+  margin: 36px 0 22px;
+}
+.theme-option {
+  min-width: 0;
+}
+.theme-option > span > small {
+  display: block;
+  font-size: 8px;
+  margin-top: 5px;
+  color: var(--muted);
+}
+.theme-option:disabled {
+  opacity: 0.45;
+}
+.chest-reveal {
+  text-align: center;
+}
+.chest-reveal .skin-preview {
+  display: block;
+  width: 150px;
+  height: 150px;
+  margin: 25px auto 15px;
+  filter: drop-shadow(0 0 22px currentColor);
+  animation: chest-pop 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.chest-reveal h2 {
+  color: #f2f3ee;
+}
+.chest-reveal .rarity-label {
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 2px;
+}
+.chest-reveal p {
+  color: #b0b6c3;
+  font-size: 13px;
+  line-height: 1.7;
+  margin: 18px 0 24px;
+}
+.chest-reveal .primary-button {
+  width: 100%;
+}
+@keyframes chest-pop {
+  from {
+    transform: scale(0.65) rotate(-12deg);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1) rotate(0);
+    opacity: 1;
+  }
+}
+:root[data-motion='reduced'] .chest-reveal .skin-preview {
+  animation: none;
+  filter: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .chest-reveal .skin-preview {
+    animation: none;
+    filter: none;
+  }
+}
+@media (max-width: 640px) {
+  .topbar-actions {
+    gap: 8px;
+  }
+  .energy-chip {
+    padding: 6px;
+    font-size: 10px;
+    border-radius: 12px;
+  }
+  .energy-chip .icon {
+    width: 13px;
+    height: 13px;
+  }
+  .level-chip {
+    font-size: 8px;
+    letter-spacing: 0.3px;
+    max-width: 68px;
+    text-align: right;
+  }
+  .nav-item {
+    flex: 1;
+    min-width: 0;
+    padding: 3px 4px;
+    font-size: 8px;
+    min-height: 48px;
+  }
+  .rewards-shortcuts {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .rewards-shortcuts button {
+    padding: 15px;
+    min-height: 68px;
+  }
+  .rewards-tabs button {
+    font-size: 11px;
+  }
+  .pass-summary,
+  .premium-summary,
+  .chest-vault {
+    padding: 22px;
+  }
+  .pass-tier {
+    grid-template-columns: 30px minmax(0, 1fr) minmax(0, 1fr);
+    gap: 8px;
+  }
+  .tier-number {
+    font-size: 23px;
+  }
+  .tier-number small {
+    font-size: 7px;
+  }
+  .pass-track {
+    padding: 12px 9px;
+    border-radius: 14px;
+  }
+  .pass-track > strong {
+    font-size: 12px;
+  }
+  .pass-track button {
+    font-size: 10px;
+  }
+  .chest-vault {
+    flex-direction: column;
+    gap: 5px;
+  }
+  .chest-vault h2 {
+    font-size: 24px;
+  }
+  .chest-art {
+    height: 110px;
+    width: 110px;
+  }
+  .chest-art .icon {
+    width: 85px;
+    height: 85px;
+  }
+  .chest-odds {
+    font-size: 10px;
+    gap: 8px;
+  }
+  .skin-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .skin-card {
+    padding: 18px 10px;
+  }
+  .rewards-page .theme-options {
+    grid-template-columns: 1fr 1fr;
+  }
+  .theme-option {
+    font-size: 11px;
+    padding: 11px;
+  }
+  .theme-swatches {
+    gap: 3px;
+  }
+  .theme-swatches i {
+    width: 7px;
   }
 }
