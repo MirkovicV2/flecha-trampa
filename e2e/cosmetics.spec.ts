@@ -66,44 +66,31 @@ for (const rarity of RARITIES)
     expect(errors).toEqual([]);
   });
 
-test('equipped materials render and animate real moves without changing touch targets', async ({
-  page,
-}) => {
-  test.setTimeout(150000);
-  const profile = defaultProfile();
-  profile.level = 31;
-  profile.classicSave = newSession('classic', 31, 'cosmetic-materials', configForLevel(31));
-  profile.tutorialDone = true;
-  profile.economy.collection.ownedSkins = SKINS.map((skin) => skin.id);
-  await page.addInitScript(({ key, value }) => localStorage.setItem(key, JSON.stringify(value)), {
-    key: SAVE_KEY,
-    value: profile,
-  });
-  const errors: string[] = [];
-  page.on('pageerror', (error) => errors.push(error.message));
-  await page.goto('/');
-  for (const skin of [
-    'pixel',
-    'prism',
-    'orbit',
-    'royal',
-    'nova',
-    'frost',
-    'ember',
-    'ronin',
-    'circuit',
-    'petal',
-    'tide',
-    'phoenix',
-    'aurora',
-    'eclipse',
-  ] as const) {
+for (const { id: skin } of SKINS)
+  test(`equipped ${skin} renders and animates real moves without changing touch targets`, async ({
+    page,
+  }) => {
+    const profile = defaultProfile();
+    profile.level = 31;
+    profile.classicSave = newSession('classic', 31, 'cosmetic-materials', configForLevel(31));
+    profile.tutorialDone = true;
+    // Every case must perform a real equip action, including the default skin.
+    profile.settings.skin = skin === 'classic' ? 'chevron' : 'classic';
+    profile.economy.collection.ownedSkins = SKINS.map((skin) => skin.id);
+    await page.addInitScript(({ key, value }) => localStorage.setItem(key, JSON.stringify(value)), {
+      key: SAVE_KEY,
+      value: profile,
+    });
+    const errors: string[] = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    await page.goto('/');
     await page.getByRole('button', { name: 'Recompensas', exact: true }).click();
     await page.getByRole('button', { name: 'Colección', exact: true }).click();
     await page.locator(`[data-action="skin"][data-value="${skin}"]`).click();
     await page.getByRole('button', { name: 'Inicio', exact: true }).click();
     await page.locator('[data-action="play"]').click();
     await expect(page.locator('.board-loading')).toHaveCount(0);
+    await expect(page.locator('.board-host canvas')).toBeVisible();
     const buttons = page.locator('[data-arrow]');
     const arrows = await buttons.evaluateAll((elements) =>
       elements.map((element) => {
@@ -127,6 +114,10 @@ test('equipped materials render and animate real moves without changing touch ta
     await expect(page.locator('[data-lives]')).toHaveAttribute('aria-label', '3 vidas');
     await page.getByRole('button', { name: 'Pausar', exact: true }).click();
     await page.getByRole('button', { name: 'Volver al inicio', exact: true }).click();
-  }
-  expect(errors).toEqual([]);
-});
+    const saved = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!), SAVE_KEY);
+    expect(saved.settings.skin).toBe(skin);
+    expect(saved.classicSave.state.board.arrows.map((arrow: { id: string }) => arrow.id)).toEqual(
+      arrows.filter((arrow) => arrow.id !== moving.id).map((arrow) => arrow.id),
+    );
+    expect(errors).toEqual([]);
+  });

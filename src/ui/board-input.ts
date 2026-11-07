@@ -16,7 +16,6 @@ export function isTap(start: TapPoint, end: TapPoint): boolean {
 export class BoardInput {
   private active: { pointer: number; id: string; start: TapPoint; inspected: boolean } | null =
     null;
-  private lastPointer: { id: string; at: number } | null = null;
   private holdTimer = 0;
 
   constructor(
@@ -28,7 +27,6 @@ export class BoardInput {
     const cancel = () => {
       cancelHold();
       if (this.active?.inspected) inspect(null);
-      if (this.active) this.lastPointer = { id: this.active.id, at: performance.now() };
       this.active = null;
     };
     root.addEventListener('pointerdown', (event) => {
@@ -59,7 +57,6 @@ export class BoardInput {
       cancelHold();
       this.active = null;
       // Compatibility click must not turn a drag into a move or count a tap twice.
-      this.lastPointer = { id: active.id, at: performance.now() };
       const button = (event.target as Element).closest<HTMLButtonElement>('[data-arrow]');
       if (active.inspected) {
         inspect(null);
@@ -87,13 +84,10 @@ export class BoardInput {
     root.addEventListener('click', (event) => {
       const button = (event.target as Element).closest<HTMLButtonElement>('[data-arrow]');
       if (!button || button.disabled) return;
-      if (
-        event.detail !== 0 &&
-        this.lastPointer &&
-        this.lastPointer.id === button.dataset.arrow &&
-        performance.now() - this.lastPointer.at < 900
-      )
-        return;
+      // Pointer gestures are handled exclusively by pointerup. Their compatibility
+      // click can arrive arbitrarily late on a busy renderer, or on another cell
+      // after a drag. A time/id heuristic would turn those cancellations into moves.
+      if (event.detail !== 0) return;
       // Keyboard, assistive technology and WebView automation retain normal click support.
       select(button.dataset.arrow!);
     });

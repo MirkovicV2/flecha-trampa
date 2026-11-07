@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.0 — candidato, 2026-11-07
+
+- Interfaz renovada de inicio, modos, partida, pausa, resultados y recompensas, con navegación adaptable y estados legibles del botón de pistas para ratón, teclado y tacto.
+- Los arrastres cancelados ya no se convierten en movimientos por un clic de compatibilidad retrasado; se conservan pulsaciones, hold y control por teclado.
+- Casos independientes para las 32 skins, con movimientos reales, objetivos estables y guardado exacto; espera nativa de la transacción completa de pistas y preparación del emulador frente al ANR del launcher.
+- Candidato Android `versionCode 9`, sin cambios en generador, reglas, economía ni firma. Instrumentación remota y publicación pendientes; no es todavía una APK distribuida.
+
 ## 0.7.0 — 2026-11-07
 
 - Apertura por un cofre y una llave, con coste visible y bloqueo cuando falta un recurso. Forja gratuita de una llave por cinco victorias nuevas, incluyendo el primer diario de cada fecha.

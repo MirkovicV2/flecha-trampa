@@ -14,36 +14,25 @@
 }
 :root {
   font-family: Manrope, 'Segoe UI', sans-serif;
-  --display: 'Barlow Condensed', Impact, sans-serif;
-  --label-font: 'SFMono-Regular', Consolas, monospace;
   --brass: #e9b96a;
 }
 .brand {
   font-family: var(--display);
   font-size: 22px;
   line-height: 0.9;
-  letter-spacing: 1.2px;
 }
 .brand-light {
   font-family: var(--display);
   font-size: 16px;
-  letter-spacing: 3.2px;
-  margin-top: 6px;
 }
 .brand-mark {
-  border-radius: 8px;
   transform: none;
 }
 .brand-mark .icon {
   transform: rotate(-45deg);
 }
-.primary-button,
-.secondary-button {
-  border-radius: 10px;
-}
 .preview-notice {
   font-family: var(--label-font);
-  letter-spacing: 0.6px;
 }
 .rewards-page > .eyebrow {
   color: var(--brass);
@@ -56,39 +45,20 @@
   line-height: 0.96;
 }
 .rewards-tabs {
-  border-radius: 10px;
-  padding: 4px;
   margin-bottom: 32px;
-}
-.rewards-tabs button {
-  border-radius: 6px;
-  font-size: 12px;
-}
-.rewards-tabs button.selected {
-  background: #e8e8dc;
-  color: #171d24;
 }
 .studio-kicker {
   display: block;
   font: 9px/1.7 var(--label-font);
-  letter-spacing: 1.5px;
-  color: #aab4c3;
 }
 .collection-masthead {
   display: flex;
   align-items: end;
   justify-content: space-between;
   gap: 16px;
-  margin: 30px 0 26px;
 }
 .collection-masthead h2 {
   margin: 7px 0 8px;
-  font: 600 44px/1 var(--display);
-  letter-spacing: -0.5px;
-}
-.collection-masthead p {
-  font-size: 12px;
-  color: #9ba7b6;
 }
 .collection-count {
   flex-shrink: 0;
@@ -96,33 +66,22 @@
 }
 .collection-count strong {
   display: block;
-  font: 600 45px/1 var(--display);
-  color: #e9b96a;
 }
 .collection-count small {
   font: 8px/2 var(--label-font);
   letter-spacing: 1px;
-  color: #8795a5;
 }
 .equipped-showcase {
   display: grid;
   grid-template-columns: 1fr 1.1fr;
-  min-height: 270px;
-  border: 1px solid #36414f;
-  background: #141c26;
   margin-bottom: 18px;
-  border-radius: 12px;
   overflow: hidden;
 }
 .showcase-drawing {
   position: relative;
   display: grid;
   place-items: center;
-  min-height: 270px;
   border-right: 1px solid #36414f;
-  background:
-    linear-gradient(#8295ab0a 1px, transparent 1px),
-    linear-gradient(90deg, #8295ab0a 1px, transparent 1px), #1b2531;
   background-size: 24px 24px;
 }
 .showcase-drawing::before,
@@ -146,7 +105,6 @@
   left: 18px;
   font: 8px/1 var(--label-font);
   letter-spacing: 1.5px;
-  color: #8d9dae;
 }
 .drawing-coordinate.top {
   top: 21px;
@@ -180,13 +138,10 @@
   filter: drop-shadow(4px 9px 0 #00000025);
 }
 .showcase-copy {
-  padding: 30px;
   align-self: center;
 }
 .showcase-copy h2 {
-  font: 600 39px/1 var(--display);
   margin: 13px 0 6px;
-  color: #f0f1e9;
 }
 .finish-label {
   display: block;
@@ -194,8 +149,6 @@
   color: currentColor;
 }
 .showcase-copy p {
-  color: #9ba8b7;
-  font-size: 12px;
   line-height: 1.75;
   margin: 15px 0 9px;
 }
@@ -205,7 +158,6 @@
   align-items: center;
   min-height: 44px;
   font-size: 11px;
-  color: #e9d9b9;
 }
 .showcase-copy .icon {
   width: 15px;
@@ -213,11 +165,6 @@
 }
 .chest-vault {
   position: relative;
-  background: #1a2029;
-  border-color: #3d4149;
-  border-radius: 12px;
-  padding: 24px 28px;
-  gap: 26px;
   overflow: hidden;
 }
 .chest-vault::before {
@@ -229,7 +176,6 @@
 }
 .chest-vault {
   display: grid;
-  grid-template-columns: 200px minmax(0, 1fr);
 }
 .chest-vault .chest-art {
   position: relative;
@@ -274,9 +220,7 @@
   letter-spacing: 1px;
 }
 .chest-vault p.vault-cost {
-  font-size: 12px;
   line-height: 1.6;
-  color: #b7c1cd;
 }
 .chest-vault .primary-button > span {
   display: inline-flex;
@@ -295,8 +239,6 @@
   padding: 22px;
   margin-top: 14px;
   border: 1px solid #42433d;
-  border-radius: 12px;
-  background: linear-gradient(115deg, #e9b96a0c, transparent 70%), #141b24;
 }
 .forge-emblem {
   display: grid;
@@ -321,7 +263,6 @@
   margin: 9px 0 0;
   font-size: 12px;
   line-height: 1.6;
-  color: #a6b2c3;
 }
 .forge-meter {
   display: flex;
@@ -389,27 +330,18 @@ html[data-motion='reduced'] .key-complete {
   filter: drop-shadow(0 12px 12px #0004);
 }
 .chest-vault h2 {
-  font: 600 33px/1.1 var(--display);
   margin-top: 10px;
 }
 .chest-vault p {
-  font-size: 11px;
   max-width: 350px;
 }
 .chest-vault .studio-kicker {
-  color: #c9b08b;
-  font-size: 8px;
   letter-spacing: 1.1px;
 }
 .chest-vault .primary-button {
-  background: #e9b96a;
-  color: #201a12;
   box-shadow: inset 0 1px #fff7;
   min-height: 48px;
   font-size: 12px;
-}
-.chest-vault .primary-button:hover:not(:disabled) {
-  background: #f4cb88;
 }
 .chest-odds {
   border-top: 1px solid #323c49;
@@ -429,7 +361,6 @@ html[data-motion='reduced'] .key-complete {
 }
 .collection-filter {
   display: flex;
-  gap: 18px;
   margin-bottom: 20px;
   border-bottom: 1px solid #303b49;
 }
@@ -437,23 +368,11 @@ html[data-motion='reduced'] .key-complete {
   display: flex;
   align-items: center;
   gap: 7px;
-  min-height: 44px;
-  padding: 9px 0;
-  color: #93a0af;
-  font-size: 10px;
   border-bottom: 2px solid transparent;
-  border-radius: 0;
 }
 .collection-filter button span {
   color: #728196;
   font: 9px var(--label-font);
-}
-.collection-filter button[aria-pressed='true'] {
-  color: #ecebe2;
-  border-color: #e9b96a;
-}
-.skin-grid {
-  gap: 12px;
 }
 .skin-card {
   position: relative;
@@ -461,8 +380,6 @@ html[data-motion='reduced'] .key-complete {
   text-align: left;
   padding: 0;
   border: 1px solid #343e4c;
-  border-radius: 9px;
-  background: #19222d;
   overflow: hidden;
 }
 .skin-card::before {
@@ -472,10 +389,6 @@ html[data-motion='reduced'] .key-complete {
   height: 3px;
   background: currentColor;
   opacity: 0.8;
-}
-.skin-card.selected {
-  border-color: #d8dab9;
-  box-shadow: none;
 }
 .skin-card[hidden] {
   display: none;
@@ -488,7 +401,6 @@ html[data-motion='reduced'] .key-complete {
   padding: 12px 11px 0;
   font: 7px/1.2 var(--label-font);
   letter-spacing: 0.5px;
-  color: #7f91a7;
 }
 .skin-ownership {
   font-size: 6px;
@@ -503,7 +415,6 @@ html[data-motion='reduced'] .key-complete {
   place-items: center;
   height: 146px;
   margin: 0 10px;
-  background: radial-gradient(ellipse at 50% 74%, #8098b716, transparent 65%);
 }
 .skin-card-art::before {
   content: '';
@@ -532,12 +443,9 @@ html[data-motion='reduced'] .key-complete {
 }
 .skin-card h3 {
   color: #efefe5;
-  font: 600 25px/1 var(--display);
   margin: 7px 0 7px;
 }
 .skin-finish {
-  color: #8e9db0;
-  font-size: 9px;
   display: block;
 }
 .skin-card-actions {
@@ -868,29 +776,6 @@ html[data-motion='reduced'] .key-complete {
   .collection-masthead {
     margin-top: 22px;
   }
-  .collection-masthead h2 {
-    font-size: 36px;
-  }
-  .collection-masthead .studio-kicker {
-    font-size: 7px;
-    letter-spacing: 1px;
-  }
-  .collection-masthead p {
-    font-size: 10px;
-  }
-  .collection-count strong {
-    font-size: 37px;
-  }
-  .collection-count small {
-    font-size: 6px;
-  }
-  .equipped-showcase {
-    grid-template-columns: 0.9fr 1fr;
-    min-height: 220px;
-  }
-  .showcase-drawing {
-    min-height: 220px;
-  }
   .skin-plinth {
     width: 100px;
     height: 135px;
@@ -900,7 +785,6 @@ html[data-motion='reduced'] .key-complete {
     height: 110px;
   }
   .drawing-coordinate {
-    font-size: 7px;
     left: 11px;
     letter-spacing: 0.7px;
   }
@@ -908,27 +792,17 @@ html[data-motion='reduced'] .key-complete {
     font-size: 5px;
     letter-spacing: 0.6px;
   }
-  .showcase-copy {
-    padding: 17px 14px;
-  }
-  .showcase-copy .studio-kicker {
-    font-size: 6px;
-    letter-spacing: 0.6px;
-  }
   .showcase-copy h2 {
-    font-size: 28px;
     margin-top: 10px;
   }
   .showcase-copy .finish-label {
     font-size: 9px;
   }
   .showcase-copy p {
-    font-size: 9px;
     line-height: 1.75;
     margin: 11px 0 4px;
   }
   .showcase-copy .text-button {
-    font-size: 9px;
     gap: 6px;
   }
   .showcase-copy .icon {
@@ -937,23 +811,13 @@ html[data-motion='reduced'] .key-complete {
   }
   .chest-vault {
     flex-direction: row;
-    padding: 22px 17px;
-    gap: 10px;
   }
   .chest-art {
     width: 115px;
     height: 130px;
     margin-left: -9px;
   }
-  .chest-vault .studio-kicker {
-    font-size: 6px;
-    letter-spacing: 0.8px;
-  }
-  .chest-vault h2 {
-    font-size: 25px;
-  }
   .chest-vault p {
-    font-size: 9px;
     margin-top: 8px;
   }
   .chest-vault .primary-button {
@@ -969,24 +833,16 @@ html[data-motion='reduced'] .key-complete {
   .chest-odds strong {
     margin-left: 2px;
   }
-  .collection-filter {
-    gap: 15px;
-  }
   .collection-filter button {
-    font-size: 9px;
     gap: 5px;
   }
   .collection-filter button span {
     font-size: 8px;
   }
-  .skin-grid {
-    gap: 10px;
-  }
   .skin-card {
     padding: 0;
   }
   .skin-card-top {
-    font-size: 6px;
     padding: 12px 9px 0;
     gap: 2px;
   }
@@ -1004,14 +860,8 @@ html[data-motion='reduced'] .key-complete {
   .skin-card-copy {
     padding: 0 12px 12px;
   }
-  .skin-card h3 {
-    font-size: 24px;
-  }
   .skin-card .eyebrow {
     font-size: 7px;
-  }
-  .skin-finish {
-    font-size: 8px;
   }
   .skin-card-actions {
     padding: 0 12px 16px;
@@ -1043,16 +893,13 @@ html[data-motion='reduced'] .key-complete {
 
 @media (max-width: 640px) {
   .chest-vault {
-    grid-template-columns: 72px minmax(0, 1fr);
     align-items: start;
   }
   .chest-vault .chest-art {
     width: 72px;
     height: 100px;
-    margin: 0;
   }
   .chest-vault p {
-    font-size: 12px;
     line-height: 1.6;
   }
   .chest-vault .primary-button {
@@ -1072,11 +919,6 @@ html[data-motion='reduced'] .key-complete {
   .key-wallet span {
     font-size: 8px;
     letter-spacing: 0.5px;
-  }
-  .key-forge {
-    grid-template-columns: 32px minmax(0, 1fr);
-    padding: 18px;
-    gap: 12px;
   }
   .forge-emblem {
     height: 32px;

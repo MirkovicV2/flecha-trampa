@@ -2,7 +2,8 @@ name: CI
 on:
   workflow_dispatch:
   push:
-    branches: [main, develop, 'feature/**', 'fix/**', 'docs/**', 'ci/**']
+    # Topic branches are validated by their PR; keep integration branch gates.
+    branches: [main, develop]
   pull_request:
     branches: [main, develop]
 permissions:

@@ -4,7 +4,6 @@
   align-items: center;
   gap: 11px;
   height: 39px;
-  margin: 0 4px 13px;
   color: #96a0b6;
 }
 .frenzy-symbol {
@@ -18,13 +17,7 @@
   min-width: 114px;
   gap: 3px;
 }
-.frenzy-copy small {
-  font-size: 7px;
-  letter-spacing: 1.7px;
-}
 .frenzy-copy strong {
-  font-size: 10px;
-  letter-spacing: 1.2px;
   color: var(--combo-color, #b4bdd0);
 }
 .frenzy-timer {

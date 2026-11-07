@@ -86,9 +86,9 @@
   flex-shrink: 0;
 }
 .case-seal {
-  font: 6px/1.5 var(--label-font);
-  letter-spacing: 1.7px;
-  color: #776f62;
+  font: 700 11px/1.5 var(--label-font);
+  letter-spacing: 0.3px;
+  color: #c4cfc8;
 }
 [data-case-phase='rolling'] .case-presentation,
 [data-case-phase='settling'] .case-presentation {
@@ -534,7 +534,7 @@
   }
   .case-seal {
     font-size: 5px;
-    letter-spacing: 1px;
+    letter-spacing: 0.3px;
   }
   .case-reel-assembly {
     --reel-card: 126px;
