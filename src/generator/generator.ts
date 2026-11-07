@@ -6,6 +6,7 @@ import { seededRandom } from '../utils/random';
 import { GENERATOR_VERSION, isLevelConfig } from './config';
 import type { LevelConfig } from './config';
 import { arrowCount, containsCell, shapeCells } from './shapes';
+import { tacticalBoard } from './tactical';
 
 export interface GeneratedLevel {
   readonly board: Board;
@@ -116,9 +117,9 @@ export function generateLevel(seed: string, config: LevelConfig, maxAttempts = 4
   let best: { board: Board; solution: Solution } | null = null;
   let attempts = 0;
   for (; attempts < maxAttempts; attempts++) {
-    const board = reverseBoard(
+    const board = (config.tuning === 'chain-v2' ? tacticalBoard : reverseBoard)(
       config,
-      seededRandom(`${GENERATOR_VERSION}|${seed}|${attempts}`),
+      seededRandom(`${config.tuning ?? GENERATOR_VERSION}|${seed}|${attempts}`),
       target,
     );
     if (board.arrows.length !== target) continue;
@@ -129,8 +130,12 @@ export function generateLevel(seed: string, config: LevelConfig, maxAttempts = 4
     const blockedFraction = 1 - solution.initialMoves / target;
     if (
       target < 4 ||
-      (blockedFraction >= 0.2 + config.complexity * 0.4 &&
-        solution.depth >= Math.min(5, 2 + Math.floor(config.complexity * 3)))
+      (blockedFraction >=
+        (config.tuning ? 0.55 + config.complexity * 0.25 : 0.2 + config.complexity * 0.4) &&
+        solution.depth >=
+          (config.tuning
+            ? Math.min(Math.floor(target * 0.5), 4 + Math.floor(config.complexity * 8))
+            : Math.min(5, 2 + Math.floor(config.complexity * 3))))
     ) {
       attempts++;
       break;

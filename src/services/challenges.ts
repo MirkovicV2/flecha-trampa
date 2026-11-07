@@ -30,6 +30,7 @@ export function createChallenge(seed: string, config: LevelConfig): ChallengeSpe
       density: config.density,
       complexity: config.complexity,
       ...(config.shape === undefined || config.shape === 'square' ? {} : { shape: config.shape }),
+      ...(config.tuning === undefined ? {} : { tuning: config.tuning }),
     },
   };
 }
@@ -45,14 +46,14 @@ export function encodeChallenge(spec: ChallengeSpec): string {
     .replace(/=+$/, '');
   // Older apps accept unknown config fields. A new envelope makes them reject masks
   // instead of silently dropping the shape and playing a different rectangular board.
-  return `${canonical.config.shape ? 'FT2' : 'FT1'}.${payload}.${checksum(payload)}`;
+  return `${canonical.config.tuning ? 'FT3' : canonical.config.shape ? 'FT2' : 'FT1'}.${payload}.${checksum(payload)}`;
 }
 
 export function decodeChallenge(code: string): ChallengeSpec {
   if (code.length > 2048) throw new Error('El enlace del reto es demasiado largo.');
   const [version, payload, digest, extra] = code.split('.');
   if (
-    (version !== 'FT1' && version !== 'FT2') ||
+    (version !== 'FT1' && version !== 'FT2' && version !== 'FT3') ||
     !payload ||
     !/^[\w-]+$/.test(payload) ||
     !digest ||
@@ -73,7 +74,8 @@ export function decodeChallenge(code: string): ChallengeSpec {
     )
       throw new Error('incompatible');
     const canonical = createChallenge(parsed.seed, parsed.config);
-    if (version !== (canonical.config.shape ? 'FT2' : 'FT1')) throw new Error('incompatible');
+    if (version !== (canonical.config.tuning ? 'FT3' : canonical.config.shape ? 'FT2' : 'FT1'))
+      throw new Error('incompatible');
     return canonical;
   } catch {
     throw new Error('Este reto utiliza datos o una versión del generador no compatibles.');
