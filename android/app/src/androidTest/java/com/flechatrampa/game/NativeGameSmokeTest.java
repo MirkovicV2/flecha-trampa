@@ -81,6 +81,9 @@ public class NativeGameSmokeTest {
             click(activity, "[data-action=rewards]");
             click(activity, ".rewards-tabs [data-action=collection]");
             click(activity, "[data-action=open-chest]");
+            await(activity, "document.querySelector('[data-case-phase]')?.dataset.casePhase === 'rolling'");
+            assertEquals(1, profile(preferences).getJSONObject("economy").getJSONObject("collection").getInt("opened"));
+            await(activity, "document.querySelector('[data-case-phase]')?.dataset.casePhase === 'revealed'");
             click(activity, "[data-action=equip-drop]");
             await(activity, "!document.querySelector('[role=dialog]')");
             click(activity, "[data-action=theme][data-value=neon]");
