@@ -7,12 +7,12 @@ import { BOARD_SHAPES, arrowCount, containsCell } from '../src/generator/shapes'
 import type { BoardShape } from '../src/generator/shapes';
 import { buildChallengeUrl, createChallenge, decodeChallenge } from '../src/services/challenges';
 
-async function arena(page: Page, shape: BoardShape = 'square'): Promise<Board> {
+async function arena(page: Page, shape: BoardShape = 'square', size = 8): Promise<Board> {
   await page.goto('/');
   await page.getByRole('button', { name: 'Ya sé jugar' }).click();
   await page.getByRole('button', { name: /Reta a alguien/ }).click();
   await page.getByLabel('DALE UNA SEMILLA').fill('tactile-050');
-  await page.getByLabel('TAMAÑO DEL TABLERO').selectOption('8');
+  await page.getByLabel('TAMAÑO DEL TABLERO').selectOption(String(size));
   await page.getByLabel('FORMA DEL TABLERO').selectOption(shape);
   await page.getByRole('button', { name: 'Crear mi reto' }).click();
   const url = await page.getByLabel('Enlace del reto').inputValue();
@@ -33,7 +33,7 @@ async function arena(page: Page, shape: BoardShape = 'square'): Promise<Board> {
       };
     }),
   );
-  return { width: 8, height: 8, arrows };
+  return { width: size, height: size, arrows };
 }
 
 test('holding reads the actual first blocker without moving, spending hints or losing lives', async ({
@@ -98,11 +98,12 @@ test('route mode works with keyboard and cancelled drags never become moves', as
 
 for (const shape of BOARD_SHAPES) {
   test(`${shape} silhouette survives reload, fits and can be completed`, async ({ page }, info) => {
-    // Includes creation, restoration and up to 45 real pointer interactions.
-    test.setTimeout(75000);
-    const board = await arena(page, shape);
+    // Full lifecycle on a compact puzzle; dense touch targets have separate 8x8/10x10 tests.
+    test.setTimeout(60000);
+    const size = 5;
+    const board = await arena(page, shape, size);
     for (const arrow of board.arrows)
-      expect(containsCell(8, 8, shape, arrow.x, arrow.y)).toBe(true);
+      expect(containsCell(size, size, shape, arrow.x, arrow.y)).toBe(true);
     await expect(page.locator('.board-frame')).toHaveAttribute('data-shape', shape);
     if (shape === 'diamond') {
       if (info.project.name === 'mobile') await page.setViewportSize({ width: 320, height: 720 });
@@ -124,8 +125,8 @@ for (const shape of BOARD_SHAPES) {
       buildChallengeUrl(
         'http://127.0.0.1:5173/',
         createChallenge('tactile-050', {
-          width: 8,
-          height: 8,
+          width: size,
+          height: size,
           density: 0.7,
           complexity: 0.65,
           ...(shape === 'square' ? {} : { shape }),

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.5.0 — 2026-11-07
+
+- Referencias oficiales de Slide Arrows Match y Arrow Slide Puzzle documentadas, conservando reglas y recursos originales.
+- Tableros deterministas en cuadrícula, diamante, cruz, órbita y reloj de arena, con generación inversa y fallback válido para cada máscara.
+- Nuevos clásicos con formas desde el nivel 3 y selector de forma en retos compartidos. Enlaces, parámetros y guardados anteriores conservan compatibilidad.
+- Inspección de rutas al mantener pulsado 420 ms; soltar, arrastrar o cancelar no ejecuta un movimiento. Modo Rutas accesible mediante botones y teclado.
+- Colisión hasta el primer bloqueador y destellos de caminos recién liberados. Cabecera compacta y objetivos inmóviles incluso durante la pulsación.
+- Una, dos y tres estrellas según victoria, ausencia de errores y de pistas; mejor combo por intento y victorias de tres estrellas persistentes, sin duplicar resultados.
+- Registro de pistas atómico con su consumo, migración conservadora de partidas antiguas y versión de interfaz tomada de package.json.
+- Apertura de enlaces de retos en la misma página corregida.
+- Pruebas de 400 semillas con máscaras y 500 fallbacks rectangulares; recorridos de inspección, restauración y dominio en móvil y escritorio.
+- Android `versionCode 6`; segunda prueba nativa para rutas y desafíos con máscara, con la misma firma de actualización.
+
 ## 0.4.0 — 2026-11-07
 
 - Cofres con precinto, carrusel de 44 tarjetas, frenado, clics sincronizados y revelación por rareza; resultado guardado antes de animar.

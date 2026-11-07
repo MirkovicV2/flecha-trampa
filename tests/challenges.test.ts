@@ -11,6 +11,37 @@ import { configForLevel } from '../src/generator/config';
 import { generateLevel } from '../src/generator/generator';
 
 describe('portable challenge links', () => {
+  it('keeps the frozen pre-mask FT1 format byte for byte', () => {
+    const legacy =
+      'FT1.eyJzY2hlbWEiOjEsImdlbmVyYXRvciI6ImludmVyc2UtdjEiLCJzZWVkIjoibGVnYWN5LWZyb3plbiIsImNvbmZpZyI6eyJ3aWR0aCI6NSwiaGVpZ2h0Ijo1LCJkZW5zaXR5IjowLjcsImNvbXBsZXhpdHkiOjAuNjV9fQ.af350cad';
+    const spec = createChallenge('legacy-frozen', {
+      width: 5,
+      height: 5,
+      density: 0.7,
+      complexity: 0.65,
+    });
+    expect(encodeChallenge(spec)).toBe(legacy);
+    expect(decodeChallenge(legacy)).toEqual(spec);
+    expect(encodeChallenge(createChallenge(spec.seed, { ...spec.config, shape: 'square' }))).toBe(
+      legacy,
+    );
+    expect(() => decodeChallenge(legacy.replace('FT1.', 'FT2.'))).toThrow();
+  });
+
+  it('requires FT2 for masks so old clients cannot silently drop their shape', () => {
+    const spec = createChallenge('forward-safe', {
+      width: 8,
+      height: 8,
+      density: 0.7,
+      complexity: 0.8,
+      shape: 'ring',
+    });
+    const code = encodeChallenge(spec);
+    expect(code.startsWith('FT2.')).toBe(true);
+    expect(decodeChallenge(code)).toEqual(spec);
+    expect(() => decodeChallenge(code.replace('FT2.', 'FT1.'))).toThrow();
+  });
+
   it('round-trips Unicode seeds, independent parameters and a nested public base URL', () => {
     const spec = createChallenge(' viernes · café → ', {
       width: 7,

@@ -9,6 +9,7 @@ import android.content.Context;
 import android.content.ContentValues;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Environment;
 import android.os.SystemClock;
@@ -128,20 +129,102 @@ public class NativeGameSmokeTest {
             assertEquals("christmas", finalSave.getJSONObject("settings").getString("world"));
             assertEquals(0, finalSave.getJSONObject("events").getInt("stamps"));
             assertEquals(arrows, finalSave.getJSONObject("classicSave").getJSONObject("state").getJSONObject("board").getJSONArray("arrows").toString());
-            // Give Phaser and the compositor two frames after the async scene becomes ready.
-            evaluate(activity, "requestAnimationFrame(() => requestAnimationFrame(() => { window.__nativePaintReady = true; })); true");
-            await(activity, "window.__nativePaintReady === true");
-            SystemClock.sleep(300);
-            capture(context);
+            captureBoard(context, activity, "native-smoke.png");
         }
     }
 
-    private static void capture(Context context) throws Exception {
+    @Test(timeout = 180000)
+    public void shapedChallengeAndRouteInspectionSurviveNativeRecreation() throws Exception {
+        Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        SharedPreferences preferences = context.getSharedPreferences("CapacitorStorage", Context.MODE_PRIVATE);
+        assertTrue(preferences.edit().clear().commit());
+        try (ActivityScenario<MainActivity> activity = ActivityScenario.launch(MainActivity.class)) {
+            activity.onActivity(instance -> instance.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON));
+            await(activity, "!!document.querySelector('[data-action=skip-tutorial]')");
+            click(activity, "[data-action=skip-tutorial]");
+            click(activity, "[data-action=shared]");
+            await(activity, "!!document.querySelector('#challenge-shape')");
+            evaluate(activity, "document.querySelector('#challenge-seed').value = 'native-mask-050'; document.querySelector('#challenge-size').value = '8'; document.querySelector('#challenge-shape').value = 'diamond'; true");
+            click(activity, "[data-action=shared-create]");
+            click(activity, "[data-action=shared-play]");
+            await(activity, "!document.querySelector('.board-loading') && document.querySelectorAll('[data-arrow]').length === 28");
+            assertEquals("true", evaluate(activity, "document.querySelector('.board-frame').dataset.shape === 'diamond'"));
+            assertEquals("true", evaluate(activity, "document.documentElement.scrollWidth <= innerWidth"));
+            click(activity, "[data-action=inspect-routes]");
+            click(activity, "[data-arrow]");
+            await(activity, "!!document.querySelector('.route-overlay svg')");
+            assertEquals("true", evaluate(activity, "document.querySelectorAll('[data-arrow]').length === 28 && document.querySelector('[data-lives]').getAttribute('aria-label') === '3 vidas' && document.querySelector('[data-hints]').textContent === '3'"));
+            click(activity, "[data-action=inspect-routes]");
+            await(activity, "!document.querySelector('.route-overlay svg')");
+            click(activity, "[data-action=hint]");
+            await(activity, "document.querySelector('[data-hints]').textContent === '2'");
+            long deadline = SystemClock.elapsedRealtime() + 15000;
+            while (SystemClock.elapsedRealtime() < deadline && profile(preferences).optInt("hints", -1) != 2) SystemClock.sleep(100);
+            assertEquals(1, profile(preferences).getJSONObject("sharedSave").getInt("hintsUsed"));
+            assertEquals(5, profile(preferences).getJSONObject("economy").getJSONObject("energy").getInt("amount"));
+            InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
+            await(activity, "!!document.querySelector('[data-action=resume]')");
+            activity.recreate();
+            await(activity, "!!document.querySelector('.hero-play')");
+            click(activity, "[data-action=shared]");
+            click(activity, "[data-action=shared-play]");
+            await(activity, "!document.querySelector('.board-loading') && document.querySelectorAll('[data-arrow]').length === 28");
+            JSONObject saved = profile(preferences);
+            assertEquals("diamond", saved.getJSONObject("sharedSave").getJSONObject("config").getString("shape"));
+            assertEquals(1, saved.getJSONObject("sharedSave").getInt("hintsUsed"));
+            assertEquals(1, saved.getJSONObject("stats").getInt("played"));
+            assertEquals("true", evaluate(activity, "document.querySelector('.board-frame').dataset.shape === 'diamond' && document.querySelector('[data-hints]').textContent === '2'"));
+            captureBoard(context, activity, "native-silhouette.png");
+        }
+    }
+
+    private static void captureBoard(Context context, ActivityScenario<MainActivity> activity, String filename) throws Exception {
+        // DOM readiness can precede the Android compositor. Require actual arrow pixels,
+        // not just buttons under an old loading frame, before retaining visual evidence.
+        evaluate(activity, "window.__nativePaintReady = false; requestAnimationFrame(() => requestAnimationFrame(() => { window.__nativePaintReady = true; })); true");
+        await(activity, "window.__nativePaintReady === true");
+        JSONObject board = new JSONObject(evaluate(activity, "(() => { const r = document.querySelector('.board-frame').getBoundingClientRect(); return { x: r.left, y: r.top, width: r.width, height: r.height, viewport: innerWidth }; })()"));
+        int[] origin = new int[2];
+        AtomicReference<Integer> viewWidth = new AtomicReference<>(0);
+        activity.onActivity(instance -> {
+            instance.getBridge().getWebView().getLocationOnScreen(origin);
+            viewWidth.set(instance.getBridge().getWebView().getWidth());
+        });
+        double scale = viewWidth.get() / board.getDouble("viewport");
+        assertTrue("WebView must have measurable bounds", scale > 0);
+        long deadline = SystemClock.elapsedRealtime() + 15000;
+        int samples = 0;
+        do {
+            Bitmap screenshot = InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot();
+            assertNotNull(screenshot);
+            int left = Math.max(0, (int) (origin[0] + (board.getDouble("x") + board.getDouble("width") * 0.08) * scale));
+            int right = Math.min(screenshot.getWidth(), (int) (origin[0] + (board.getDouble("x") + board.getDouble("width") * 0.92) * scale));
+            int top = Math.max(0, (int) (origin[1] + (board.getDouble("y") + board.getDouble("height") * 0.08) * scale));
+            int bottom = Math.min(screenshot.getHeight(), (int) (origin[1] + (board.getDouble("y") + board.getDouble("height") * 0.92) * scale));
+            samples = 0;
+            for (int y = top; y < bottom; y += 4) {
+                for (int x = left; x < right; x += 4) {
+                    int pixel = screenshot.getPixel(x, y);
+                    int max = Math.max(Color.red(pixel), Math.max(Color.green(pixel), Color.blue(pixel)));
+                    // Muted loading text stays below 190. White/metal skins must count too.
+                    if (max > 190) samples++;
+                }
+            }
+            if (samples >= 20) {
+                Log.i("FlechaSmoke", "Native board paint verified: " + samples + " bright samples in " + filename);
+                saveCapture(context, screenshot, filename);
+                return;
+            }
+            screenshot.recycle();
+            SystemClock.sleep(200);
+        } while (SystemClock.elapsedRealtime() < deadline);
+        fail("Native board did not paint arrow highlights within 15s: " + samples + " samples");
+    }
+
+    private static void saveCapture(Context context, Bitmap screenshot, String filename) throws Exception {
         // Shared media survives the test runner's automatic removal of app data.
-        Bitmap screenshot = InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot();
-        assertNotNull(screenshot);
         ContentValues image = new ContentValues();
-        image.put(MediaStore.Images.Media.DISPLAY_NAME, "native-smoke.png");
+        image.put(MediaStore.Images.Media.DISPLAY_NAME, filename);
         image.put(MediaStore.Images.Media.MIME_TYPE, "image/png");
         image.put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/FlechaTrampaTest");
         image.put(MediaStore.Images.Media.IS_PENDING, 1);
@@ -205,7 +288,9 @@ public class NativeGameSmokeTest {
                 latch.countDown();
             });
         });
-        assertTrue("No JavaScript result from native WebView", latch.await(10, TimeUnit.SECONDS));
+        // The cold software-rendered emulator logged 1109 skipped frames during startup.
+        // Match the bounded 30s native click/readiness budget; still require the real result.
+        assertTrue("No JavaScript result within 30s: " + expression.substring(0, Math.min(120, expression.length())), latch.await(30, TimeUnit.SECONDS));
         return result.get();
     }
 }

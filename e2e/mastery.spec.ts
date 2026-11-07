@@ -32,9 +32,18 @@ for (const style of ['perfect', 'hint', 'error'] as const) {
     for (const id of solve(board).sequence) await page.locator(`[data-arrow="${id}"]`).click();
     const stars = style === 'perfect' ? 3 : style === 'hint' ? 2 : 1;
     await expect(page.getByRole('img', { name: `${stars} de 3 estrellas` })).toBeVisible();
+    expect(await page.locator('.screen-fx').count()).toBe(0);
     await expect(page.locator('.mastery-star.earned')).toHaveCount(stars);
-    if (style === 'perfect')
+    if (style === 'perfect') {
+      await page.locator('.mastery-card').evaluate(async (card) => {
+        await Promise.all(
+          card
+            .getAnimations({ subtree: true })
+            .map((animation) => animation.finished.catch(() => undefined)),
+        );
+      });
       await page.screenshot({ path: `.artifacts/050-mastery-${info.project.name}.png` });
+    }
     await page.getByRole('button', { name: 'Volver al inicio', exact: true }).click();
     await page.reload();
     const saved = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!), SAVE_KEY);
