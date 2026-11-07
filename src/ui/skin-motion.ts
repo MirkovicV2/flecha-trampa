@@ -47,29 +47,43 @@ export class SkinMotionPreview {
       },
     );
     if (!reduced) {
-      const count = style === 'orbit' ? 6 : style === 'precision' ? 6 : 14;
+      const count =
+        style === 'sonar'
+          ? 3
+          : style === 'ribbon'
+            ? 5
+            : style === 'orbit' || style === 'precision'
+              ? 6
+              : 14;
       for (let i = 0; i < count; i++) {
         const particle = document.createElement('i');
         particle.className = `inspector-particle particle-${style}`;
         stage.append(particle);
         const angle = (i / count) * Math.PI * 2;
         const x = Math.cos(angle) * (style === 'orbit' ? 95 : 45 + (i % 4) * 17);
-        const y = Math.sin(angle) * 65 + (style === 'nova' ? 55 : 0);
+        const y = Math.sin(angle) * 65 + (style === 'nova' ? 55 : style === 'flame' ? -75 : 0);
+        const ring = style === 'sonar' || style === 'orbit';
+        const end =
+          style === 'glitch'
+            ? `translate(${(i % 2 ? -1 : 1) * 85}px, ${(i - count / 2) * 12}px) scaleX(3)`
+            : ring
+              ? `translate(-50%, -50%) scale(${3 + i * 2})`
+              : `translate(${x}px, ${y}px) rotate(${i * 49}deg) scale(${style === 'ribbon' ? 2 : 0.4})`;
         animate(
           particle,
           [
             { transform: 'translate(0, 0) scale(.3)', opacity: 0 },
             { opacity: 0.9, offset: 0.15 },
             {
-              transform: `translate(${x}px, ${y}px) rotate(${i * 49}deg) scale(${style === 'orbit' ? 3 : 0.4})`,
+              transform: end,
               opacity: 0,
             },
           ],
           {
-            duration: 650,
+            duration: style === 'petal' || style === 'ribbon' ? 850 : 650,
             delay: 170 + (i % 3) * 25,
             fill: 'both',
-            easing: 'cubic-bezier(.16,1,.3,1)',
+            easing: style === 'glitch' ? 'steps(5, end)' : 'cubic-bezier(.16,1,.3,1)',
           },
         );
       }

@@ -643,6 +643,61 @@
   width: 4px;
   height: 23px;
 }
+.collection-filter {
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.collection-filter button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.particle-frost {
+  width: 4px;
+  height: 26px;
+  background: #c7f1ff;
+  clip-path: polygon(50% 0, 100% 75%, 50% 100%, 0 75%);
+}
+.particle-flame {
+  width: 9px;
+  height: 20px;
+  border-radius: 90% 0 70% 45%;
+  background: #ffb46f;
+}
+.particle-ink {
+  width: 3px;
+  height: 35px;
+  background: #f3e9d7;
+}
+.particle-glitch {
+  width: 20px;
+  height: 4px;
+  background: #b7adff;
+  border-radius: 0;
+}
+.particle-petal {
+  width: 11px;
+  height: 17px;
+  border-radius: 80% 10% 70% 20%;
+  background: #ffc4d8;
+}
+.particle-sonar {
+  width: 22px;
+  height: 22px;
+  border: 1px solid #9bdff0;
+  background: none;
+  border-radius: 50%;
+}
+.particle-meteor {
+  width: 5px;
+  height: 32px;
+  background: linear-gradient(#fff5d0, #e9b96a, transparent);
+}
+.particle-ribbon {
+  width: 8px;
+  height: 45px;
+  border-radius: 50%;
+  background: linear-gradient(#c3ffe7, #c1a7ff, transparent);
+}
 @media (min-width: 641px) {
   .skin-card .skin-inspect {
     opacity: 0;

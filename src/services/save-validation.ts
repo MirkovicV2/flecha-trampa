@@ -6,7 +6,7 @@ import type { PlayerProfile } from './progress';
 import type { PlaySession } from './session';
 import { defaultDailyProgress, isDailyProgress, isUtcDate } from './daily';
 import { integer, isRecord, nonNegative } from '../utils/validation';
-import { isSkinId } from '../config/collection';
+import { isSkinId, SKINS } from '../config/collection';
 import { isThemeName } from '../config/theme';
 import { PASS_SEASON } from '../config/pass';
 import { defaultEconomy } from './economy';
@@ -36,7 +36,7 @@ function isEconomy(value: unknown): boolean {
         Number(key.split(':')[1]) * 100 <= Number(pass.xp),
     ) &&
     Array.isArray(collection.ownedSkins) &&
-    collection.ownedSkins.length <= 8 &&
+    collection.ownedSkins.length <= SKINS.length &&
     collection.ownedSkins.includes('classic') &&
     collection.ownedSkins.every(isSkinId) &&
     new Set(collection.ownedSkins).size === collection.ownedSkins.length &&
