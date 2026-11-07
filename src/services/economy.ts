@@ -20,6 +20,8 @@ export interface EconomyState {
     ownedThemes: ThemeName[];
     shards: number;
     chests: number;
+    keys: number;
+    keyProgress: number;
     lifeTokens: number;
     opened: number;
     sinceEpic: number;
@@ -34,6 +36,8 @@ export function defaultEconomy(now = Date.now()): EconomyState {
       ownedThemes: [...FREE_THEMES],
       shards: 0,
       chests: 1,
+      keys: 1,
+      keyProgress: 0,
       lifeTokens: 0,
       opened: 0,
       sinceEpic: 0,
@@ -47,13 +51,13 @@ export function secureRoll(): number {
   return value[0]! / 0x100000000;
 }
 
-/** Chests are earned through play, never sold. Every tenth guarantees epic or better. */
+/** One earned chest and one earned key per opening. Every tenth guarantees epic or better. */
 export function rollChest(
   economy: EconomyState,
   random: () => number = secureRoll,
 ): ChestDrop | null {
   const collection = economy.collection;
-  if (collection.chests < 1) return null;
+  if (collection.chests < 1 || collection.keys < 1) return null;
   const roll = random();
   const selection = random();
   if (![roll, selection].every((value) => Number.isFinite(value) && value >= 0 && value < 1))
@@ -71,6 +75,7 @@ export function rollChest(
   const duplicate = collection.ownedSkins.includes(skin);
   const shards = duplicate ? DUPLICATE_SHARDS[rarity] : 0;
   collection.chests--;
+  collection.keys--;
   collection.opened++;
   collection.sinceEpic = rarity === 'epic' || rarity === 'legendary' ? 0 : collection.sinceEpic + 1;
   if (!duplicate) collection.ownedSkins.push(skin);

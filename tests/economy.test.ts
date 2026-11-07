@@ -148,6 +148,7 @@ describe('pass, chests and ownership', () => {
   it('compensates duplicates and guarantees epic or better on the tenth chest', () => {
     const economy = defaultEconomy();
     economy.collection.chests = 10;
+    economy.collection.keys = 10;
     expect(rollChest(economy, () => 0)).toMatchObject({ duplicate: false, skin: 'chevron' });
     for (let i = 0; i < 8; i++)
       expect(rollChest(economy, () => 0)).toMatchObject({ duplicate: true, shards: 2 });

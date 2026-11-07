@@ -1,6 +1,8 @@
-# Balance de progresión 0.6
+# Balance de progresión
 
 ## Dificultad reproducible
+
+La comparación de dificultad corresponde a 0.5 frente a 0.6; la versión 0.7 conserva ese generador y ajusta el suministro y la apertura de cofres.
 
 Ejecutar `npm run balance` con Node 24. El script compila los módulos puros en `.artifacts/balance-modules/`, genera 100 semillas por tramo con los parámetros clásicos de 0.5 y 0.6 y escribe `.artifacts/difficulty-060.json`. Usa exactamente las mismas semillas `balance-060-0` a `balance-060-99` en cada comparación. No usa el perfil del jugador ni recursos de pago.
 
@@ -26,4 +28,4 @@ Un intento clásico o diario nuevo cuesta una carga aunque se gane. Con cinco ca
 
 El tutorial y la práctica compartida siguen disponibles sin energía, vidas compradas ni XP del pase. Las colisiones cuestan una vida real; no hay errores ocultos, bloqueos imposibles ni ajuste de dificultad según compras, inventario o energía. Las opciones de rutas, movimiento reducido y tacto se conservan.
 
-El pase tiene 40 niveles de 100 XP y 80 recompensas; las primeras diez no cambian. No se reinician temporada ni compras de prueba. Los nuevos niveles espacian las bonificaciones energéticas y ofrecen principalmente skins, cofres, fragmentos, pistas, reservas de vida y sellos para fondos. Todas las skins se obtienen también en cofres ganados jugando o por creación, sin venta de cofres. Los niveles clásicos nuevos 5, 10, 15 y sucesivos conceden un cofre de forma indefinida, también después del pase. El resultado lo muestra y se persiste antes de animar; repetir o recargar no duplica el premio. El inventario admite hasta 999 cofres. Estos hitos no conceden energía. Ads y Pase Plus continúan siendo simulaciones identificadas, sin cobro real.
+El pase tiene 40 niveles de 100 XP y 80 recompensas; se conservan los XP, skins, temporada y premios ya reclamados. No se reinician temporada ni compras de prueba. Los nuevos niveles espacian las bonificaciones energéticas y ofrecen principalmente skins, cofres, fragmentos, pistas, reservas de vida y sellos para fondos. Todas las skins se obtienen también en cofres ganados jugando o por creación, sin venta de cofres. Los niveles clásicos nuevos 15, 30, 45 y sucesivos conceden un cofre de forma indefinida, también después del pase. El resultado lo muestra y se persiste antes de animar; repetir o recargar no duplica el premio. El inventario admite hasta 999 cofres. Estos hitos no conceden energía. Desde 0.7, los paquetes del pase dan un cofre cada uno: 9 gratuitos y 12 Plus, frente a los 20 y 41 anteriores. Abrir requiere un cofre y una llave, forjada cada cinco victorias nuevas; el primer diario del día también suma. La llave inicial y los recursos guardados se conservan al actualizar. La práctica, las repeticiones y las derrotas no generan forja; el pase no omite el coste. La economía sigue siendo local y no autoriza compras reales. Ads y Pase Plus continúan siendo simulaciones identificadas, sin cobro real.

@@ -1,5 +1,15 @@
 # Estado de GitHub
 
+## Versión 0.7.0 — 7 de noviembre de 2026
+
+Cuenta autenticada verificada: `MirkovicV2`; repositorio privado `MirkovicV2/flecha-trampa`, con `main` como rama predeterminada. `feature/chest-keys` reúne la nueva economía, la interfaz y la versión Android en tres commits coherentes, más la documentación de entrega. Se integra con merge controlado en `develop` y después en `main`. Se conservan todas las ramas, etiquetas y versiones anteriores.
+
+Las fuentes finales `9444de3c890faa6aa3120d00cfb4f5736667c376` superan [CI web](https://github.com/MirkovicV2/flecha-trampa/actions/runs/42360340815) con **155 pruebas Vitest y 98 Playwright**, y [Android](https://github.com/MirkovicV2/flecha-trampa/actions/runs/42360340846) con **dos casos nativos sin fallos, errores ni omisiones**. Las operaciones de documentación y publicación no cambian la aplicación, sus pruebas o la configuración de compilación comprobada.
+
+La etiqueta anotada `v0.7.0` identifica la [Release Android](https://github.com/MirkovicV2/flecha-trampa/releases/tag/v0.7.0). Su [APK directa](https://github.com/MirkovicV2/flecha-trampa/releases/download/v0.7.0/flecha-trampa-v0.7.0-android.apk) está enlazada en el README de `main` y `develop`. Versión 0.7.0, código 8, mismo certificado que 0.6.0; los 18 archivos web coinciden con el candidato probado en el emulador. Claves y credenciales quedan fuera de Git. Ver [resultados, hash y límites](VALIDATION.md).
+
+La protección remota de `main` continúa sin activar: GitHub responde HTTP 403 al exigir un plan compatible para el repositorio privado. No se cambia su visibilidad. Se conserva el [procedimiento para configurar las reglas](GIT_WORKFLOW.md).
+
 ## Versión 0.6.0 — 7 de noviembre de 2026
 
 Cuenta autenticada comprobada: `MirkovicV2`; repositorio `MirkovicV2/flecha-trampa`, privado y con rama predeterminada `main`. Las ramas `feature/expanded-atelier`, `feature/extended-battle-pass` y `feature/tactical-difficulty` se integran en `develop` con merges controlados. `feature/android-060` reúne la versión Android, los cofres gratuitos permanentes, las correcciones geométricas y las pruebas nativas. Se conservan el historial, las ramas y las etiquetas anteriores, sin force push.

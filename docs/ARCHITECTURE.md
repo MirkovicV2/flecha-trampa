@@ -47,6 +47,8 @@ Cada sesión conserva ID, modo, semilla, parámetros, versión, tablero inicial,
 
 `energy.ts` contiene regeneración y consumo puros. `economy.ts`, `config/pass.ts` y `config/collection.ts` definen el inventario, la temporada y las probabilidades de cofres. `ProgressStore` cobra cada intento una vez, mantiene el coste por intento bajo `energyPolicy: attempt-v2`, respeta el reembolso único de sesiones anteriores y registra XP y premios de forma idempotente. Los derechos de pago se consultan al adaptador de compras y no se infieren del guardado. `save-validation.ts` migra los perfiles anteriores sin borrar sus partidas. Ver [reglas y límites de economía](ECONOMY.md).
 
+La apertura requiere un cofre y una llave antes de solicitar aleatoriedad, y debita ambos recursos junto al premio en una sola operación síncrona. La UI consume el resultado ya guardado. La forja solo avanza al registrar por primera vez una victoria clásica nueva o diaria; el recibo opcional `forgeReward` se persiste antes de animar y evita conceder otra llave al reconciliar un cierre. Los perfiles antiguos reciben una llave inicial cuando no existe ese campo; cero se valida como saldo real. `keyProgress` queda entre 0 y 4 y las llaves entre 0 y 999.
+
 El resultado se registra antes de animar el último movimiento. Al cargar, se reconcilian sesiones terminales no registradas. Reiniciar crea otro intento con el mismo tablero; continuar conserva el ID y no duplica partidas.
 
 El reloj usa `performance.now()`, excluye pausas y segundo plano y limita saltos de tick. La visibilidad del documento y App en Capacitor guardan y pausan. Android dispone de navegación atrás y minimización desde inicio.

@@ -25,13 +25,13 @@ La portada y las vistas previas de fondos muestran la misma pieza equipada. Los 
 
 ## Apertura de suministros
 
-1. `ProgressStore.openChest()` sortea el premio real mediante `crypto.getRandomValues`, debita un cofre y guarda la propiedad o la compensación por duplicado.
+1. `ProgressStore.openChest()` sortea el premio real mediante `crypto.getRandomValues`, debita un cofre y una llave y guarda la propiedad o la compensación por duplicado.
 2. `ChestOpening` presenta una secuencia finita: precinto (450 ms), carrusel (5.200 ms), parada (300 ms), revelación.
 3. Los 44 espacios decorativos utilizan un generador separado. El espacio 35 contiene exactamente la pieza ya guardada. Cambiar el premio no fuerza rarezas especiales en los espacios vecinos. Las tarjetas restantes no alteran las probabilidades ni la garantía de rareza.
 4. Un freno cúbico monótono controla los fotogramas y los clics. El puntero termina dentro de la tarjeta ganadora, con un desplazamiento pequeño y acotado. La rareza determina el acorde y el tratamiento del resultado.
 5. «Equipar skin» aplica la pieza. La recompensa ya pertenece al jugador, aunque cierre o recargue antes.
 
-Las probabilidades siguen siendo 60 % común, 28 % rara, 10 % épica y 2 % legendaria; cada décima apertura como máximo garantiza épica o superior. Los cofres se consiguen jugando y no se venden. No se añaden llaves, compra de cofres, temporizadores de venta ni cambios de probabilidades por tener el pase.
+Las probabilidades siguen siendo 60 % común, 28 % rara, 10 % épica y 2 % legendaria; cada décima apertura como máximo garantiza épica o superior. Los cofres se consiguen jugando y no se venden. Cada apertura cuesta una llave de juego; se forja una cada cinco victorias nuevas. La colección explica el coste antes de pulsar y bloquea el botón si falta cofre o llave. La comprobación de recursos precede al sorteo; un fallo de aleatoriedad no gasta ninguno. No hay venta de llaves o cofres, ni cambios de probabilidades por tener el pase.
 
 ## Interrupciones y accesibilidad
 
