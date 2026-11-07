@@ -1,5 +1,21 @@
 # Validación del juego
 
+## Versión 0.7.0 — 7 de noviembre de 2026
+
+Fuentes finales: `9444de3c890faa6aa3120d00cfb4f5736667c376`. La [validación web](https://github.com/MirkovicV2/flecha-trampa/actions/runs/42360340815) completa instalación limpia con `npm ci`, lint, formato, **155 pruebas Vitest en 19 archivos**, TypeScript y Vite. Los dos proyectos Playwright verifican **49 recorridos móviles y 49 de escritorio**, sin fallos ni omisiones.
+
+La nueva batería comprueba las dos condiciones de apertura, el rechazo sin llamar al generador aleatorio, ausencia de débitos si falla la aleatoriedad, descuento conjunto del cofre y la llave, persistencia de cero, migración del stock anterior, recuperación tras interrumpir la animación final, topes y metadatos inválidos. Comprueba el avance por cinco victorias nuevas, diario contado una vez, exclusión de práctica, repeticiones y derrotas, y que Pase Plus no omita el coste. Los premios del pase suman nueve cofres gratuitos y doce Plus, sin eliminar ninguna de sus 80 recompensas.
+
+En Windows pasan lint, las 155 pruebas, formato, TypeScript, Vite, lint Android, compilación release e instrumentación. Los 18 recorridos seleccionados de cofres, pase, retos y forja pasan en móvil y escritorio; tras ajustar el tamaño del icono del precinto se repiten los cuatro recorridos de llaves. Se revisan las capturas del coste, bloqueo y progreso a **320 píxeles**, sin desbordamiento horizontal, y el resultado de la victoria que forja una llave. El recorrido móvil usa toques reales para completar el nivel, obtiene la llave, abre y recarga con saldo cero y cofres restantes.
+
+La [validación Android](https://github.com/MirkovicV2/flecha-trampa/actions/runs/42360340846) termina con **2 casos correctos, 0 fallos, 0 errores y 0 omisiones** en 234,218 segundos, sobre el mismo commit, en AOSP API 35 sin Wi-Fi ni datos. Conserva las pruebas de las cuatro fases del cofre, guardado Preferences, pistas, Atrás, paletas, Navidad y restauración del pase. El segundo caso migra el fixture anterior, reclama cofres y Fénix, abre con una llave, comprueba el bloqueo de un cofre restante y conserva ese saldo cero al recrear la actividad con el diamante táctico y sus pistas. Se revisan las dos capturas con el tablero pintado.
+
+APK `flecha-trampa-v0.7.0-android.apk`: **0.7.0 / código 8**, **3.546.078 bytes**, depuración desactivada, firma v2/v3 y alineación de 16 KB verificadas. Los **16 archivos de dist** coinciden por SHA-256 con la APK firmada y los **18 archivos web empaquetados** coinciden con el candidato probado en Android CI. Certificado de actualización conservado: `58c62bfb2890ce39506548144c53a927a91d51985a8a6c258736742ae0b0f654`.
+
+SHA-256: `f937bd10117e4ecd0bd6b756abce3eb9095e35a5284035620fa57429bf4a79c6`. Tras las verificaciones, los commits de documentación y merges mantienen idénticos los archivos de aplicación, pruebas y compilación. La entrega comprueba la descarga real de GitHub, su firma, versión y checksum, la etiqueta anotada, referencias remotas y enlaces del README en ambas ramas.
+
+No se ha probado en teléfono físico ni en iOS. No hay compras reales, venta de llaves, backend o publicación en tiendas. Los intervalos de cofres y forja son un ajuste inicial; no acreditan retención, ingresos ni dificultad medida con jugadores.
+
 ## Versión 0.6.0 — 7 de noviembre de 2026
 
 Fuentes finales: `8e2150821d1d05aac390908adc34973d05120f87`. La [validación web](https://github.com/MirkovicV2/flecha-trampa/actions/runs/42358356215) completa `npm ci`, lint, formato, **133 pruebas Vitest en 18 archivos**, TypeScript y Vite. Los runners separados verifican **47 recorridos móviles y 47 de escritorio**, sin fallos ni omisiones. Incluyen las 32 piezas, sus vistas previas, movimientos reales con 14 materiales, premios del nivel 40 en ambas rutas, continuidad del suministro de cofres después del pase y retos FT3 con recarga y continuación.

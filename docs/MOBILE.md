@@ -4,11 +4,11 @@ Capacitor 8 está configurado con `com.flechatrampa.game`, `FLECHA TRAMPA` y `di
 
 ## Descargar desde el móvil
 
-Abrir la [Release v0.6.0](https://github.com/MirkovicV2/flecha-trampa/releases/tag/v0.6.0) con una cuenta que tenga acceso al repositorio privado. En GitHub Mobile: Releases → v0.6.0 → Assets → `flecha-trampa-v0.6.0-android.apk`. Descargar el archivo y seguir el instalador de Android. El enlace directo está al principio del README. También se incluyen `SHA256SUMS.txt` y la información pública del certificado de firma.
+Abrir la [Release v0.7.0](https://github.com/MirkovicV2/flecha-trampa/releases/tag/v0.7.0) con una cuenta que tenga acceso al repositorio privado. En GitHub Mobile: Releases → v0.7.0 → Assets → `flecha-trampa-v0.7.0-android.apk`. Descargar el archivo y seguir el instalador de Android. El enlace directo está al principio del README. También se incluyen `SHA256SUMS.txt` y la información pública del certificado de firma.
 
 Es una APK universal de tipo release para Android 7.0/API 24 o posterior, con WebView actualizado. Incluye los archivos del juego y permite jugar clásico y diario sin conexión. No necesita cuentas dentro del juego. Es una distribución interna: incluye anuncios locales y Pase Plus de prueba etiquetados, sin redes publicitarias, cobros ni publicación en Google Play.
 
-La versión 0.6.0 usa `versionCode 7`, el mismo identificador de paquete y el mismo certificado que la 0.5.0. Instalar encima conserva energía, colección, mundos, pase de prueba, estadísticas y partidas. El pase se amplía sin reiniciar XP ni premios, y el inventario admite las 32 skins. Las sesiones existentes conservan tablero y política energética; los intentos nuevos cobran una carga sin reembolso. El diario UTC, FT1 y FT2 no cambian; FT3 conserva la revisión de cadenas. La prueba nativa ampliada reclama el nivel 40, equipa Fénix y recrea un diamante táctico con sus pistas guardadas. Ver [alcance de la validación](VALIDATION.md).
+La versión 0.7.0 usa `versionCode 8`, el mismo identificador de paquete y el mismo certificado que la 0.6.0. Instalar encima conserva energía, colección, mundos, pase de prueba, estadísticas y partidas. Se conservan los 40 niveles del pase, XP, premios reclamados y las 32 skins. El inventario añade llaves y progreso de forja: actualizar desde un perfil anterior concede una sola llave inicial y conserva todos los cofres. Abrir gasta un cofre y una llave. Las sesiones existentes conservan tablero y política energética; los intentos nuevos cobran una carga sin reembolso. El diario UTC, FT1 y FT2 no cambian; FT3 conserva la revisión de cadenas. La prueba nativa ampliada reclama los niveles 2 y 40, equipa Fénix, consume una llave y comprueba que un cofre restante queda bloqueado. Después recrea un diamante táctico y verifica que sus pistas y el saldo cero de llaves siguen guardados. Ver [alcance de la validación](VALIDATION.md).
 
 ## Herramientas en este ordenador
 
@@ -41,7 +41,7 @@ En otro equipo, instalar Node 24, JDK 21 y SDK 36; `npm ci`, `npm run build` y `
 
 La misma clave permite instalar futuras APK como actualización y conservar el progreso. Perderla obliga a usar otra firma, lo que puede requerir desinstalar y perder los datos locales. Una clave existente nunca se sustituye automáticamente. Las compilaciones `debug` de desarrollo utilizan otra firma; para probar las actualizaciones de esta distribución, utilizar siempre las APK release publicadas.
 
-La versión Android 0.6.0 utiliza `versionCode 7`. Incrementar `versionCode` y `versionName` en `android/app/build.gradle`, junto con `package.json` y su lockfile, para una nueva versión. Antes de una publicación de tienda, preparar la firma de producción y Google Play App Signing.
+La versión Android 0.6.0 utiliza `versionCode 8`. Incrementar `versionCode` y `versionName` en `android/app/build.gradle`, junto con `package.json` y su lockfile, para una nueva versión. Antes de una publicación de tienda, preparar la firma de producción y Google Play App Signing.
 
 ## Pruebas Android
 
