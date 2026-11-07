@@ -193,7 +193,7 @@ class BoardScene extends Phaser.Scene {
           const spark =
             style === 'pixel'
               ? this.add.rectangle(view.x, view.y, 5 + (index % 3), 5 + (index % 3), color, 0.8)
-              : style === 'prism' || style === 'crown'
+              : ['prism', 'crown', 'frost', 'meteor', 'petal'].includes(style)
                 ? this.add.triangle(
                     view.x,
                     view.y,
@@ -259,8 +259,85 @@ class BoardScene extends Phaser.Scene {
         onComplete: () => object.destroy(),
       });
     };
-    if (style === 'orbit' || style === 'crown') {
-      for (let i = 0; i < 2; i++) {
+    if (style === 'frost') {
+      for (let i = 0; i < 6; i++) {
+        const theta = angle + (i * Math.PI) / 3;
+        const shard = this.add
+          .triangle(view.x, view.y, 0, -2, this.cell * 0.38, 0, 0, 2, 0xc7f1ff, 0.85)
+          .setRotation(theta);
+        fade(shard, 360, {
+          x: view.x + Math.cos(theta) * this.cell * 0.8,
+          y: view.y + Math.sin(theta) * this.cell * 0.8,
+          scaleX: 1.8,
+        });
+      }
+    } else if (style === 'flame' || style === 'meteor') {
+      for (let i = 0; i < 6; i++) {
+        const side = (i % 2 ? -1 : 1) * (0.15 + i * 0.05) * this.cell;
+        const ember = this.add
+          .ellipse(
+            view.x - dy * side,
+            view.y + dx * side,
+            this.cell * (style === 'meteor' ? 0.55 : 0.2),
+            this.cell * 0.09,
+            i % 2 ? 0xffd58b : color,
+            0.9,
+          )
+          .setRotation(angle + (style === 'meteor' ? side / this.cell : 0));
+        fade(ember, 300 + i * 35, {
+          x: ember.x - dx * this.cell * (0.5 + i * 0.2),
+          y: ember.y - dy * this.cell * (0.5 + i * 0.2),
+          scaleX: 0.2,
+          scaleY: 0.2,
+        });
+      }
+    } else if (style === 'ink' || style === 'glitch') {
+      for (let i = 0; i < 5; i++) {
+        const stroke = this.add
+          .rectangle(
+            view.x - dy * (i - 2) * this.cell * 0.16,
+            view.y + dx * (i - 2) * this.cell * 0.16,
+            this.cell * (0.4 + (i % 3) * 0.3),
+            style === 'ink' ? 2 : 5,
+            i % 2 ? 0xf0f4ff : color,
+            0.8,
+          )
+          .setRotation(angle + (style === 'ink' ? -0.45 : 0));
+        fade(stroke, style === 'glitch' ? 130 + i * 45 : 330, {
+          x: stroke.x + dx * this.cell,
+          y: stroke.y + dy * this.cell,
+          scaleX: style === 'ink' ? 2 : 0.3,
+        });
+      }
+    } else if (style === 'petal') {
+      for (let i = 0; i < 7; i++) {
+        const theta = (i * Math.PI * 2) / 7;
+        const petal = this.add
+          .ellipse(view.x, view.y, this.cell * 0.2, this.cell * 0.1, i % 2 ? 0xffc4d8 : color, 0.9)
+          .setRotation(theta);
+        fade(petal, 550, {
+          x: view.x + Math.cos(theta) * this.cell,
+          y: view.y + Math.sin(theta) * this.cell,
+          angle: petal.angle + 160,
+          scale: 0.35,
+        });
+      }
+    } else if (style === 'ribbon') {
+      for (let i = 0; i < 3; i++) {
+        const ribbon = this.add.graphics().setPosition(view.x, view.y).setRotation(angle);
+        ribbon.lineStyle(3, i === 1 ? 0xf4eaff : color, 0.7);
+        ribbon.beginPath();
+        for (let step = 0; step <= 16; step++) {
+          const x = step * this.cell * 0.1;
+          const y = Math.sin(step * 0.55 + i * 1.5) * this.cell * 0.2;
+          if (step === 0) ribbon.moveTo(x, y);
+          else ribbon.lineTo(x, y);
+        }
+        ribbon.strokePath();
+        fade(ribbon, 500, { scaleX: 1.8, x: view.x + dx * this.cell, y: view.y + dy * this.cell });
+      }
+    } else if (style === 'orbit' || style === 'crown' || style === 'sonar') {
+      for (let i = 0; i < (style === 'sonar' ? 3 : 2); i++) {
         const halo = this.add
           .circle(view.x, view.y, this.cell * (0.25 + i * 0.12))
           .setStrokeStyle(style === 'crown' ? 3 : 2, style === 'crown' ? 0xffd58b : color, 0.75)

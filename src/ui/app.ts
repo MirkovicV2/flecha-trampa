@@ -359,13 +359,13 @@ export class GameApp {
         );
         break;
       case 'filter-skins':
-        if (!['all', 'owned', 'legendary'].includes(value ?? '')) break;
+        if (!['all', 'owned', 'common', 'rare', 'epic', 'legendary'].includes(value ?? '')) break;
         this.root.querySelectorAll<HTMLElement>('[data-collection-skin]').forEach((card) => {
           card.hidden =
             value === 'owned'
               ? card.dataset.owned !== 'true'
-              : value === 'legendary'
-                ? card.dataset.rarity !== 'legendary'
+              : value !== 'all'
+                ? card.dataset.rarity !== value
                 : false;
         });
         this.root.querySelectorAll('[data-action="filter-skins"]').forEach((button) => {
