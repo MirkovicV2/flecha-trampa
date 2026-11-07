@@ -1,4 +1,5 @@
 import type { SkinId } from './collection';
+import { EXPANDED_DESIGNS } from './arrow-expansion';
 
 export type Point = readonly [number, number];
 export type Ink = 'body' | 'edge' | 'shade' | 'accent';
@@ -10,7 +11,22 @@ export interface ArrowLayer {
   opacity?: number;
 }
 export type ExitStyle =
-  'precision' | 'echo' | 'electric' | 'pixel' | 'prism' | 'orbit' | 'crown' | 'nova';
+  | 'precision'
+  | 'echo'
+  | 'electric'
+  | 'pixel'
+  | 'prism'
+  | 'orbit'
+  | 'crown'
+  | 'nova'
+  | 'frost'
+  | 'flame'
+  | 'ink'
+  | 'glitch'
+  | 'petal'
+  | 'sonar'
+  | 'meteor'
+  | 'ribbon';
 export interface ArrowDesign {
   baseColor?: number;
   paletteAccent?: boolean;
@@ -37,6 +53,7 @@ const cut = (
 
 /** Original, hand-drawn 100-unit dies. SVG previews and Phaser use these exact layers. */
 export const ARROW_DESIGNS: Record<SkinId, ArrowDesign> = {
+  ...EXPANDED_DESIGNS,
   classic: {
     serial: 'FT—001',
     workshop: 'STANDARD ISSUE',
