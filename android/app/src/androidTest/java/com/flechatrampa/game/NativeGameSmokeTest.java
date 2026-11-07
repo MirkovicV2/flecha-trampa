@@ -40,7 +40,7 @@ public class NativeGameSmokeTest {
         assertTrue(preferences.edit().clear().commit());
 
         try (ActivityScenario<MainActivity> activity = ActivityScenario.launch(MainActivity.class)) {
-            await(activity, "!!document.querySelector('[data-action=skip-tutorial]')");
+            await(activity, "document.readyState === 'complete' && !!document.querySelector('[data-action=skip-tutorial]')");
             assertEquals("true", evaluate(activity, "window.Capacitor.getPlatform() === 'android'"));
             assertEquals("true", evaluate(activity, "location.origin === 'https://localhost'"));
             click(activity, "[data-action=skip-tutorial]");
@@ -134,7 +134,10 @@ public class NativeGameSmokeTest {
 
     private static void click(ActivityScenario<MainActivity> activity, String selector) throws Exception {
         await(activity, "!!document.querySelector(" + JSONObject.quote(selector) + ") && !document.querySelector(" + JSONObject.quote(selector) + ").disabled");
-        onWebView().withElement(findElement(Locator.CSS_SELECTOR, selector)).perform(webClick());
+        // A cold WebView on the software-rendered CI emulator can exceed Espresso's 10s default.
+        // Keep a bounded wait; every click is still followed by observable UI/native-save assertions.
+        onWebView().withTimeout(30, TimeUnit.SECONDS)
+            .withElement(findElement(Locator.CSS_SELECTOR, selector)).perform(webClick());
     }
 
     private static void await(ActivityScenario<MainActivity> activity, String expression) throws Exception {
