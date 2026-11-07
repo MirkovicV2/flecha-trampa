@@ -1,4 +1,14 @@
-# Validación del MVP
+# Validación del juego
+
+## Versión 0.2.0 — 7 de noviembre de 2026
+
+83 pruebas Vitest correctas, lint y compilación web correctos. Se comprobaron los 30 recorridos previos de navegador y cuatro comprobaciones posteriores de cofres/temas y vidas extra, sin fallos. La suite ampliada contiene 32 casos de navegador entre móvil y escritorio. Incluye eventos táctiles reales, arrastres, combos durante animaciones, energía agotada, recompensas únicas, persistencia de skins y cuatro vidas gratuitas al continuar.
+
+La prueba Android de la variante release cubre además apertura de cofre, selección de skin y tema y conservación de energía al recrear la actividad, con red desactivada. Los workflows validan el árbol de fuentes antes de integrar la versión estable. Los informes y capturas quedan como artifacts de Actions. La compilación descargable se verifica con apksigner y zipalign y se compara por SHA-256 tras descargarla de Releases.
+
+Las mediciones siguientes corresponden al MVP anterior; su cobertura no se atribuye a los módulos nuevos.
+
+## Validación histórica 0.1.x
 
 Fecha: 6 de noviembre de 2026. Equipo Windows 11 Pro, build 26200; proyecto en `C:\Users\brank\Documents\Proyectos\FlechaTrampa`. Node portátil 24.22.2, npm 11.19.1, Git 2.43.0.windows.1 y GitHub CLI 2.103.3.
 

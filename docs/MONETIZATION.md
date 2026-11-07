@@ -1,6 +1,8 @@
 # Preparación de monetización
 
-El MVP utiliza `NoOpAdsService` y `NoOpPurchasesService`: no contacta redes publicitarias, no cobra y no concede recompensas por anuncios inexistentes. Aurora y Atardecer son paletas gratuitas. Las tres pistas iniciales y la pista por cada tres victorias son recompensas del juego.
+El juego utiliza `NoOpAdsService` y `NoOpPurchasesService`: no contacta redes publicitarias, no cobra y no concede recompensas por anuncios inexistentes. Aurora, Atardecer, Glaciar y Neón son gratuitos; los otros dos temas se ganan en el pase gratuito. Las pistas, reservas de vida extra y cofres del pase son recompensas del juego. Los cofres no se venden. Ver [economía y probabilidades](ECONOMY.md).
+
+Pase Plus está modelado como el producto `battle-pass` y un derecho de temporada en `Entitlements`. Su ruta de recompensas, mayor energía y cuarta vida clásica solo se activan tras confirmación del adaptador de compras. La ruta gratuita funciona sin compras. La UI mantiene la compra desactivada hasta disponer de tienda y recibos verificados. Restaurar compras llama al adaptador y no inventa derechos. `rewardedEnergy()` añade un punto de integración para energía con las mismas barreras de recompensa que las pistas; NoOp nunca concede una carga publicitaria.
 
 `AdsService` separa la disponibilidad y la presentación de anuncios del motor. `MonetizationService.rewardedHint()` concede una pista únicamente al recibir un resultado `rewarded` con identificador nuevo, y rechaza peticiones simultáneas. `betweenLevels()` se invoca desde la transición de una victoria clásica; no se ejecuta durante el tablero. Respeta el derecho `adsRemoved` de `PurchasesService`. Los identificadores deduplicados en memoria son una primera barrera: un proveedor real deberá persistir y validar sus recibos.
 
