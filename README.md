@@ -1,18 +1,26 @@
 # FLECHA TRAMPA
 
-**[Descargar APK para Android (v0.4.0)](https://github.com/MirkovicV2/flecha-trampa/releases/download/v0.4.0/flecha-trampa-v0.4.0-android.apk)**
+**[Descargar APK para Android (v0.5.0)](https://github.com/MirkovicV2/flecha-trampa/releases/download/v0.5.0/flecha-trampa-v0.5.0-android.apk)**
 
-**Encuentra la salida.** Juego de puzles para móvil: flechas, tres vidas y el orden justo para despejar el tablero. Versión 0.4.0 para web y Android, con TypeScript estricto, Phaser 3, Vite, Vitest y Capacitor 8.
+**Abre camino.** Juego de puzles para móvil: flechas, tres vidas y el orden justo para despejar el tablero. Versión 0.5.0 para web y Android, con TypeScript estricto, Phaser 3, Vite, Vitest y Capacitor 8.
 
 ## Descargar e instalar la APK
 
-Pulsa **Descargar APK para Android** al principio de este README para descargar directamente el instalador. También puedes [ver la Release y sus archivos](https://github.com/MirkovicV2/flecha-trampa/releases/tag/v0.4.0).
+Pulsa **Descargar APK para Android** al principio de este README para descargar directamente el instalador. También puedes [ver la Release y sus archivos](https://github.com/MirkovicV2/flecha-trampa/releases/tag/v0.5.0).
 
 El enlace directo funciona también desde el README en GitHub Mobile. El repositorio es privado: iniciar sesión con la cuenta que tiene acceso. Abrir el archivo descargado y seguir el instalador de Android.
 
 Requiere Android 7.0 o posterior y Android System WebView actualizado. Es una APK universal de tipo release, firmada para pruebas, con el juego incluido para jugar sin conexión. La misma firma permite actualizar conservando las partidas. El modo clásico y el diario funcionan localmente; compartir retos fuera de la app necesita configurar una URL web pública. No es una publicación de Google Play. Ver [compilación, firma y alcance de las pruebas Android](docs/MOBILE.md).
 
 ## Novedades de esta versión
+
+Partida revisada a partir de las fichas y capturas oficiales de Slide Arrows Match y Arrow Slide Puzzle. **Cinco composiciones**: cuadrícula, diamante, cruz, órbita y reloj de arena. Los nuevos niveles clásicos alternan formas desde el nivel 3; los retos permiten elegirlas. Generación inversa, solver independiente, enlaces y guardados conservan sus garantías. Los diarios y retos anteriores mantienen el mismo tablero.
+
+**Mantén pulsada una flecha** para consultar su ruta y el primer bloqueo; al soltar no se mueve ni consume vidas o pistas. El botón **Rutas** permite inspeccionar también con ratón o teclado; desactívalo para volver a jugar. Los choques señalan el obstáculo real y las flechas recién liberadas reciben un destello. La cabecera es más compacta y el tablero conserva objetivos táctiles fijos.
+
+**Estrellas por precisión**: una por completar, dos sin errores y tres si además no consumes pistas. El resultado muestra el mejor combo del intento y las estadísticas cuentan las victorias de tres estrellas. No se inventa el uso de pistas de partidas antiguas. Ver [referencias, reglas y decisiones de diseño](docs/DESIGN_REFERENCES.md).
+
+### Cosméticos y progresión incluidos
 
 Cofres con precinto animado, carrusel de piezas, clics sincronizados, frenado y revelación según rareza. El premio se guarda antes de animar: saltar, girar el móvil, pulsar Atrás o cerrar no repite el sorteo ni pierde la pieza. No hay llaves ni venta de cofres.
 
@@ -24,6 +32,10 @@ Hay anuncios locales y compra del Pase Plus **de prueba, sin cobro**, para revis
 
 ## Probar las novedades
 
+Para probar las nuevas formas directamente: **Inicio → Reta a alguien → Forma del tablero**, elige Diamante u Órbita, crea el reto y juega. Usa una semilla propia para repetirlo. En partida, mantén una flecha pulsada para consultar una ruta; prueba Rutas para alternar entre inspeccionar y jugar. Completa el tablero sin errores ni pistas para conseguir tres estrellas. Las estrellas no alteran los premios ni la energía.
+
+Los cofres, fondos y pase de prueba se prueban así:
+
 1. Recompensas → **Colección** → **Abrir cofre**. Activa su botón de sonido para escuchar precinto, tarjetas y revelación. Si ya gastaste el cofre de bienvenida, el nivel 2 del pase gratuito concede otro y los niveles 5 y 9 conceden dos cada uno.
 2. Pulsa la lupa de cualquier skin → **Probar animación**. Puedes inspeccionarlas todas aunque aún no sean tuyas; solo equipar o crear requiere propiedad o fragmentos.
 3. Inicio → **Navidad. Halloween. Tu mundo.**, o Recompensas → **Fondos y eventos**. Un sello de bienvenida permite desbloquear Navidad; puedes previsualizar todos los demás.
@@ -32,7 +44,7 @@ Hay anuncios locales y compra del Pase Plus **de prueba, sin cobro**, para revis
 
 ## Estado de GitHub
 
-Repositorio privado verificado: [MirkovicV2/flecha-trampa](https://github.com/MirkovicV2/flecha-trampa). `main`, `develop` y las ramas de funcionalidad están publicadas. `v0.1.0` conserva el MVP web original y `v0.4.0` identifica la versión con el nuevo taller y cofres animados. La cuenta activa se comprobó con `gh auth status` y `gh api user`. La protección remota de `main` no está activa: GitHub exige Pro para habilitarla en este repositorio privado. Ver [estado y comprobaciones de GitHub](docs/REMOTE_STATUS.md).
+Repositorio privado verificado: [MirkovicV2/flecha-trampa](https://github.com/MirkovicV2/flecha-trampa). `main`, `develop` y las ramas de funcionalidad están publicadas. `v0.1.0` conserva el MVP web original; `v0.5.0` identifica la entrega de formas, rutas y dominio, conservando los cofres y cosméticos de la 0.4.0. Las fuentes comprobadas superan 116 pruebas de lógica, 82 de navegador y dos casos Android. La cuenta activa se comprobó con `gh auth status` y `gh api user`. La protección remota de `main` no está activa: GitHub exige Pro para habilitarla en este repositorio privado; la API vuelve a confirmar HTTP 403. Ver [estado y comprobaciones de GitHub](docs/REMOTE_STATUS.md).
 
 ## Inicio rápido en este ordenador
 
@@ -123,11 +135,11 @@ El generador inserta flechas con trayectoria libre respecto al tablero parcial. 
 | Niveles 61–100     | 9 × 9   |
 | Desde el nivel 101 | 10 × 10 |
 
-Densidad y complejidad progresan por separado del tamaño. Las pruebas ejecutan las soluciones de 1.000 tableros a través del motor real, sin errores ni pérdida de vidas. Ver [garantías y arquitectura](docs/ARCHITECTURE.md).
+Densidad y complejidad progresan por separado del tamaño. Desde el nivel clásico 3 se alternan cinco formas; la densidad se aplica a las celdas de su máscara y los huecos no bloquean las trayectorias. Las pruebas ejecutan las soluciones de 1.000 tableros rectangulares y 400 tableros con formas a través del motor real, sin errores ni pérdida de vidas; comprueban además 500 fallbacks para las máscaras. Los retos rectangulares conservan los enlaces FT1; las formas usan FT2 para que las APK antiguas no las interpreten como otro tablero. Ver [garantías y arquitectura](docs/ARCHITECTURE.md).
 
 ## Progreso y recompensas
 
-Se guardan nivel clásico, sesiones de cada modo, partidas, victorias, victorias sin errores, tiempo activo, flechas liberadas, rachas, resultados diarios, pistas y ajustes. Hay tres pistas iniciales y una pista adicional por cada tres victorias. Las paletas Aurora, Atardecer, Glaciar y Neón son gratuitas; Medianoche y Solar se ganan en el pase gratuito. Los fondos de evento se compran con sellos gratuitos obtenidos por primeras victorias, sin gastar ni otorgar energía.
+Se guardan nivel clásico, sesiones de cada modo, partidas, victorias, victorias sin errores y de tres estrellas, mejor combo por intento, tiempo activo, flechas liberadas, rachas, resultados diarios, pistas y ajustes. Hay tres pistas iniciales y una pista adicional por cada tres victorias. Las paletas Aurora, Atardecer, Glaciar y Neón son gratuitas; Medianoche y Solar se ganan en el pase gratuito. Los fondos de evento se compran con sellos gratuitos obtenidos por primeras victorias, sin gastar ni otorgar energía.
 
 En web se utiliza `localStorage`; en la app nativa, Capacitor Preferences con escrituras serializadas. Ambos usan un esquema validado y una copia anterior recuperable. La interfaz informa de guardados dañados o almacenamiento no disponible. Si otra pestaña actualiza el progreso, se bloquea la escritura antigua y se ofrece recuperar la versión reciente.
 

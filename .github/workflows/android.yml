@@ -69,6 +69,7 @@ jobs:
             ./android/gradlew --project-dir android --no-daemon --max-workers=2 :app:connectedReleaseAndroidTest
             mkdir -p .artifacts/android-smoke
             adb pull /sdcard/Pictures/FlechaTrampaTest/native-smoke.png .artifacts/android-smoke/native-release.png
+            adb pull /sdcard/Pictures/FlechaTrampaTest/native-silhouette.png .artifacts/android-smoke/native-silhouette.png
       - name: Retain unsigned release candidate
         uses: actions/upload-artifact@v7
         with:

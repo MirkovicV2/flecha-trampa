@@ -1,5 +1,15 @@
 # Estado de GitHub
 
+## Versión 0.5.0 — 7 de noviembre de 2026
+
+Cuenta autenticada comprobada: `MirkovicV2`; repositorio `MirkovicV2/flecha-trampa`, privado y con rama predeterminada `main`. Las nuevas ramas `feature/puzzle-shapes`, `feature/tactical-board` y `feature/level-mastery` se integran en `develop` tras sus verificaciones. `feature/android-050` reúne versión, compatibilidad FT2 y endurecimiento de las comprobaciones de entrega. Se conservan las ramas y el historial anteriores, sin force push.
+
+Las fuentes `608db6019bc217c75908d10492f13d23eeab8112` superan [CI web](https://github.com/MirkovicV2/flecha-trampa/actions/runs/42348182068), con **116 pruebas Vitest y 82 Playwright**, y [Android release](https://github.com/MirkovicV2/flecha-trampa/actions/runs/42348182085), con **dos casos nativos sin fallos ni omisiones** y comprobación del tablero realmente pintado. Los 18 archivos web de la APK firmada coinciden con el candidato probado en el emulador. Los commits de documentación y merges de publicación conservan el mismo árbol de producto.
+
+La entrega utiliza etiqueta anotada `v0.5.0`, [Release Android](https://github.com/MirkovicV2/flecha-trampa/releases/tag/v0.5.0) y enlace directo al instalador en el README. La firma es la misma que en la versión 0.4.0; las claves y credenciales siguen fuera de Git. Los checks, firmas, hashes y límites se detallan en [validación](VALIDATION.md).
+
+La consulta de protección de `main` vuelve a responder **HTTP 403**: `Upgrade to GitHub Pro or make this repository public to enable this feature.` No se modifica la visibilidad privada ni se afirma que haya reglas remotas activas. El procedimiento para activarlas cuando el plan lo permita continúa en [Git Flow y protección](GIT_WORKFLOW.md).
+
 ## Versión 0.4.0 — 7 de noviembre de 2026
 
 Cuenta activa verificada nuevamente con `gh auth status --active` y `gh api user`: `MirkovicV2`, identificador `352626378`. El repositorio conserva su visibilidad privada. Las nuevas funcionalidades se desarrollan en `feature/cosmetic-art`, `feature/chest-opening` y `feature/presentation-040`, integradas con merges controlados en `develop`. `feature/android-040` prepara la versión Android, la claridad de las siluetas y la comprobación nativa de las aperturas.

@@ -965,6 +965,7 @@ export class GameApp {
   private finish(): void {
     const session = this.session;
     if (!session) return;
+    this.effects.clear();
     this.manualShareText = null;
     this.store.recordResult(session);
     if (session.state.status === 'won') this.feedback.play('win', this.store.profile.settings);
