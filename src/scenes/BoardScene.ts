@@ -61,9 +61,14 @@ class BoardScene extends Phaser.Scene {
     tile.strokeRoundedRect(-size / 2, -size / 2, size, size, this.cell * 0.17);
     const glyph = this.add.graphics();
     const color = ARROW_COLORS[this.settings.theme][arrow.direction];
-    const inks = { body: color, ...MATERIAL_INKS };
+    const design = ARROW_DESIGNS[this.settings.skin];
+    const inks = {
+      ...MATERIAL_INKS,
+      body: design.baseColor ?? color,
+      accent: design.paletteAccent ? color : MATERIAL_INKS.accent,
+    };
     const scale = this.cell * 0.0072;
-    for (const layer of ARROW_DESIGNS[this.settings.skin].layers) {
+    for (const layer of design.layers) {
       glyph.beginPath();
       layer.points.forEach(([px, py], index) => {
         const xx = (px - 50) * scale;

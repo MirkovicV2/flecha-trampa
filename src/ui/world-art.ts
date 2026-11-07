@@ -1,4 +1,5 @@
 import type { WorldId } from '../config/worlds';
+import { worldAmbience } from './ambience';
 
 let serial = 0;
 const stars = (color: string) =>
@@ -48,5 +49,5 @@ export function worldArt(world: WorldId): string {
         return `<g transform="translate(${x} ${y}) scale(${s})"><ellipse rx="55" ry="64" fill="url(#${id}-glow)"/><path d="M-22-30Q-33 0-20 32h40q13-32 2-62Z" fill="#e78d61"/><path d="M-13-28q-7 31 0 59h26q7-30 0-59Z" fill="#ffcd85"/><path d="M-22-30h44M-20 32h40" stroke="#ffdeb0" stroke-width="4"/><path d="M-7 35h14l-7 14Z" fill="#fff1b9"/></g>`;
       },
     ).join('')}`;
-  return `<svg class="world-svg" viewBox="0 0 1000 700" preserveAspectRatio="xMidYMid slice" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="${id}-bg" x2="0" y2="1"><stop stop-color="${top}"/><stop offset="1" stop-color="${bottom}"/></linearGradient><radialGradient id="${id}-glow"><stop stop-color="#ffe6a0" stop-opacity=".25"/><stop offset="1" stop-color="#ffe6a0" stop-opacity="0"/></radialGradient><linearGradient id="${id}-sun" x2="0" y2="1"><stop stop-color="#ffb08c"/><stop offset="1" stop-color="#e55ecf"/></linearGradient></defs><path fill="url(#${id}-bg)" d="M0 0h1000v700H0Z"/>${shapes}</svg>`;
+  return `<svg class="world-svg" viewBox="0 0 1000 700" preserveAspectRatio="xMidYMid slice" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="${id}-bg" x2="0" y2="1"><stop stop-color="${top}"/><stop offset="1" stop-color="${bottom}"/></linearGradient><radialGradient id="${id}-glow"><stop stop-color="#ffe6a0" stop-opacity=".25"/><stop offset="1" stop-color="#ffe6a0" stop-opacity="0"/></radialGradient><linearGradient id="${id}-sun" x2="0" y2="1"><stop stop-color="#ffb08c"/><stop offset="1" stop-color="#e55ecf"/></linearGradient></defs><path fill="url(#${id}-bg)" d="M0 0h1000v700H0Z"/>${shapes}${worldAmbience(world)}</svg>`;
 }

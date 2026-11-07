@@ -17,9 +17,11 @@ Los ocho diseños de la serie 01 son ilustraciones vectoriales originales. Cada 
 
 `src/config/arrow-designs.ts` contiene las geometrías, tintas y firmas. Tanto SVG (`src/ui/arrow-art.ts`) como Phaser (`src/scenes/BoardScene.ts`) dibujan esos mismos puntos. El inspector permite probar la animación y comprobar las cuatro orientaciones, incluidas las piezas aún bloqueadas. Probar no desbloquea, no cobra fragmentos y no consume energía.
 
-Los biseles conservan la paleta direccional del jugador. Las flechas apuntan mediante su silueta, sin depender del color. Las partículas y estelas se añaden por encima del renderizado; nunca desplazan las celdas ni sus áreas táctiles. Los cosméticos no modifican las reglas.
+Las piezas esmaltadas conservan la paleta direccional en el cuerpo. Órbita, Corona solar y Supernova conservan su metal base y aplican esa paleta al núcleo y a los detalles. Las flechas apuntan mediante su silueta, sin depender del color. Las partículas y estelas se añaden por encima del renderizado; nunca desplazan las celdas ni sus áreas táctiles. Los cosméticos no modifican las reglas.
 
 El lenguaje del taller utiliza carbón, metal, papel cálido, acentos de latón y etiquetas de serie. Barlow Condensed y Manrope se incluyen localmente con las licencias OFL en `public/fonts`; funcionan sin conexión. No se usan recursos de Counter-Strike ni de otros juegos.
+
+La portada y las vistas previas de fondos muestran la misma pieza equipada. Los escenarios incorporan nieve, pétalos, burbujas, luciérnagas, trazos de neón o faroles: entre 8 y 16 elementos por escena. Las miniaturas permanecen estáticas; los ambientes del fondo se pausan detrás de un diálogo. El movimiento reducido suprime también estos efectos. No se ejecutan bucles JavaScript para los ambientes.
 
 ## Apertura de suministros
 

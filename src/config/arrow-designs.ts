@@ -12,6 +12,8 @@ export interface ArrowLayer {
 export type ExitStyle =
   'precision' | 'echo' | 'electric' | 'pixel' | 'prism' | 'orbit' | 'crown' | 'nova';
 export interface ArrowDesign {
+  baseColor?: number;
+  paletteAccent?: boolean;
   serial: string;
   workshop: string;
   finish: string;
@@ -408,6 +410,8 @@ export const ARROW_DESIGNS: Record<SkinId, ArrowDesign> = {
     ],
   },
   orbit: {
+    baseColor: 0xabbecf,
+    paletteAccent: true,
     serial: 'OS—071',
     workshop: 'ORBITAL SYSTEMS',
     finish: 'Titanio orbital',
@@ -501,6 +505,8 @@ export const ARROW_DESIGNS: Record<SkinId, ArrowDesign> = {
     ],
   },
   royal: {
+    baseColor: 0xe9b96a,
+    paletteAccent: true,
     serial: 'CR—001',
     workshop: 'SOVEREIGN EDITION',
     finish: 'Oro y ónice',
@@ -616,6 +622,8 @@ export const ARROW_DESIGNS: Record<SkinId, ArrowDesign> = {
     ],
   },
   nova: {
+    baseColor: 0xd8e5ef,
+    paletteAccent: true,
     serial: 'NV—099',
     workshop: 'DEEP SPACE',
     finish: 'Aleación de plasma',
