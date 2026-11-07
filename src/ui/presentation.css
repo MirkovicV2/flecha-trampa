@@ -230,6 +230,12 @@
 html[data-effects-paused='true'] .world-backdrop .world-ambience > * {
   animation-play-state: paused;
 }
+body:has(.commerce-backdrop) .world-backdrop .world-ambience > * {
+  animation-play-state: paused;
+}
+.world-landscape .world-ambience > * {
+  animation: none;
+}
 html[data-motion='reduced'] .world-ambience > * {
   animation: none !important;
 }

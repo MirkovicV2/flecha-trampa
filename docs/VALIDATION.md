@@ -1,5 +1,21 @@
 # Validación del juego
 
+## Versión 0.4.0 — 7 de noviembre de 2026
+
+Fuentes finales comprobadas: `575b649928fbc23b8b61720a0e320fd77e5a19fc`. La [validación web final](https://github.com/MirkovicV2/flecha-trampa/actions/runs/42342520411) termina correctamente con instalación mediante `npm ci`, lint, formato, **98 pruebas Vitest en 12 archivos**, TypeScript, Vite y **62 pruebas de navegador contra producción**. Los 62 recorridos tardaron 10,7 minutos en el runner Linux.
+
+La [validación Android final](https://github.com/MirkovicV2/flecha-trampa/actions/runs/42342520380) termina correctamente: lint nativo, compilación release, APK instrumentada y **1 prueba, 0 fallos, 0 errores y 0 omisiones**. El caso tarda 162,593 segundos y la suite 167,868 segundos. Se ejecuta en Android 15/API 35, sin Wi-Fi ni datos. Comprueba las fases reales de cofre `sealed → rolling → settling → revealed`, consumo único, skin, Neón, Navidad, pistas, botón Atrás, recreación de actividad, restauración del pase de prueba, energía y tablero conservados.
+
+Se corrigieron dos problemas del entorno de instrumentación: un emulador sin foco antes del primer clic y la espera de una fase transitoria con las animaciones del sistema desactivadas. El workflow mantiene el dispositivo despierto, desbloqueado y con escala de animador normal para ejercitar el movimiento real del WebView; las transiciones de ventanas permanecen desactivadas. Un MutationObserver registra todas las fases, incluso si Espresso devuelve el control después de la animación. No se omiten aserciones ni se desactiva el respeto de movimiento reducido de la aplicación. Referencias: [preparación de Espresso](https://developer.android.com/training/testing/espresso/setup) y [preferencia de movimiento del sistema](https://web.dev/articles/prefers-reduced-motion).
+
+Localmente, `npm ci` instala 251 paquetes y no detecta vulnerabilidades conocidas. Lint, formato, 98 pruebas y build pasan. La batería de 62 recorridos pasa antes del último ajuste de las siluetas metálicas; tras ese ajuste se repiten los 16 recorridos afectados, todos correctos. La CI final repite los 62 sobre las fuentes definitivas.
+
+Se revisaron capturas reales de colección, inspector, carrusel, revelación, portada y partida en móvil y escritorio, además de tableros de 10 × 10 con Corona solar, Supernova y Órbita. Se aplanaron sus colas para distinguir el frente con mayor claridad. La captura nativa final muestra el tablero renderizado con Prisma, Neón y Navidad, tres vidas del guardado existente y energía 4/8 del pase restaurado. Las pruebas incluyen doble clic, duplicados, saltar, Escape, rotación, recarga a mitad de giro, filtros, inventario, objetivos táctiles estables, ambientes pausados y movimiento reducido.
+
+APK final: `flecha-trampa-v0.4.0-android.apk`, versión 0.4.0, `versionCode 5`, **3.533.790 bytes**, depuración desactivada y firma v2/v3. Conserva el certificado SHA-256 `58c62bfb2890ce39506548144c53a927a91d51985a8a6c258736742ae0b0f654`. Se verifica alineación de 16 KB, identidad de paquete y coincidencia por SHA-256 de los 16 archivos de `dist/` con la APK; los **18 archivos web empaquetados** coinciden también con el candidato sin firmar probado en Android por Actions.
+
+SHA-256 del instalador final: `aaa42e2db9480162ee6e745c9dfd475dec28da159d14f164e57e0500646fa557`. Los commits posteriores solo documentan la validación; sus fuentes de producto se comparan con el commit comprobado. No se ha probado en un teléfono físico ni en iOS. Los anuncios y las compras siguen siendo simulaciones, sin SDK comercial ni cobros.
+
 ## Versión 0.3.0 — 7 de noviembre de 2026
 
 En Windows se han completado lint, formato, TypeScript estricto y Vite build; las 92 pruebas Vitest de 11 archivos son correctas. Las 44 pruebas Playwright de móvil y escritorio pasan contra la compilación de producción. Tras aclarar los sellos faltantes en una vista previa bloqueada, se repitieron los dos recorridos de escenarios, también correctos.

@@ -1,5 +1,11 @@
 # Arquitectura y garantías
 
+## Geometría y presentación cosmética
+
+`config/arrow-designs.ts` define caras y tintas originales en coordenadas normalizadas. SVG y Phaser consumen la misma geometría. `SkinMotionPreview` limita la vida de las animaciones del inspector; un identificador de generación impide que una finalización antigua borre una vista nueva. `home.ts` y las vistas previas de escenarios utilizan la pieza equipada.
+
+`ChestOpening` presenta un premio que `ProgressStore.openChest()` ya sorteó y guardó. `chest-reel.ts` separa tarjetas decorativas, encuadre y frenado de la economía. Saltar, ocultar, redimensionar y navegar cancelan temporizadores y animaciones, sin repetir transacciones. Los clics y acordes se sintetizan y se detienen al salir. Los ambientes de los escenarios son CSS acotado; se pausan tras modales y compras y se omiten con movimiento reducido. Ver [diseño y garantías](COSMETICS.md).
+
 ```mermaid
 flowchart LR
   UI[UI DOM y coordinación] --> Core[Reglas puras]

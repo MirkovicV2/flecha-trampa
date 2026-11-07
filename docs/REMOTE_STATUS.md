@@ -1,5 +1,15 @@
 # Estado de GitHub
 
+## Versión 0.4.0 — 7 de noviembre de 2026
+
+Cuenta activa verificada nuevamente con `gh auth status --active` y `gh api user`: `MirkovicV2`, identificador `352626378`. El repositorio conserva su visibilidad privada. Las nuevas funcionalidades se desarrollan en `feature/cosmetic-art`, `feature/chest-opening` y `feature/presentation-040`, integradas con merges controlados en `develop`. `feature/android-040` prepara la versión Android, la claridad de las siluetas y la comprobación nativa de las aperturas.
+
+Las fuentes finales `575b649928fbc23b8b61720a0e320fd77e5a19fc` superan [CI web](https://github.com/MirkovicV2/flecha-trampa/actions/runs/42342520411), con 98 pruebas de lógica y 62 de navegador, y [Android release](https://github.com/MirkovicV2/flecha-trampa/actions/runs/42342520380), con una prueba nativa sin fallos, errores u omisiones. Los 18 archivos web de la APK firmada coinciden con los del candidato nativo probado. Ver [detalle y límites](VALIDATION.md).
+
+La entrega se identifica con la etiqueta anotada `v0.4.0` y la [Release de Android](https://github.com/MirkovicV2/flecha-trampa/releases/tag/v0.4.0). El README contiene el enlace directo a `flecha-trampa-v0.4.0-android.apk`. Se conserva el certificado de actualización y las claves continúan fuera de Git. Los merges de publicación no cambian las fuentes del producto validado. Las versiones anteriores y su historial se conservan.
+
+Las restricciones de protección de ramas descritas abajo continúan siendo aplicables; no se ha cambiado la visibilidad del repositorio para habilitarlas.
+
 ## Versión 0.3.0 — 7 de noviembre de 2026
 
 La cuenta activa vuelve a estar verificada como `MirkovicV2` y el repositorio sigue siendo privado. Las funcionalidades se desarrollaron en `feature/seasonal-worlds`, `feature/preview-commerce` y `feature/frenzy-feedback`, con lint, tests y build antes de integrarlas en `develop`. `feature/android-030` añade la versión Android y el endurecimiento de la pausa.

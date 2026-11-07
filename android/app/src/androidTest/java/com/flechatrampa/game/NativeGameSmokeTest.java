@@ -14,6 +14,7 @@ import android.os.Environment;
 import android.os.SystemClock;
 import android.provider.MediaStore;
 import android.view.KeyEvent;
+import android.view.WindowManager;
 import android.util.Log;
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
@@ -41,6 +42,7 @@ public class NativeGameSmokeTest {
         assertTrue(preferences.edit().clear().commit());
 
         try (ActivityScenario<MainActivity> activity = ActivityScenario.launch(MainActivity.class)) {
+            activity.onActivity(instance -> instance.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON));
             await(activity, "document.readyState === 'complete' && !!document.querySelector('[data-action=skip-tutorial]')");
             assertEquals("true", evaluate(activity, "window.Capacitor.getPlatform() === 'android'"));
             assertEquals("true", evaluate(activity, "location.origin === 'https://localhost'"));
@@ -80,10 +82,15 @@ public class NativeGameSmokeTest {
             click(activity, "[data-action=home]");
             click(activity, "[data-action=rewards]");
             click(activity, ".rewards-tabs [data-action=collection]");
+            assertEquals("Native animation coverage requires normal system motion", "false", evaluate(activity, "matchMedia('(prefers-reduced-motion: reduce)').matches"));
+            // Espresso can return after an animation has finished. Observe the whole lifecycle
+            // in the real WebView instead of polling a transient phase after the click returns.
+            evaluate(activity, "(() => { window.__nativeChestPhases = []; window.__nativeChestObserver = new MutationObserver(() => { const phase = document.querySelector('[data-case-phase]')?.dataset.casePhase; if (phase && window.__nativeChestPhases.at(-1) !== phase) window.__nativeChestPhases.push(phase); }); window.__nativeChestObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-case-phase'] }); return true; })()");
             click(activity, "[data-action=open-chest]");
-            await(activity, "document.querySelector('[data-case-phase]')?.dataset.casePhase === 'rolling'");
-            assertEquals(1, profile(preferences).getJSONObject("economy").getJSONObject("collection").getInt("opened"));
             await(activity, "document.querySelector('[data-case-phase]')?.dataset.casePhase === 'revealed'");
+            assertEquals("true", evaluate(activity, "['sealed', 'rolling', 'settling', 'revealed'].every(phase => window.__nativeChestPhases.includes(phase))"));
+            evaluate(activity, "window.__nativeChestObserver.disconnect(); true");
+            assertEquals(1, profile(preferences).getJSONObject("economy").getJSONObject("collection").getInt("opened"));
             click(activity, "[data-action=equip-drop]");
             await(activity, "!document.querySelector('[role=dialog]')");
             click(activity, "[data-action=theme][data-value=neon]");
@@ -156,6 +163,14 @@ public class NativeGameSmokeTest {
 
     private static void click(ActivityScenario<MainActivity> activity, String selector) throws Exception {
         Log.i("FlechaSmoke", "Click: " + selector);
+        long focusDeadline = SystemClock.elapsedRealtime() + 30000;
+        AtomicReference<Boolean> focused = new AtomicReference<>(false);
+        do {
+            activity.onActivity(instance -> focused.set(instance.hasWindowFocus()));
+            if (focused.get()) break;
+            SystemClock.sleep(100);
+        } while (SystemClock.elapsedRealtime() < focusDeadline);
+        assertTrue("Native activity must have window focus before clicking " + selector, focused.get());
         await(activity, "!!document.querySelector(" + JSONObject.quote(selector) + ") && !document.querySelector(" + JSONObject.quote(selector) + ").disabled");
         // A cold WebView on the software-rendered CI emulator can exceed Espresso's 10s default.
         // Keep a bounded wait; every click is still followed by observable UI/native-save assertions.

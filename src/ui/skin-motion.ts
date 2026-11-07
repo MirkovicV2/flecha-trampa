@@ -5,8 +5,10 @@ import type { SkinId } from '../config/collection';
 export class SkinMotionPreview {
   private animations: Animation[] = [];
   private stage: HTMLElement | null = null;
+  private generation = 0;
 
   clear(): void {
+    this.generation++;
     this.animations.forEach((animation) => animation.cancel());
     this.animations = [];
     this.stage?.querySelectorAll('.inspector-particle').forEach((particle) => particle.remove());
@@ -16,6 +18,7 @@ export class SkinMotionPreview {
 
   play(root: HTMLElement, skin: SkinId, reduced: boolean): void {
     this.clear();
+    const generation = this.generation;
     const stage = root.querySelector<HTMLElement>('[data-inspector-stage]');
     const glyph = stage?.querySelector<HTMLElement>('.inspector-glyph');
     if (!stage || !glyph) return;
@@ -72,7 +75,9 @@ export class SkinMotionPreview {
       }
     }
     void main.finished.then(
-      () => this.clear(),
+      () => {
+        if (this.generation === generation) this.clear();
+      },
       () => undefined,
     );
   }
