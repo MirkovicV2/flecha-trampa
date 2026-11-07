@@ -20,7 +20,7 @@ Consulta: 7 de noviembre de 2026. Se revisaron las fichas oficiales y sus captur
 
 Las máscaras restringen dónde se colocan las piezas. Un hueco de la silueta no es una pared: una trayectoria sigue hasta el borde rectangular y puede encontrar un bloqueo al otro lado del hueco. El algoritmo inverso y el solver mantienen esa misma regla. La densidad se aplica a las celdas de la máscara, separada de la complejidad.
 
-El generador rectangular `inverse-v1` conserva sus resultados. `shape` es un parámetro opcional y validado: su ausencia significa el tablero anterior. La fecha UTC del diario sigue usando sus parámetros originales. No se regeneran los guardados existentes. Nuevos guardados y enlaces conservan la máscara completa.
+El generador rectangular `inverse-v1` conserva sus resultados. `shape` es un parámetro opcional y validado: su ausencia significa el tablero anterior. La fecha UTC del diario sigue usando sus parámetros originales. No se regeneran los guardados existentes. Nuevos guardados y enlaces conservan la máscara completa. Los enlaces con formas usan el sobre `FT2`; los rectangulares conservan `FT1` byte a byte. Esto obliga a las APK anteriores a rechazar los retos nuevos, evitando que ignoren la máscara y jueguen un tablero diferente. La APK nueva abre ambos formatos.
 
 Los cosméticos originales, cofres y progresión continúan disponibles. La referencia visual orienta decisiones concretas de legibilidad y ritmo; no demuestra por sí sola que el juego tenga mejor retención o calidad que otros productos. Esa comparación requiere sesiones con jugadores y pruebas en teléfonos físicos.
 
