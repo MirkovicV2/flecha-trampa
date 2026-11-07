@@ -1,5 +1,8 @@
 export const RARITIES = ['common', 'rare', 'epic', 'legendary'] as const;
 export type Rarity = (typeof RARITIES)[number];
+export const CHEST_LEVEL_INTERVAL = 15;
+export const KEY_WINS_REQUIRED = 5;
+export const MAX_CHEST_KEYS = 999;
 export const RARITY_LABELS: Record<Rarity, string> = {
   common: 'Común',
   rare: 'Rara',

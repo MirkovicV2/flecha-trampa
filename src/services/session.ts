@@ -24,6 +24,7 @@ export interface PlaySession {
   energyPolicy?: 'attempt-v2';
   rewardXp?: number;
   rewardChests?: number;
+  forgeReward?: 'progress' | 'key';
   lifeTokenSpent?: boolean;
   hintsUsed?: number;
   bestCombo?: number;
