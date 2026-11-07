@@ -1,5 +1,6 @@
 import './ui/styles.css';
 import './ui/worlds.css';
+import './ui/commerce.css';
 import { GameApp } from './ui/app';
 import { createProgressStore } from './services/platform';
 
