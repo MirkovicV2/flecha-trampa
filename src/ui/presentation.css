@@ -1040,12 +1040,34 @@ select:focus-visible {
   gap: 12px;
   padding-top: 0;
 }
-.hint-button {
+.hint-button,
+.hint-button:hover {
   background: var(--lime);
   color: #1a3027;
   border-radius: 15px;
   min-height: 50px;
   border: 0;
+}
+@media (hover: hover) and (pointer: fine) {
+  .hint-button:hover:not(:disabled) {
+    background: #edffba;
+  }
+}
+.hint-button:focus-visible:not(:disabled) {
+  background: #edffba;
+  outline: 3px solid #f9c18e;
+  outline-offset: 3px;
+}
+.hint-button:disabled,
+.hint-button:disabled:hover {
+  background: #cad6b0;
+  color: #405044;
+  opacity: 1;
+  transform: none;
+}
+.hint-button:disabled .hint-count {
+  color: inherit;
+  background: #40504414;
 }
 .hint-count {
   background: #1a302718;

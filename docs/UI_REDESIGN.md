@@ -35,3 +35,23 @@ Entorno: Windows, Node portátil 24.22.2 y Chromium de Playwright. Instalación 
 Contrastes calculados de superficies sólidas: texto de portada 12,63:1, descripción de portada 5,55:1, acción principal 13,57:1 y texto secundario de ajustes 7,21:1. Son comprobaciones de esas combinaciones, no una auditoría completa de accesibilidad.
 
 La revisión visual comprueba la ausencia de marcos que tapen flechas, contraste de títulos en superficies claras y modales terminados de animar. Las pruebas se realizan en Chromium con emulación móvil y escritorio; no demuestran compatibilidad con teléfonos físicos, WebView Android ni Safari/iOS. No se genera APK, publicación ni modificación remota.
+
+## Corrección posterior a la revisión: estados de Una pista
+
+La revisión independiente detectó que el hover antiguo de `styles.css` tenía más especificidad y dejaba texto oscuro sobre fondo oscuro (1,03:1). `presentation.css` define ahora la superficie también para `:hover`, reserva el aclarado para `(hover: hover) and (pointer: fine)`, conserva un foco visible con contorno de 3 px y da a `disabled` una superficie opaca propia que no cambia al pasar el puntero. No se modifica la mecánica ni la acción del botón.
+
+Contrastes calculados desde los estilos computados de Chromium de producción:
+
+| Estado                       | Escritorio 1440 × 1000 | Móvil emulado 393 × 851 |
+| ---------------------------- | ---------------------- | ----------------------- |
+| Normal                       | 12,77:1                | 12,77:1                 |
+| Hover                        | 13,11:1                | 12,77:1                 |
+| Foco de teclado              | 13,11:1                | 13,11:1                 |
+| Deshabilitado, con/sin hover | 5,62:1                 | 5,62:1                  |
+| Hover persistente tras toque | No aplica              | 12,77:1                 |
+
+La prueba nueva `e2e/hint-states.spec.ts` obtiene el estado deshabilitado por el flujo real de carga: retrasa la petición del módulo del tablero y abre/cierra Energía, sin asignar estados privados ni atributos falsos al botón. Verifica hover, foco mediante Tab, contraste mínimo 4,5:1 y consumo real de pistas por toque. Chromium conserva `:focus-visible` al tocar el mismo control enfocado por teclado; se cubre también ese caso (13,11:1) y se comprueba el toque ordinario después de pulsar fuera del botón.
+
+Validación de esta corrección: lint, TypeScript/build y formato correctos; cuatro recorridos dirigidos de producción correctos en 41,2 segundos (estados del botón y flujo existente de pistas/pausa/resultados, en ambos proyectos). No se repite la suite completa. Evidencia en `.artifacts/redesign/hint-fix-tests.log`, `hint-states-desktop.json`, `hint-states-mobile.json` y capturas `hint-*-desktop.png` / `hint-*-mobile.png`.
+
+Se renueva y revisa `.artifacts/redesign/after-chest-desktop.png` esperando la fase real `revealed`, la finalización de las animaciones finitas del resultado y dos frames. La captura muestra «Ancla», opacidad 1, ilustración y acciones visibles; la espera anterior podía capturar el inicio transparente de `case-result-in`. Esta renovación no cambia código productivo del cofre ni los archivos e2e del trabajador de estabilización. Sigue pendiente la comprobación en teléfono físico; no se han publicado cambios remotos ni generado APK.
