@@ -16,7 +16,7 @@ import { escapeHtml, formatTime } from '../utils/format';
 import { icon } from './icons';
 import { BoardInput } from './board-input';
 import { advanceCombo, COMBO_WINDOW_MS, emptyCombo } from '../core/combo';
-import { rewardsContent, themesContent, chestContent, rewardLabel } from './rewards';
+import { rewardsContent, themesContent, chestContent, rewardLabel, skinInspector } from './rewards';
 import { isThemeName } from '../config/theme';
 import { isSkinId } from '../config/collection';
 import type { SkinId } from '../config/collection';
@@ -32,6 +32,7 @@ import { PreviewAdsService, PreviewPurchasesService } from '../services/preview-
 import { PREVIEW_PURCHASE_KEY } from '../services/preview-commerce';
 import { comboStage } from '../config/combos';
 import { ComboEffects } from './combo-effects';
+import { SkinMotionPreview } from './skin-motion';
 
 type Screen = 'home' | 'modes' | 'game' | 'stats' | 'daily' | 'shared' | 'rewards';
 type Overlay =
@@ -44,6 +45,7 @@ type Overlay =
   | 'energy'
   | 'chest'
   | 'world-preview'
+  | 'skin-preview'
   | null;
 const DIRECTION_LABEL = { up: 'arriba', right: 'derecha', down: 'abajo', left: 'izquierda' };
 
@@ -76,6 +78,8 @@ export class GameApp {
   private rewardsTab: 'pass' | 'collection' | 'worlds' = 'pass';
   private previewWorld: WorldId = 'christmas';
   private chestDrop: ChestDrop | null = null;
+  private previewSkin: SkinId = 'classic';
+  private readonly skinMotion = new SkinMotionPreview();
   private energyReturn: Overlay = null;
   private pendingEnergySession: PlaySession | null = null;
   private purchasing = false;
@@ -159,6 +163,7 @@ export class GameApp {
           this.overlay === 'onboarding' ||
           this.overlay === 'energy' ||
           this.overlay === 'chest' ||
+          this.overlay === 'skin-preview' ||
           this.overlay === 'world-preview'
         )
           this.closeOverlay();
@@ -286,6 +291,37 @@ export class GameApp {
         break;
       case 'skin':
         if (isSkinId(value)) this.equipSkin(value);
+        break;
+      case 'preview-skin':
+        if (isSkinId(value)) {
+          this.previewSkin = value;
+          this.openOverlay('skin-preview');
+        }
+        break;
+      case 'preview-skin-motion':
+        this.skinMotion.play(
+          this.root,
+          this.previewSkin,
+          this.store.profile.settings.reducedMotion ||
+            matchMedia('(prefers-reduced-motion: reduce)').matches,
+        );
+        break;
+      case 'filter-skins':
+        if (!['all', 'owned', 'legendary'].includes(value ?? '')) break;
+        this.root.querySelectorAll<HTMLElement>('[data-collection-skin]').forEach((card) => {
+          card.hidden =
+            value === 'owned'
+              ? card.dataset.owned !== 'true'
+              : value === 'legendary'
+                ? card.dataset.rarity !== 'legendary'
+                : false;
+        });
+        this.root.querySelectorAll('[data-action="filter-skins"]').forEach((button) => {
+          button.setAttribute(
+            'aria-pressed',
+            String((button as HTMLElement).dataset.value === value),
+          );
+        });
         break;
       case 'craft-skin':
         if (isSkinId(value) && this.store.craftSkin(value)) this.equipSkin(value);
@@ -583,8 +619,11 @@ export class GameApp {
     this.visualSettingsDirty = true;
     this.store.flush();
     if (this.overlay === 'chest') this.closeOverlay();
-    else this.render();
-    this.toast('Skin equipada. La verás en tu próxima partida.');
+    else {
+      if (this.overlay === 'skin-preview') this.overlay = null;
+      this.render();
+    }
+    this.toast('Skin equipada. Tu diseño y su animación ya están activos.');
   }
 
   private energyMarkup(): string {
@@ -884,6 +923,7 @@ export class GameApp {
   }
 
   private render(): void {
+    this.skinMotion.clear();
     this.effects.clear();
     this.epoch++;
     this.blockedArrows.clear();
@@ -1199,6 +1239,7 @@ export class GameApp {
   }
 
   private closeOverlay(): void {
+    this.skinMotion.clear();
     if (this.overlay === 'chest') {
       this.chestDrop = null;
       this.overlay = null;
@@ -1226,6 +1267,7 @@ export class GameApp {
   }
 
   private renderOverlay(): void {
+    this.skinMotion.clear();
     this.renderer?.setPaused(this.overlay !== null || document.hidden);
     const layer = this.root.querySelector<HTMLElement>('.overlay-layer');
     if (!layer) return;
@@ -1270,6 +1312,8 @@ export class GameApp {
     if (this.overlay === 'result') content = this.resultContent();
     if (this.overlay === 'world-preview')
       content = worldPreview(this.store.profile, this.previewWorld);
+    if (this.overlay === 'skin-preview')
+      content = skinInspector(this.store.profile, this.previewSkin);
     if (this.overlay === 'chest' && this.chestDrop) content = chestContent(this.chestDrop);
     if (this.overlay === 'energy') {
       const current = regenerateEnergy(
@@ -1279,7 +1323,7 @@ export class GameApp {
       );
       content = `${close}<div class="modal-symbol lime">${icon('energy')}</div><div class="eyebrow">TU ENERGÍA</div><h2>${current.amount ? 'Listo para<br>otro intento.' : 'Recarga y<br>vuelve a volar.'}</h2><strong class="energy-total" data-energy-amount>${current.amount} / ${this.store.energyCapacity}</strong><p>Una carga por nueva partida clásica o diaria. Al ganar la recuperas. Continuar un guardado es gratis.</p><p class="energy-next">${current.amount >= this.store.energyCapacity ? 'Energía completa' : 'Próxima carga en'} <strong data-energy-wait></strong></p><p class="fine-print">Una carga cada 10 minutos, también con la app cerrada. Las bonificaciones pueden superar el límite.</p>${this.monetization.ads.rewardedAvailable ? `<button class="secondary-button" data-action="rewarded-energy">${this.commercePreview ? 'Ver anuncio de prueba por energía' : 'Ver anuncio por energía'}</button>` : ''}${this.pendingEnergySession ? '<button class="primary-button" data-action="retry-energy">Volver a intentar</button>' : ''}<button class="secondary-button" data-action="pass">Ver recompensas del pase</button><button class="text-button centered" data-action="practice">Practicar sin energía</button>`;
     }
-    layer.innerHTML = `<div class="modal-backdrop"><section class="modal-card ${this.overlay === 'result' ? 'result-card' : ''}" role="dialog" aria-modal="true" aria-label="${this.overlay === 'settings' ? 'Ajustes' : this.overlay === 'result' ? 'Resultado de la partida' : this.overlay === 'pause' ? 'Partida en pausa' : 'FLECHA TRAMPA'}">${content}</section></div>`;
+    layer.innerHTML = `<div class="modal-backdrop"><section class="modal-card ${this.overlay === 'result' ? 'result-card' : this.overlay === 'skin-preview' ? 'skin-inspector-card' : ''}" role="dialog" aria-modal="true" aria-label="${this.overlay === 'settings' ? 'Ajustes' : this.overlay === 'skin-preview' ? 'Inspector de skin' : this.overlay === 'result' ? 'Resultado de la partida' : this.overlay === 'pause' ? 'Partida en pausa' : 'FLECHA TRAMPA'}">${content}</section></div>`;
     this.updateEnergy();
     window.requestAnimationFrame(() => {
       const match = focused?.action
@@ -1325,6 +1369,7 @@ export class GameApp {
         this.overlay === 'settings' ||
         this.overlay === 'hints' ||
         this.overlay === 'chest' ||
+        this.overlay === 'skin-preview' ||
         this.overlay === 'energy' ||
         this.overlay === 'world-preview'
       )

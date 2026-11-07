@@ -1,4 +1,5 @@
 const paths: Record<string, string> = {
+  zoom: '<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5M10.5 7v7M7 10.5h7"/>',
   energy: '<path d="m13 2-8 12h6l-1 8 9-12h-6l1-8Z"/>',
   chest: '<path d="M4 10h16v10H4ZM4 10V7a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v3M3 13h18M10 11h4v5h-4Z"/>',
   gift: '<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M5 12v9h14v-9M12 8v13M12 8H8a3 3 0 1 1 3-3l1 3Zm0 0h4a3 3 0 1 0-3-3l-1 3Z"/>',
