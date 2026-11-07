@@ -53,7 +53,9 @@ jobs:
         with:
           api-level: 35
           arch: x86_64
-          target: google_apis
+          # This game uses Android/WebView APIs, not Google Play services. The
+          # Google image's Pixel Launcher raised ANR dialogs during cold CI boot.
+          target: default
           profile: pixel_5
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
