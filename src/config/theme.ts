@@ -1,5 +1,6 @@
 import type { Direction } from '../core/types';
 import type { SkinId } from './collection';
+import type { WorldId } from './worlds';
 
 export const THEME_NAMES = ['aurora', 'ember', 'arctic', 'neon', 'midnight', 'solar'] as const;
 export type ThemeName = (typeof THEME_NAMES)[number];
@@ -29,6 +30,7 @@ export interface PlayerSettings {
   reducedMotion: boolean;
   theme: ThemeName;
   skin: SkinId;
+  world: WorldId;
 }
 
 export const DEFAULT_SETTINGS: PlayerSettings = {
@@ -37,4 +39,5 @@ export const DEFAULT_SETTINGS: PlayerSettings = {
   reducedMotion: false,
   theme: 'aurora',
   skin: 'classic',
+  world: 'void',
 };

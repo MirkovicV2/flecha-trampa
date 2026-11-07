@@ -23,10 +23,23 @@ import type { SkinId } from '../config/collection';
 import { PASS_TIERS } from '../config/pass';
 import { energyWaitMs, regenerateEnergy } from '../services/energy';
 import type { ChestDrop } from '../services/economy';
+import { isWorldId } from '../config/worlds';
+import type { WorldId } from '../config/worlds';
+import { worldArt } from './world-art';
+import { worldPreview } from './worlds';
 
 type Screen = 'home' | 'modes' | 'game' | 'stats' | 'daily' | 'shared' | 'rewards';
 type Overlay =
-  'pause' | 'settings' | 'result' | 'onboarding' | 'hints' | 'conflict' | 'energy' | 'chest' | null;
+  | 'pause'
+  | 'settings'
+  | 'result'
+  | 'onboarding'
+  | 'hints'
+  | 'conflict'
+  | 'energy'
+  | 'chest'
+  | 'world-preview'
+  | null;
 const DIRECTION_LABEL = { up: 'arriba', right: 'derecha', down: 'abajo', left: 'izquierda' };
 
 export class GameApp {
@@ -52,7 +65,8 @@ export class GameApp {
   private pendingArrowFocus: string | null = null;
   private readonly blockedArrows = new Set<string>();
   private combo = emptyCombo();
-  private rewardsTab: 'pass' | 'collection' = 'pass';
+  private rewardsTab: 'pass' | 'collection' | 'worlds' = 'pass';
+  private previewWorld: WorldId = 'christmas';
   private chestDrop: ChestDrop | null = null;
   private energyReturn: Overlay = null;
   private pendingEnergySession: PlaySession | null = null;
@@ -116,7 +130,8 @@ export class GameApp {
           this.overlay === 'hints' ||
           this.overlay === 'onboarding' ||
           this.overlay === 'energy' ||
-          this.overlay === 'chest'
+          this.overlay === 'chest' ||
+          this.overlay === 'world-preview'
         )
           this.closeOverlay();
         else if (this.overlay || (this.screen !== 'home' && this.screen !== 'game'))
@@ -186,8 +201,32 @@ export class GameApp {
       case 'rewards':
       case 'pass':
       case 'collection':
-        this.rewardsTab = action === 'collection' ? 'collection' : 'pass';
+      case 'worlds':
+        this.rewardsTab =
+          action === 'collection' ? 'collection' : action === 'worlds' ? 'worlds' : 'pass';
         this.go('rewards');
+        break;
+      case 'preview-world':
+        if (isWorldId(value)) {
+          this.previewWorld = value;
+          this.openOverlay('world-preview');
+        }
+        break;
+      case 'unlock-world':
+      case 'equip-world':
+        if (
+          isWorldId(value) &&
+          (action === 'equip-world' || this.store.unlockWorld(value)) &&
+          this.store.equipWorld(value)
+        ) {
+          this.overlay = null;
+          this.render();
+          this.toast(
+            action === 'unlock-world'
+              ? 'Fondo desbloqueado y equipado. ¡Es tuyo para siempre!'
+              : 'Fondo equipado. Tu mundo, a tu manera.',
+          );
+        }
         break;
       case 'energy':
         this.energyReturn = this.overlay;
@@ -770,10 +809,11 @@ export class GameApp {
     this.renderer?.destroy();
     this.renderer = null;
     document.documentElement.dataset.theme = this.store.profile.settings.theme;
+    document.documentElement.dataset.world = this.store.profile.settings.world;
     document.documentElement.dataset.motion = this.store.profile.settings.reducedMotion
       ? 'reduced'
       : 'full';
-    this.root.innerHTML = `<div class="app-shell ${this.screen === 'game' ? 'is-playing' : ''}">${this.header()}<main id="main-content">${this.content()}</main>${this.screen !== 'game' ? this.nav() : ''}<div class="overlay-layer"></div><div class="toast" role="status" aria-live="polite"></div></div>`;
+    this.root.innerHTML = `<div class="world-backdrop" aria-hidden="true">${worldArt(this.store.profile.settings.world)}</div><div class="app-shell ${this.screen === 'game' ? 'is-playing' : ''}">${this.header()}<main id="main-content">${this.content()}</main>${this.screen !== 'game' ? this.nav() : ''}<div class="overlay-layer"></div><div class="toast" role="status" aria-live="polite"></div></div>`;
     if (this.screen === 'game') void this.mountBoard();
     this.renderOverlay();
   }
@@ -810,7 +850,7 @@ export class GameApp {
   private homeContent(): string {
     const profile = this.store.profile;
     const continuing = profile.classicSave?.state.status === 'playing';
-    return `<section class="home-hero"><div class="hero-copy"><div class="eyebrow"><span class="live-dot"></span> TU PRÓXIMA PEQUEÑA VICTORIA</div><h1>Piensa<br>la <span>salida.</span></h1><p class="hero-description">Cada flecha tiene un camino.<br>El truco es encontrar el orden.</p><button class="primary-button hero-play" data-action="play"><span>${continuing ? 'Continuar partida' : 'Jugar ahora'}<small>CLÁSICO <span>·</span> NIVEL ${String(profile.level).padStart(2, '0')}</small></span>${icon('diagonal')}</button><p class="hero-caption">${icon('heart')} ${this.store.hasPremium || profile.economy.collection.lifeTokens > 0 ? 'Cuatro' : 'Tres'} vidas. Cero prisas.</p>${profile.economy.collection.lifeTokens ? `<p class="bonus-life-note">${profile.economy.collection.lifeTokens} reservas de vida extra: una por nuevo intento clásico; continuar es gratis.</p>` : ''}</div><div class="hero-art" aria-hidden="true"><div class="art-orbit orbit-one"></div><div class="art-orbit orbit-two"></div><div class="art-caption">ENCUENTRA TU CAMINO</div>${['up', 'right', 'left', 'down', 'right', 'up', 'down', 'left', 'up'].map((direction, index) => `<div class="art-tile art-${index} direction-${direction}"><span>↑</span></div>`).join('')}<div class="art-tag">${icon('spark')} UN MOVIMIENTO LO CAMBIA TODO</div></div></section><section class="home-lower"><div class="section-heading"><span>Más formas de pensar</span><span class="micro-copy">ELIGE TU RETO</span></div><div class="mode-preview-grid"><button class="mode-preview daily-preview" data-action="daily"><span class="preview-icon">${icon('calendar')}</span><span><small>UNO CADA DÍA</small><strong>El reto de hoy</strong><span>Un nuevo día, una nueva salida.</span></span>${icon('diagonal')}</button><button class="mode-preview share-preview" data-action="shared"><span class="preview-icon">${icon('share')}</span><span><small>MEJOR EN COMPAÑÍA</small><strong>Reta a alguien</strong><span>El mismo puzle. ¿Otro camino?</span></span>${icon('diagonal')}</button></div><div class="rewards-shortcuts"><button data-action="pass">${icon('gift')}<span>Pase de temporada<small>${profile.economy.pass.xp} XP · Recompensas gratuitas</small></span>${icon('arrow')}</button><button data-action="collection">${icon('chest')}<span>Tu colección<small>${profile.economy.collection.chests} cofres · Skins y temas</small></span>${icon('arrow')}</button></div><div class="home-footnote"><span class="tiny-dots"><i></i><i></i><i></i><i></i></span> Sin cuenta. Sin prisa. Con ingenio.</div></section>`;
+    return `<section class="home-hero"><div class="hero-copy"><div class="eyebrow"><span class="live-dot"></span> TU PRÓXIMA PEQUEÑA VICTORIA</div><h1>Piensa<br>la <span>salida.</span></h1><p class="hero-description">Cada flecha tiene un camino.<br>El truco es encontrar el orden.</p><button class="primary-button hero-play" data-action="play"><span>${continuing ? 'Continuar partida' : 'Jugar ahora'}<small>CLÁSICO <span>·</span> NIVEL ${String(profile.level).padStart(2, '0')}</small></span>${icon('diagonal')}</button><p class="hero-caption">${icon('heart')} ${this.store.hasPremium || profile.economy.collection.lifeTokens > 0 ? 'Cuatro' : 'Tres'} vidas. Cero prisas.</p>${profile.economy.collection.lifeTokens ? `<p class="bonus-life-note">${profile.economy.collection.lifeTokens} reservas de vida extra: una por nuevo intento clásico; continuar es gratis.</p>` : ''}</div><div class="hero-art" aria-hidden="true"><div class="art-orbit orbit-one"></div><div class="art-orbit orbit-two"></div><div class="art-caption">ENCUENTRA TU CAMINO</div>${['up', 'right', 'left', 'down', 'right', 'up', 'down', 'left', 'up'].map((direction, index) => `<div class="art-tile art-${index} direction-${direction}"><span>↑</span></div>`).join('')}<div class="art-tag">${icon('spark')} UN MOVIMIENTO LO CAMBIA TODO</div></div></section><section class="home-lower"><div class="section-heading"><span>Más formas de pensar</span><span class="micro-copy">ELIGE TU RETO</span></div><div class="mode-preview-grid"><button class="mode-preview daily-preview" data-action="daily"><span class="preview-icon">${icon('calendar')}</span><span><small>UNO CADA DÍA</small><strong>El reto de hoy</strong><span>Un nuevo día, una nueva salida.</span></span>${icon('diagonal')}</button><button class="mode-preview share-preview" data-action="shared"><span class="preview-icon">${icon('share')}</span><span><small>MEJOR EN COMPAÑÍA</small><strong>Reta a alguien</strong><span>El mismo puzle. ¿Otro camino?</span></span>${icon('diagonal')}</button></div><button class="world-shortcut" data-action="worlds">${icon('gift')}<span><strong>Navidad. Halloween. Tu mundo.</strong><small>Fondos de evento gratis ? ${profile.events.stamps} sellos disponibles</small></span>${icon('arrow')}</button><div class="rewards-shortcuts"><button data-action="pass">${icon('gift')}<span>Pase de temporada<small>${profile.economy.pass.xp} XP · Recompensas gratuitas</small></span>${icon('arrow')}</button><button data-action="collection">${icon('chest')}<span>Tu colección<small>${profile.economy.collection.chests} cofres · Skins y temas</small></span>${icon('arrow')}</button></div><div class="home-footnote"><span class="tiny-dots"><i></i><i></i><i></i><i></i></span> Sin cuenta. Sin prisa. Con ingenio.</div></section>`;
   }
 
   private modesContent(): string {
@@ -1114,11 +1154,13 @@ export class GameApp {
         )
         .join(
           '',
-        )}</div><div class="theme-heading">PALETA DE FLECHAS</div>${themesContent(this.store.profile)}<button class="text-button centered" data-action="collection">Ver skins y cofres ${icon('chest')}</button><button class="text-button centered" data-action="tutorial">${icon('help')} Repetir tutorial</button><p class="settings-footer">FLECHA TRAMPA · v0.2.0<br>Tu progreso se queda en este dispositivo.</p>`;
+        )}</div><button class="secondary-button" data-action="worlds">Fondos y eventos ${icon('gift')}</button><div class="theme-heading">PALETA DE FLECHAS</div>${themesContent(this.store.profile)}<button class="text-button centered" data-action="collection">Ver skins y cofres ${icon('chest')}</button><button class="text-button centered" data-action="tutorial">${icon('help')} Repetir tutorial</button><p class="settings-footer">FLECHA TRAMPA · v0.2.0<br>Tu progreso se queda en este dispositivo.</p>`;
     }
     if (this.overlay === 'hints')
       content = `${close}<div class="modal-symbol lavender">${icon('spark')}</div><h2>Tu ingenio<br>también recarga.</h2><p>No te quedan pistas. Cada tres victorias conseguirás una nueva. ${this.monetization.ads.rewardedAvailable ? 'Puedes obtener otra viendo un anuncio recompensado.' : 'Los anuncios recompensados todavía no están disponibles.'}</p>${this.monetization.ads.rewardedAvailable ? `<button class="secondary-button" data-action="rewarded-hint">Ver anuncio por una pista ${icon('spark')}</button>` : ''}<button class="primary-button" data-action="close-overlay">Seguir pensando ${icon('arrow')}</button>`;
     if (this.overlay === 'result') content = this.resultContent();
+    if (this.overlay === 'world-preview')
+      content = worldPreview(this.store.profile, this.previewWorld);
     if (this.overlay === 'chest' && this.chestDrop) content = chestContent(this.chestDrop);
     if (this.overlay === 'energy') {
       const current = regenerateEnergy(
@@ -1174,7 +1216,8 @@ export class GameApp {
         this.overlay === 'settings' ||
         this.overlay === 'hints' ||
         this.overlay === 'chest' ||
-        this.overlay === 'energy'
+        this.overlay === 'energy' ||
+        this.overlay === 'world-preview'
       )
         this.closeOverlay();
       else if (this.overlay === 'pause') this.closeOverlay();

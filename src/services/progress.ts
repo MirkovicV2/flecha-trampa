@@ -13,6 +13,8 @@ import { SKINS, SKIN_COST } from '../config/collection';
 import type { SkinId } from '../config/collection';
 import type { Entitlements } from './purchases';
 import { createGame } from '../core/game';
+import { WORLDS, defaultEvents } from '../config/worlds';
+import type { EventCollection, WorldId } from '../config/worlds';
 
 export const SAVE_KEY = 'flecha-trampa:profile:v1';
 export interface StoragePort {
@@ -32,6 +34,7 @@ export interface PlayerProfile {
   dailySave: PlaySession | null;
   sharedSave: PlaySession | null;
   economy: EconomyState;
+  events: EventCollection;
   daily: DailyProgress;
   stats: {
     played: number;
@@ -55,6 +58,7 @@ export function defaultProfile(): PlayerProfile {
     dailySave: null,
     sharedSave: null,
     economy: defaultEconomy(),
+    events: defaultEvents(),
     daily: defaultDailyProgress(),
     stats: { played: 0, wins: 0, flawless: 0, totalPlayMs: 0, arrowsCleared: 0, bestCombo: 0 },
   };
@@ -236,6 +240,9 @@ export class ProgressStore {
         1000000,
         this.profile.economy.pass.xp + session.rewardXp,
       );
+      const stamps = firstClassic ? 1 : firstDaily ? 2 : 0;
+      this.profile.events.stamps = Math.min(99999, this.profile.events.stamps + stamps);
+      this.profile.events.earned = Math.min(99999, this.profile.events.earned + stamps);
       this.profile.stats.wins++;
       if (!session.state.errors) this.profile.stats.flawless++;
       if (this.profile.stats.wins % 3 === 0)
@@ -307,6 +314,25 @@ export class ProgressStore {
       return false;
     collection.shards -= SKIN_COST[skin.rarity];
     collection.ownedSkins.push(id);
+    this.flush();
+    return true;
+  }
+
+  unlockWorld(id: WorldId): boolean {
+    if (this.conflicted || this.detectConflict()) return false;
+    const world = WORLDS.find((item) => item.id === id);
+    const events = this.profile.events;
+    if (!world || events.ownedWorlds.includes(id) || events.stamps < world.cost) return false;
+    events.stamps -= world.cost;
+    events.ownedWorlds.push(id);
+    this.flush();
+    return true;
+  }
+
+  equipWorld(id: WorldId): boolean {
+    if (this.conflicted || this.detectConflict() || !this.profile.events.ownedWorlds.includes(id))
+      return false;
+    this.profile.settings.world = id;
     this.flush();
     return true;
   }

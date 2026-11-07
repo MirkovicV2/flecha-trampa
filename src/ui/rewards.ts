@@ -6,6 +6,7 @@ import type { Reward } from '../config/pass';
 import type { PlayerProfile } from '../services/progress';
 import type { ChestDrop } from '../services/economy';
 import { icon } from './icons';
+import { worldGallery } from './worlds';
 
 export function skinPreview(id: SkinId): string {
   const shape = SKINS.find((skin) => skin.id === id)!.shape;
@@ -94,10 +95,10 @@ function collectionContent(profile: PlayerProfile): string {
 export function rewardsContent(
   profile: PlayerProfile,
   premium: boolean,
-  tab: 'pass' | 'collection',
+  tab: 'pass' | 'collection' | 'worlds',
   purchasesAvailable: boolean,
 ): string {
-  return `<section class="page-section rewards-page"><div class="eyebrow">JUEGA. DESBLOQUEA. HAZLO TUYO.</div><h1 class="page-title">Tu siguiente<br>recompensa.</h1><div class="rewards-tabs" role="group" aria-label="Recompensas"><button data-action="pass" class="${tab === 'pass' ? 'selected' : ''}" aria-pressed="${tab === 'pass'}">Pase de temporada</button><button data-action="collection" class="${tab === 'collection' ? 'selected' : ''}" aria-pressed="${tab === 'collection'}">Colección</button></div>${tab === 'pass' ? passContent(profile, premium, purchasesAvailable) : collectionContent(profile)}</section>`;
+  return `<section class="page-section rewards-page"><div class="eyebrow">JUEGA. DESBLOQUEA. HAZLO TUYO.</div><h1 class="page-title">Tu siguiente<br>recompensa.</h1><div class="rewards-tabs" role="group" aria-label="Recompensas"><button data-action="pass" class="${tab === 'pass' ? 'selected' : ''}" aria-pressed="${tab === 'pass'}">Pase de temporada</button><button data-action="worlds" class="${tab === 'worlds' ? 'selected' : ''}" aria-pressed="${tab === 'worlds'}">Fondos y eventos</button><button data-action="collection" class="${tab === 'collection' ? 'selected' : ''}" aria-pressed="${tab === 'collection'}">Colección</button></div>${tab === 'pass' ? passContent(profile, premium, purchasesAvailable) : tab === 'worlds' ? worldGallery(profile) : collectionContent(profile)}</section>`;
 }
 
 export function chestContent(drop: ChestDrop): string {
