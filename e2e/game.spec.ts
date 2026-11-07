@@ -376,7 +376,7 @@ test.describe('finger input', () => {
   });
 });
 
-test('a classic win refunds energy, earns pass XP and claims a reward only once', async ({
+test('a classic win consumes one energy, earns pass XP and claims a reward only once', async ({
   page,
 }, testInfo) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -395,7 +395,7 @@ test('a classic win refunds energy, earns pass XP and claims a reward only once'
   ).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Probar Pase Plus · 0 €' })).toBeEnabled();
   await page.getByRole('button', { name: 'Recoger gratis nivel 1', exact: true }).click();
-  await expect(page.locator('[data-energy-amount]')).toHaveText('7/5');
+  await expect(page.locator('[data-energy-amount]')).toHaveText('6/5');
   await expect(
     page.getByRole('button', { name: 'Recogido gratis nivel 1', exact: true }),
   ).toBeDisabled();
@@ -403,7 +403,7 @@ test('a classic win refunds energy, earns pass XP and claims a reward only once'
   await page.reload();
   await page.getByRole('button', { name: 'Recompensas', exact: true }).click();
   await expect(page.locator('[data-pass-xp]')).toHaveText('125 XP');
-  await expect(page.locator('[data-energy-amount]')).toHaveText('7/5');
+  await expect(page.locator('[data-energy-amount]')).toHaveText('6/5');
   await expect(
     page.getByRole('button', { name: 'Recogido gratis nivel 1', exact: true }),
   ).toBeDisabled();

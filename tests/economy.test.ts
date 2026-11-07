@@ -64,14 +64,14 @@ describe('energy lifecycle', () => {
     expect(store.beginSession(newSession('shared', 1, 'practice', configForLevel(1)))).toBe(true);
     expect(store.profile.economy.energy.amount).toBe(0);
   });
-  it('refunds a winning charge exactly once and does not give replay XP', () => {
+  it('keeps the attempt cost after winning and does not give replay XP', () => {
     const store = new ProgressStore(new MemoryStorage());
     const first = game();
     store.beginSession(first);
     win(first);
     store.recordResult(first);
     store.recordResult(first);
-    expect(store.profile.economy.energy.amount).toBe(5);
+    expect(store.profile.economy.energy.amount).toBe(4);
     expect(store.profile.economy.pass.xp).toBe(125);
     const replay = game();
     store.beginSession(replay);
@@ -79,7 +79,40 @@ describe('energy lifecycle', () => {
     store.recordResult(replay);
     expect(replay.rewardXp).toBe(0);
     expect(store.profile.economy.pass.xp).toBe(125);
-    expect(store.profile.economy.energy.amount).toBe(5);
+    expect(store.profile.economy.energy.amount).toBe(3);
+  });
+  it('uses five charges for five wins and keeps the empty-energy practice escape', () => {
+    const store = new ProgressStore(new MemoryStorage());
+    for (let level = 1; level <= 5; level++) {
+      const session = game(level);
+      expect(store.beginSession(session)).toBe(true);
+      win(session);
+      store.recordResult(session);
+      expect(store.profile.economy.energy.amount).toBe(5 - level);
+    }
+    expect(store.beginSession(game(6))).toBe(false);
+    expect(store.beginSession(newSession('shared', 6, 'free-practice', configForLevel(6)))).toBe(
+      true,
+    );
+    expect(store.profile.economy.energy.amount).toBe(0);
+  });
+  it('honors one legacy refund through reload without changing an old board', () => {
+    const storage = new MemoryStorage();
+    const store = new ProgressStore(storage);
+    const session = game();
+    store.beginSession(session);
+    delete session.energyPolicy;
+    store.flush();
+    const recovered = new ProgressStore(storage);
+    const saved = recovered.profile.classicSave!;
+    expect(saved.initialBoard).toEqual(session.initialBoard);
+    expect(recovered.beginSession(saved)).toBe(true);
+    expect(saved.energyPolicy).toBeUndefined();
+    win(saved);
+    recovered.recordResult(saved);
+    recovered.recordResult(saved);
+    expect(recovered.profile.economy.energy.amount).toBe(5);
+    expect(new ProgressStore(storage).profile.economy.energy.amount).toBe(5);
   });
 });
 
@@ -173,6 +206,7 @@ describe('upgrade and paid boundaries', () => {
     const saved = legacy.classicSave as { state: Record<string, unknown>; energySpent?: boolean };
     delete saved.state.initialLives;
     delete saved.energySpent;
+    delete (saved as Record<string, unknown>).energyPolicy;
     storage.setItem(SAVE_KEY, JSON.stringify(legacy));
     const upgraded = new ProgressStore(storage);
     expect(upgraded.recovery).toBe('none');

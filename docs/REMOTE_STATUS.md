@@ -1,5 +1,15 @@
 # Estado de GitHub
 
+## Versión 0.6.0 — 7 de noviembre de 2026
+
+Cuenta autenticada comprobada: `MirkovicV2`; repositorio `MirkovicV2/flecha-trampa`, privado y con rama predeterminada `main`. Las ramas `feature/expanded-atelier`, `feature/extended-battle-pass` y `feature/tactical-difficulty` se integran en `develop` con merges controlados. `feature/android-060` reúne la versión Android, los cofres gratuitos permanentes, las correcciones geométricas y las pruebas nativas. Se conservan el historial, las ramas y las etiquetas anteriores, sin force push.
+
+Las fuentes finales `8e2150821d1d05aac390908adc34973d05120f87` superan [CI web](https://github.com/MirkovicV2/flecha-trampa/actions/runs/42358356215), con **133 pruebas Vitest y 94 Playwright**, y [Android release](https://github.com/MirkovicV2/flecha-trampa/actions/runs/42358356139), con **dos casos nativos sin fallos, errores ni omisiones**. Los 18 archivos web de la APK firmada coinciden por SHA-256 con el candidato probado en el emulador. Los commits de documentación y los merges de publicación conservan el mismo árbol de aplicación, pruebas y compilación.
+
+La entrega utiliza etiqueta anotada `v0.6.0`, [Release Android](https://github.com/MirkovicV2/flecha-trampa/releases/tag/v0.6.0) y [enlace directo al instalador](https://github.com/MirkovicV2/flecha-trampa/releases/download/v0.6.0/flecha-trampa-v0.6.0-android.apk) en el README de `main` y `develop`. Versión Android 0.6.0, código 7 y el mismo certificado de actualización que 0.5.0. Las claves y credenciales permanecen fuera de Git. Ver [firma, hash, resultados y límites](VALIDATION.md).
+
+La consulta de protección de `main` sigue respondiendo **HTTP 403**: `Upgrade to GitHub Pro or make this repository public to enable this feature.` La visibilidad continúa privada y no hay reglas remotas activas. Ver [configuración de protección](GIT_WORKFLOW.md).
+
 ## Versión 0.5.0 — 7 de noviembre de 2026
 
 Cuenta autenticada comprobada: `MirkovicV2`; repositorio `MirkovicV2/flecha-trampa`, privado y con rama predeterminada `main`. Las nuevas ramas `feature/puzzle-shapes`, `feature/tactical-board` y `feature/level-mastery` se integran en `develop` tras sus verificaciones. `feature/android-050` reúne versión, compatibilidad FT2 y endurecimiento de las comprobaciones de entrega. Se conservan las ramas y el historial anteriores, sin force push.

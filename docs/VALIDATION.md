@@ -1,5 +1,27 @@
 # Validación del juego
 
+## Versión 0.6.0 — 7 de noviembre de 2026
+
+Fuentes finales: `8e2150821d1d05aac390908adc34973d05120f87`. La [validación web](https://github.com/MirkovicV2/flecha-trampa/actions/runs/42358356215) completa `npm ci`, lint, formato, **133 pruebas Vitest en 18 archivos**, TypeScript y Vite. Los runners separados verifican **47 recorridos móviles y 47 de escritorio**, sin fallos ni omisiones. Incluyen las 32 piezas, sus vistas previas, movimientos reales con 14 materiales, premios del nivel 40 en ambas rutas, continuidad del suministro de cofres después del pase y retos FT3 con recarga y continuación.
+
+La revisión geométrica detectó cruces y tramos superpuestos en Eclipse y Corona solar. Se dividieron en placas simples; una nueva prueba recorre todos los polígonos rellenos de las 32 skins. Se revisaron ambos diseños con WebGL real mediante SwiftShader y toques sobre el tablero denso, sin errores JavaScript. No se cambió el área de interacción de las celdas.
+
+El generador suma 600 semillas tácticas verificadas con solver independiente y ejecución completa por las reglas reales, además de las 1.000 semillas rectangulares y 400 con máscaras anteriores. Se fuerzan 550 fallbacks entre ambas revisiones. La comparación reproducible de 500 semillas está en [balance](BALANCE.md): en los niveles 31–60, la profundidad media pasa de 8,16 a 19,77. No equivale a medir derrotas, ingresos o retención con jugadores.
+
+Otra comprobación de producción a 375 y 320 píxeles prueba ocho familias nuevas con tableros de 8 × 8 y 10 × 10: **16 escenarios táctiles**, una retirada exacta por toque, cero errores de juego y una carga de energía por intento. La ampliación de 10 × 10 proporciona objetivos de al menos 44 píxeles. Se revisan capturas de tableros densos, colección, premios finales y cofre por cinco niveles.
+
+La primera batería local produjo 90 recorridos correctos y dos fallos de una expectativa antigua: tras recargar todavía esperaba siete cargas en lugar de seis. Esa expectativa se corrigió; ambos recorridos pasan y la batería remota final confirma los 94 casos con todas las ampliaciones.
+
+La instrumentación corrige tres problemas de sincronización: compilar antes de desbloquear el emulador, sembrar el perfil antes de iniciar la actividad y observar su ciclo de vida sin esperar inactividad global de las animaciones. Las capturas identificaron además un ANR de Pixel Launcher; se utiliza AOSP API 35 con gráficos completos. El helper exclusivo de pruebas usa [ActivityLifecycleMonitor](https://developer.android.com/reference/androidx/test/runner/lifecycle/ActivityLifecycleMonitor) y [runOnMainSync](<https://developer.android.com/reference/android/app/Instrumentation#runOnMainSync(java.lang.Runnable)>); exige foco, hit testing, pulsaciones táctiles nativas y una instancia nueva tras recrear. Arranque, recreación y cierre se limitan a 30 segundos. Se mantienen las animaciones y las comprobaciones de píxeles y guardado; la Activity distribuida no cambia. Los informes conservan los diagnósticos de los candidatos fallidos.
+
+La [ejecución Android final](https://github.com/MirkovicV2/flecha-trampa/actions/runs/42358356139), sobre las mismas fuentes, obtiene **2 casos correctos, 0 fallos, 0 errores y 0 omisiones**, en 168,313 segundos sobre API 35 AOSP sin Wi-Fi ni datos. Se comprueban Preferences reales, guardar y recrear actividad, pistas, Atrás, las cuatro fases del cofre, inventario, paletas, mundos, Pase Plus simulado y, en el segundo caso, reclamar gratis el nivel 40, equipar Fénix y recrear un diamante táctico con sus pistas persistidas. Ambas capturas muestran las flechas pintadas.
+
+APK final: `flecha-trampa-v0.6.0-android.apk`, versión **0.6.0 / código 7**, **3.541.982 bytes**. Los **16 archivos de dist** y los **18 archivos web empaquetados** coinciden por SHA-256 con la APK firmada y el candidato probado en Android CI, respectivamente. Se verifican firma v2/v3, depuración desactivada y alineación de 16 KB. Certificado de actualización: `58c62bfb2890ce39506548144c53a927a91d51985a8a6c258736742ae0b0f654`.
+
+SHA-256: `88620261dfea2e31e913474c4cdbd2403a61fbcae92030ddbf89505b4261165c`. Los commits de documentación y merges conservan el mismo árbol de aplicación, pruebas y compilación verificado. La descarga publicada se vuelve a comprobar antes de cerrar la entrega.
+
+No hay prueba en teléfono físico, IPA, tienda publicada, backend o clasificación global. Anuncios y compras siguen siendo simulaciones identificadas sin cobro.
+
 ## Versión 0.5.0 — 7 de noviembre de 2026
 
 Fuentes finales verificadas: `608db6019bc217c75908d10492f13d23eeab8112`. Tanto [CI web](https://github.com/MirkovicV2/flecha-trampa/actions/runs/42348182068) como [Android release](https://github.com/MirkovicV2/flecha-trampa/actions/runs/42348182085) terminan correctamente. CI confirma instalación limpia, lint, formato, **116 pruebas Vitest en 14 archivos**, TypeScript, Vite y **82 recorridos Playwright contra producción**. La lógica y los recursos del juego están fijados desde `5af41ed`; los cambios posteriores solo afinan las pruebas. Los commits de documentación y merges de entrega no cambian el producto validado.
@@ -92,7 +114,7 @@ Las pruebas de providers usan adaptadores de prueba aislados; la app real conser
 
 Se instaló una cadena local aislada con Temurin 21.0.13+9, SDK 36 y Gradle 8.14.3. `:app:lintRelease`, `:app:assembleRelease` y `:app:assembleDebugAndroidTest` terminaron correctamente en Windows. El instalador release se firmó con una clave de prueba persistente y se verificaron firma v2/v3, alineación, identificador, versión, ausencia de depuración y presencia de los assets del juego. SHA-256 y certificado público acompañan al APK.
 
-El [workflow Android](https://github.com/MirkovicV2/flecha-trampa/actions/workflows/android.yml) añade una prueba con Espresso-Web, Preferences reales y recreación de actividad en emulador API 35, en la variante release y sin red. El alcance y la reproducción se documentan en [MOBILE.md](MOBILE.md). La APK requiere validación adicional en teléfonos físicos; no se han generado AAB ni IPA de tienda.
+El [workflow Android](https://github.com/MirkovicV2/flecha-trampa/actions/workflows/android.yml) comprueba pulsaciones táctiles nativas, Preferences reales y recreación de actividad en emulador API 35, en la variante release y sin red. El alcance y la reproducción se documentan en [MOBILE.md](MOBILE.md). La APK requiere validación adicional en teléfonos físicos; no se han generado AAB ni IPA de tienda.
 
 ## Repetir
 

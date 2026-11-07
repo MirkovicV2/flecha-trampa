@@ -6,9 +6,9 @@ import type { PlayerProfile } from './progress';
 import type { PlaySession } from './session';
 import { defaultDailyProgress, isDailyProgress, isUtcDate } from './daily';
 import { integer, isRecord, nonNegative } from '../utils/validation';
-import { isSkinId } from '../config/collection';
+import { isSkinId, SKINS } from '../config/collection';
 import { isThemeName } from '../config/theme';
-import { PASS_SEASON } from '../config/pass';
+import { PASS_SEASON, MAX_PASS_TIER, parseRewardKey, XP_PER_TIER } from '../config/pass';
 import { defaultEconomy } from './economy';
 import { defaultEvents, isWorldId, WORLD_NAMES } from '../config/worlds';
 
@@ -27,16 +27,14 @@ function isEconomy(value: unknown): boolean {
     pass.season === PASS_SEASON &&
     integer(pass.xp, 0, 1000000) &&
     Array.isArray(pass.claimed) &&
-    pass.claimed.length <= 20 &&
+    pass.claimed.length <= MAX_PASS_TIER * 2 &&
     new Set(pass.claimed).size === pass.claimed.length &&
-    pass.claimed.every(
-      (key: unknown) =>
-        typeof key === 'string' &&
-        /^(free|premium):([1-9]|10)$/.test(key) &&
-        Number(key.split(':')[1]) * 100 <= Number(pass.xp),
-    ) &&
+    pass.claimed.every((key: unknown) => {
+      const parsed = parseRewardKey(key);
+      return parsed !== null && parsed.tier * XP_PER_TIER <= Number(pass.xp);
+    }) &&
     Array.isArray(collection.ownedSkins) &&
-    collection.ownedSkins.length <= 8 &&
+    collection.ownedSkins.length <= SKINS.length &&
     collection.ownedSkins.includes('classic') &&
     collection.ownedSkins.every(isSkinId) &&
     new Set(collection.ownedSkins).size === collection.ownedSkins.length &&
@@ -99,6 +97,19 @@ export function isSavedSession(
   )
     return false;
   if (value.rewardXp !== undefined && !integer(value.rewardXp, 0, 175)) return false;
+  if (
+    value.rewardChests !== undefined &&
+    (!integer(value.rewardChests, 0, 1) ||
+      mode !== 'classic' ||
+      !value.recorded ||
+      state.status !== 'won')
+  )
+    return false;
+  if (
+    value.energyPolicy !== undefined &&
+    (value.energyPolicy !== 'attempt-v2' || !value.energySpent)
+  )
+    return false;
   if (value.hintsUsed !== undefined && !integer(value.hintsUsed, 0, 1000000)) return false;
   if (value.bestCombo !== undefined && !integer(value.bestCombo, 0, 100)) return false;
   if (

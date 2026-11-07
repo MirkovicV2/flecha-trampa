@@ -3,7 +3,7 @@
 ## Energía
 
 - 5 cargas iniciales; el límite de regeneración del Pase Plus verificado es 8.
-- Comenzar un nuevo intento clásico o diario gasta una carga. Una victoria devuelve la carga de ese intento, una sola vez.
+- Comenzar un nuevo intento clásico o diario gasta una carga. En los intentos iniciados desde 0.6.0 se mantiene ese coste tanto al ganar como al perder. Continuar nunca vuelve a cobrar. Los intentos anteriores guardados sin `energyPolicy: attempt-v2` conservan su único reembolso al ganar.
 - Continuar una partida guardada no consume energía ni otra reserva de vida extra.
 - Se regenera una carga cada 10 minutos, también con la app cerrada. No se acumula tiempo de recarga mientras el depósito está lleno.
 - Las bonificaciones del pase pueden superar el límite de regeneración, con un máximo de 99 cargas guardadas.
@@ -14,17 +14,17 @@ La energía y su referencia temporal se guardan con el resto del progreso. No de
 
 ## Pase de temporada
 
-Temporada `S1-CAMINOS`, diez niveles de 100 XP. Esta primera temporada no tiene fecha de cierre. Se conceden 100 XP por superar un nivel clásico nuevo y 150 XP por completar el diario por primera vez. Una victoria sin errores añade 25 XP. Repetir niveles ya superados, los retos compartidos y el tutorial no generan XP.
+Temporada `S1-CAMINOS`, cuarenta niveles de 100 XP. Esta primera temporada no tiene fecha de cierre. Se conceden 100 XP por superar un nivel clásico nuevo y 150 XP por completar el diario por primera vez. Una victoria sin errores añade 25 XP. Repetir niveles ya superados, los retos compartidos y el tutorial no generan XP.
 
-La ruta gratuita entrega energía, cofres, fragmentos, los temas Medianoche y Solar, dos reservas de vida extra y la skin legendaria Corona solar. Cada recompensa se recoge una sola vez y su identificador se persiste. Los resultados se reconcilian si la app se cierra durante la animación final, sin duplicar XP, energía o premios.
+Las 80 recompensas se reparten entre ruta gratuita y Plus. La ruta gratuita entrega 11 skins garantizadas (incluidos Fénix, Solsticio y Noche de brujas), 20 cofres, 100 fragmentos, 6 reservas de vida, 5 pistas, 12 sellos para fondos, dos paletas y 14 cargas repartidas por el recorrido. Plus añade 12 skins, 41 cofres, 245 fragmentos, 6 vidas, 9 pistas, 6 sellos y 12 cargas. Una skin garantizada ya en propiedad da los fragmentos publicados para su rareza. Cada recompensa se recoge una sola vez y su identificador se persiste. Los resultados se reconcilian si la app se cierra durante la animación final, sin duplicar XP ni premios.
 
-Las dos reservas del nivel 4 añaden una cuarta vida a los siguientes dos intentos clásicos nuevos, una por intento. No se consumen por continuar ni al intentar iniciar sin energía. Diario y retos compartidos siempre mantienen tres vidas. Con Pase Plus activo no se consumen estas reservas.
+Las reservas de los niveles 4, 26 y 37 añaden una cuarta vida a los siguientes intentos clásicos nuevos, una por intento. No se consumen por continuar ni al intentar iniciar sin energía. Diario y retos compartidos siempre mantienen tres vidas. Con Pase Plus activo no se consumen estas reservas.
 
 La segunda ruta y las ventajas de Pase Plus incluyen ocho cargas máximas de regeneración, cuatro vidas en cada intento clásico y omisión de intersticiales. La distribución interna ofrece un adaptador de prueba con pantalla de compra de 0,00 €, cancelación y restauración, siempre etiquetado sin cobro. Sus derechos se guardan aparte y no acreditan compras reales. Con `VITE_MONETIZATION_MODE=disabled`, los adaptadores NoOp mantienen anuncios y compra desactivados. Ver los límites y la configuración en [monetización](MONETIZATION.md).
 
 ## Cofres y skins
 
-Hay un cofre inicial y más cofres en el pase. Los cofres se obtienen jugando y no se venden.
+Hay 32 skins (8 comunes, 8 raras, 10 épicas y 6 legendarias), un cofre inicial y más cofres en el pase. Cada nivel clásico nuevo múltiplo de cinco concede además un cofre, también después de completar el pase. Esto mantiene todas las piezas disponibles por juego y creación. No repite premio por recargar, perder, practicar o repetir niveles ya superados, no concede energía y respeta el límite de 999 cofres guardados. Los cofres se obtienen jugando y no se venden.
 
 | Rareza     | Probabilidad base | Fragmentos por duplicado | Coste de creación |
 | ---------- | ----------------- | ------------------------ | ----------------- |
@@ -35,7 +35,7 @@ Hay un cofre inicial y más cofres en el pase. Los cofres se obtienen jugando y 
 
 Si nueve aperturas seguidas no dan épica o legendaria, la décima garantiza una de esas rarezas. Un resultado épico o legendario reinicia el contador. En una apertura garantizada, el 2 % legendario se conserva y el resto pasa a épico; las probabilidades base ya no se aplican a común/rara. Se muestra el número máximo de aperturas restante.
 
-La selección usa `crypto.getRandomValues`. La rareza se elige primero y luego una skin de esa rareza de manera uniforme. Original se entrega al inicio y no aparece en cofres. Hay ocho skins: Original, Doble filo, Voltaje, Arcade, Prisma, Órbita, Corona solar y Supernova. Los duplicados conceden fragmentos para crear directamente una skin concreta, sin otra tirada aleatoria. La apertura consume el cofre y guarda el resultado antes de mostrar la animación.
+La selección usa `crypto.getRandomValues`. La rareza se elige primero y luego una skin de esa rareza de manera uniforme. Original se entrega al inicio y no aparece en cofres. El catálogo conserva las ocho skins fundacionales y añade 24 diseños; consulta la lista y sus firmas en COSMETICS.md. Los duplicados conceden fragmentos para crear directamente una skin concreta, sin otra tirada aleatoria. La apertura consume el cofre y guarda el resultado antes de mostrar la animación.
 
 Desde 0.4.0, la apertura muestra un carrusel con frenado y revelación. Sus tarjetas decorativas son independientes del sorteo real y no fuerzan rarezas altas junto al premio. Saltar, cambiar el ancho, pulsar Atrás o cerrar no vuelve a cobrar ni a sortear. La colección permite inspeccionar diseños y probar sus animaciones sin desbloquearlos o consumir recursos. Ver [presentación cosmética y garantías](COSMETICS.md).
 

@@ -20,7 +20,10 @@ export interface PlaySession {
   generatorVersion: string;
   counted: boolean;
   energySpent?: boolean;
+  /** Present only on attempts started under the new non-refundable energy rules. */
+  energyPolicy?: 'attempt-v2';
   rewardXp?: number;
+  rewardChests?: number;
   lifeTokenSpent?: boolean;
   hintsUsed?: number;
   bestCombo?: number;

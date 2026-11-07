@@ -9,7 +9,7 @@ import type { EconomyState, ChestDrop } from './economy';
 import { ENERGY_CAPACITY, PREMIUM_ENERGY_CAPACITY, regenerateEnergy, spendEnergy } from './energy';
 import { PASS_SEASON, PASS_TIERS, XP_PER_TIER } from '../config/pass';
 import type { Reward } from '../config/pass';
-import { SKINS, SKIN_COST } from '../config/collection';
+import { SKINS, SKIN_COST, DUPLICATE_SHARDS } from '../config/collection';
 import type { SkinId } from '../config/collection';
 import type { Entitlements } from './purchases';
 import { createGame } from '../core/game';
@@ -191,6 +191,7 @@ export class ProgressStore {
         if (!energy) return false;
         this.profile.economy.energy = energy;
         session.energySpent = true;
+        session.energyPolicy = 'attempt-v2';
       }
       if (session.mode === 'classic') {
         let lives: 3 | 4 = this.hasPremium ? 4 : 3;
@@ -236,7 +237,8 @@ export class ProgressStore {
         session.mode === 'daily' &&
         session.date &&
         !this.profile.daily.records[session.date]?.completed;
-      if (session.energySpent) {
+      // Honor the one-charge refund promised to attempts saved by pre-0.6 apps.
+      if (session.energySpent && session.energyPolicy !== 'attempt-v2') {
         const current = regenerateEnergy(
           this.profile.economy.energy,
           Date.now(),
@@ -252,6 +254,14 @@ export class ProgressStore {
         this.profile.economy.pass.xp + session.rewardXp,
       );
       const stamps = firstClassic ? 1 : firstDaily ? 2 : 0;
+      // Keep every cosmetic obtainable through play after the finite pass ends.
+      if (firstClassic && session.level % 5 === 0 && this.profile.economy.collection.chests < 999) {
+        session.rewardChests = 1;
+        this.profile.economy.collection.chests = Math.min(
+          999,
+          this.profile.economy.collection.chests + 1,
+        );
+      }
       this.profile.events.stamps = Math.min(99999, this.profile.events.stamps + stamps);
       this.profile.events.earned = Math.min(99999, this.profile.events.earned + stamps);
       this.profile.stats.wins++;
@@ -293,6 +303,10 @@ export class ProgressStore {
   private grantReward(reward: Reward): void {
     const economy = this.profile.economy;
     const collection = economy.collection;
+    if (reward.kind === 'stamps') {
+      this.profile.events.stamps = Math.min(99999, this.profile.events.stamps + reward.amount);
+      this.profile.events.earned = Math.min(99999, this.profile.events.earned + reward.amount);
+    }
     if (reward.kind === 'energy') {
       economy.energy = regenerateEnergy(economy.energy, Date.now(), this.energyCapacity);
       economy.energy.amount = Math.min(99, economy.energy.amount + reward.amount);
@@ -307,8 +321,13 @@ export class ProgressStore {
       collection.lifeTokens = Math.min(99, collection.lifeTokens + reward.amount);
     if (reward.kind === 'theme' && !collection.ownedThemes.includes(reward.id))
       collection.ownedThemes.push(reward.id);
-    if (reward.kind === 'skin' && !collection.ownedSkins.includes(reward.id))
-      collection.ownedSkins.push(reward.id);
+    if (reward.kind === 'skin') {
+      if (!collection.ownedSkins.includes(reward.id)) collection.ownedSkins.push(reward.id);
+      else {
+        const rarity = SKINS.find((skin) => skin.id === reward.id)!.rarity;
+        collection.shards = Math.min(99999, collection.shards + DUPLICATE_SHARDS[rarity]);
+      }
+    }
   }
 
   openChest(random?: () => number): ChestDrop | null {

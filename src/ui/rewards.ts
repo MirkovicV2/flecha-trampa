@@ -1,7 +1,7 @@
 import { ARROW_COLORS, THEME_LABELS, THEME_NAMES } from '../config/theme';
 import { SKINS, SKIN_COST, RARITY_LABELS, RARITY_CHANCES } from '../config/collection';
 import type { SkinId } from '../config/collection';
-import { PASS_TIERS, XP_PER_TIER } from '../config/pass';
+import { PASS_TIERS, XP_PER_TIER, MAX_PASS_TIER } from '../config/pass';
 import type { Reward } from '../config/pass';
 import type { PlayerProfile } from '../services/progress';
 import type { ChestDrop } from '../services/economy';
@@ -29,8 +29,16 @@ export function rewardLabel(reward: Reward): string {
     chests: 'cofres',
     shards: 'fragmentos',
     lives: 'vidas extra',
+    stamps: 'sellos para fondos',
   };
   return `${reward.amount} ${labels[reward.kind]}`;
+}
+
+function rewardArt(reward: Reward): string {
+  if (reward.kind === 'skin')
+    return `<span class="pass-prize rarity-${SKINS.find((s) => s.id === reward.id)!.rarity}">${skinPreview(reward.id)}</span>`;
+  if (reward.kind === 'theme') return `<span class="pass-prize">${themeSwatches(reward.id)}</span>`;
+  return `<span class="pass-prize">${icon(({ energy: 'energy', hints: 'spark', chests: 'chest', shards: 'spark', lives: 'heart', stamps: 'gift' } as const)[reward.kind])}<b>+${reward.amount}</b></span>`;
 }
 
 function passContent(
@@ -40,16 +48,25 @@ function passContent(
   preview: boolean,
 ): string {
   const pass = profile.economy.pass;
-  const level = Math.min(10, Math.floor(pass.xp / XP_PER_TIER));
-  return `<section class="pass-summary"><div class="eyebrow">TEMPORADA 01 · CAMINOS</div><h2>Un movimiento.<br>Una recompensa.</h2><p>Gana niveles clásicos nuevos: 100 XP. Completa el diario por primera vez: 150 XP. Sin errores: +25 XP.</p><div class="pass-xp"><strong>Nivel ${level} / 10</strong><span data-pass-xp>${pass.xp} XP</span></div><progress max="1000" value="${Math.min(1000, pass.xp)}" aria-label="Progreso del pase"></progress><p class="fine-print">100 XP por nivel del pase. Las recompensas se recogen una sola vez. Esta temporada no tiene fecha de cierre en esta versión.</p></section><div class="premium-summary"><div>${icon('shield')}<strong>${premium ? (preview ? 'Pase Plus de prueba activo' : 'Pase Plus activo') : 'Pase Plus'}</strong><p>Sin intersticiales, hasta 8 cargas de energía, 4 vidas en clásico y una segunda ruta de recompensas. Diario y retos mantienen 3 vidas.</p><p class="fine-print">${preview ? 'PRUEBA · SIN COBRO. Prueba la activación, la restauración y las ventajas. No es una compra real.' : premium ? 'Ventajas activadas mediante tu compra verificada.' : 'Disponible más adelante. Esta versión no incluye compras ni anuncios.'}</p></div>${!premium ? `<button class="secondary-button" data-action="buy-pass" ${purchasesAvailable ? '' : 'disabled'}>${purchasesAvailable ? (preview ? 'Probar Pase Plus · 0 €' : 'Obtener Pase Plus') : 'Pase Plus · Próximamente'}</button>` : ''}<button class="text-button" data-action="restore-purchases">Restaurar compras</button></div><div class="pass-rewards">${PASS_TIERS.map(
+  const level = Math.min(MAX_PASS_TIER, Math.floor(pass.xp / XP_PER_TIER));
+  return `<section class="pass-summary"><div class="eyebrow">TEMPORADA 01 · CAMINOS</div><h2>Un movimiento.<br>Una recompensa.</h2><p>Gana niveles clásicos nuevos: 100 XP. Completa el diario por primera vez: 150 XP. Sin errores: +25 XP.</p><div class="pass-xp"><strong>Nivel ${level} / ${MAX_PASS_TIER}</strong><span data-pass-xp>${pass.xp} XP</span></div><progress max="${MAX_PASS_TIER * XP_PER_TIER}" value="${Math.min(MAX_PASS_TIER * XP_PER_TIER, pass.xp)}" aria-label="Progreso del pase"></progress><p class="fine-print">100 XP por nivel del pase. 40 niveles · 80 recompensas entre las dos rutas. Las skins repetidas se convierten en fragmentos. Las recompensas se recogen una sola vez. Esta temporada no tiene fecha de cierre en esta versión.</p></section><div class="premium-summary"><div>${icon('shield')}<strong>${premium ? (preview ? 'Pase Plus de prueba activo' : 'Pase Plus activo') : 'Pase Plus'}</strong><p>Sin intersticiales, hasta 8 cargas de energía, 4 vidas en clásico y una segunda ruta de recompensas. Diario y retos mantienen 3 vidas.</p><p class="fine-print">${preview ? 'PRUEBA · SIN COBRO. Prueba la activación, la restauración y las ventajas. No es una compra real.' : premium ? 'Ventajas activadas mediante tu compra verificada.' : 'Disponible más adelante. Esta versión no incluye compras ni anuncios.'}</p></div>${!premium ? `<button class="secondary-button" data-action="buy-pass" ${purchasesAvailable ? '' : 'disabled'}>${purchasesAvailable ? (preview ? 'Probar Pase Plus · 0 €' : 'Obtener Pase Plus') : 'Pase Plus · Próximamente'}</button>` : ''}<button class="text-button" data-action="restore-purchases">Restaurar compras</button></div><div class="pass-milestones" aria-label="Grandes recompensas gratuitas">${PASS_TIERS.filter(
+    (tier) => [15, 20, 25, 30, 40].includes(tier.tier),
+  )
+    .map(
+      (tier) =>
+        `<button class="pass-milestone" data-action="pass-chapter" data-value="${tier.tier}">${rewardArt(tier.free)}<small>NIVEL ${tier.tier} · GRATIS</small><strong>${rewardLabel(tier.free)}</strong></button>`,
+    )
+    .join(
+      '',
+    )}</div><nav class="pass-chapters" aria-label="Capítulos del pase">${[1, 11, 21, 31].map((tier) => `<button class="secondary-button" data-action="pass-chapter" data-value="${tier}">${tier}—${tier + 9}</button>`).join('')}</nav><div class="pass-rewards">${PASS_TIERS.map(
     (tier) =>
-      `<article class="pass-tier"><strong class="tier-number">${String(tier.tier).padStart(2, '0')}<small>${tier.tier * XP_PER_TIER} XP</small></strong>${(
+      `<article class="pass-tier ${tier.tier % 5 === 0 ? 'milestone-tier' : ''}" data-pass-tier="${tier.tier}"><strong class="tier-number">${String(tier.tier).padStart(2, '0')}<small>${tier.tier * XP_PER_TIER} XP</small></strong>${(
         ['free', 'premium'] as const
       )
         .map((track) => {
           const claimed = pass.claimed.includes(`${track}:${tier.tier}`);
           const eligible = pass.xp >= tier.tier * XP_PER_TIER && (track === 'free' || premium);
-          return `<div class="pass-track ${track}"><span class="eyebrow">${track === 'free' ? 'GRATIS' : 'PLUS'}</span><strong>${rewardLabel(tier[track])}</strong><button class="${eligible && !claimed ? 'primary-button' : 'secondary-button'}" data-action="claim-reward" data-value="${track}:${tier.tier}" aria-label="${claimed ? 'Recogido' : 'Recoger'} ${track === 'free' ? 'gratis' : 'Plus'} nivel ${tier.tier}" ${!eligible || claimed ? 'disabled' : ''}>${claimed ? 'Recogido' : eligible ? 'Recoger' : track === 'premium' && !premium ? 'Requiere Plus' : 'Bloqueado'}</button></div>`;
+          return `<div class="pass-track ${track}"><span class="eyebrow">${track === 'free' ? 'GRATIS' : 'PLUS'}</span>${rewardArt(tier[track])}<strong>${rewardLabel(tier[track])}</strong><button class="${eligible && !claimed ? 'primary-button' : 'secondary-button'}" data-action="claim-reward" data-value="${track}:${tier.tier}" aria-label="${claimed ? 'Recogido' : 'Recoger'} ${track === 'free' ? 'gratis' : 'Plus'} nivel ${tier.tier}" ${!eligible || claimed ? 'disabled' : ''}>${claimed ? 'Recogido' : eligible ? 'Recoger' : track === 'premium' && !premium ? 'Requiere Plus' : 'Bloqueado'}</button></div>`;
         })
         .join('')}</article>`,
   ).join('')}</div>`;
@@ -66,7 +83,7 @@ function collectionContent(profile: PlayerProfile): string {
   const collection = profile.economy.collection;
   const equipped = SKINS.find((skin) => skin.id === profile.settings.skin)!;
   const design = ARROW_DESIGNS[equipped.id];
-  return `<div class="collection-masthead"><div><span class="studio-kicker">FLECHA TRAMPA / ATELIER 01</span><h2>Elige tu firma.</h2><p>Ocho piezas. Ocho formas de salir.</p></div><span class="collection-count"><strong>${String(collection.ownedSkins.length).padStart(2, '0')}</strong><small>/ 08 EN COLECCIÓN</small></span></div><section class="equipped-showcase rarity-${equipped.rarity}"><div class="showcase-drawing"><span class="drawing-coordinate top">${design.serial}</span><div class="skin-plinth">${skinPreview(equipped.id)}</div><span class="drawing-coordinate bottom">${design.workshop}</span></div><div class="showcase-copy"><span class="studio-kicker">TU PIEZA EQUIPADA</span><h2>${equipped.name}</h2><span class="finish-label">${design.finish}</span><p>${design.description}</p><button class="text-button" data-action="preview-skin" data-value="${equipped.id}">Inspeccionar y probar ${icon('diagonal')}</button></div></section><section class="chest-vault"><div class="chest-art" aria-hidden="true">${supplyCase()}</div><div><div class="studio-kicker">SUMINISTRO 01 · CONSEGUIDO JUGANDO</div><h2>${collection.chests} ${collection.chests === 1 ? 'cofre disponible' : 'cofres disponibles'}</h2><p>Una pieza de la colección en cada apertura. Sin llaves, sin compras.</p><button class="primary-button" data-action="open-chest" ${collection.chests < 1 ? 'disabled' : ''}>Abrir cofre ${icon('arrow')}</button></div></section><div class="chest-odds">${Object.entries(
+  return `<div class="collection-masthead"><div><span class="studio-kicker">FLECHA TRAMPA / ATELIER 01</span><h2>Elige tu firma.</h2><p>32 piezas. Encuentra tu firma de movimiento.</p></div><span class="collection-count"><strong>${String(collection.ownedSkins.length).padStart(2, '0')}</strong><small>/ ${SKINS.length} EN COLECCIÓN</small></span></div><section class="equipped-showcase rarity-${equipped.rarity}"><div class="showcase-drawing"><span class="drawing-coordinate top">${design.serial}</span><div class="skin-plinth">${skinPreview(equipped.id)}</div><span class="drawing-coordinate bottom">${design.workshop}</span></div><div class="showcase-copy"><span class="studio-kicker">TU PIEZA EQUIPADA</span><h2>${equipped.name}</h2><span class="finish-label">${design.finish}</span><p>${design.description}</p><button class="text-button" data-action="preview-skin" data-value="${equipped.id}">Inspeccionar y probar ${icon('diagonal')}</button></div></section><section class="chest-vault"><div class="chest-art" aria-hidden="true">${supplyCase()}</div><div><div class="studio-kicker">SUMINISTRO 01 · CONSEGUIDO JUGANDO</div><h2>${collection.chests} ${collection.chests === 1 ? 'cofre disponible' : 'cofres disponibles'}</h2><p>Un cofre cada 5 niveles clásicos nuevos, también después del pase. Sin llaves, sin compras.</p><button class="primary-button" data-action="open-chest" ${collection.chests < 1 ? 'disabled' : ''}>Abrir cofre ${icon('arrow')}</button></div></section><div class="chest-odds">${Object.entries(
     RARITY_CHANCES,
   )
     .map(
@@ -75,7 +92,7 @@ function collectionContent(profile: PlayerProfile): string {
     )
     .join(
       '',
-    )}</div><p class="fine-print chest-disclosure">Probabilidades por apertura · Épica o superior en un máximo de ${10 - collection.sinceEpic} cofres. Duplicados → fragmentos. La animación no modifica el premio.</p><div class="section-heading"><h2>Skins de flechas</h2><span class="shard-balance">${icon('spark')} ${collection.shards} fragmentos</span></div><div class="collection-filter" role="group" aria-label="Filtrar skins"><button data-action="filter-skins" data-value="all" aria-pressed="true">Todas <span>08</span></button><button data-action="filter-skins" data-value="owned" aria-pressed="false">En propiedad <span>${String(collection.ownedSkins.length).padStart(2, '0')}</span></button><button data-action="filter-skins" data-value="legendary" aria-pressed="false">Legendarias <span>02</span></button></div><div class="skin-grid">${SKINS.map(
+    )}</div><p class="fine-print chest-disclosure">Probabilidades por apertura · Épica o superior en un máximo de ${10 - collection.sinceEpic} cofres. Duplicados → fragmentos. La animación no modifica el premio.</p><div class="section-heading"><h2>Skins de flechas</h2><span class="shard-balance">${icon('spark')} ${collection.shards} fragmentos</span></div><div class="collection-filter" role="group" aria-label="Filtrar skins"><button data-action="filter-skins" data-value="all" aria-pressed="true">Todas <span>${SKINS.length}</span></button><button data-action="filter-skins" data-value="owned" aria-pressed="false">En propiedad <span>${String(collection.ownedSkins.length).padStart(2, '0')}</span></button>${(['common', 'rare', 'epic', 'legendary'] as const).map((rarity) => `<button data-action="filter-skins" data-value="${rarity}" aria-pressed="false">${{ common: 'Comunes', rare: 'Raras', epic: 'Épicas', legendary: 'Legendarias' }[rarity]} <span>${SKINS.filter((skin) => skin.rarity === rarity).length}</span></button>`).join('')}</div><div class="skin-grid">${SKINS.map(
     (skin) => {
       const owned = collection.ownedSkins.includes(skin.id);
       const selected = profile.settings.skin === skin.id;
@@ -84,7 +101,7 @@ function collectionContent(profile: PlayerProfile): string {
     },
   ).join(
     '',
-  )}</div><p class="bonus-life-note">${icon('heart')} ${collection.lifeTokens} reservas de vida extra. Cada reserva añade una cuarta vida al siguiente intento clásico. Se consiguen en el nivel 4 del pase gratuito.</p><h2 class="collection-themes-title">Temas del juego</h2>${themesContent(profile)}`;
+  )}</div><p class="bonus-life-note">${icon('heart')} ${collection.lifeTokens} reservas de vida extra. Cada reserva añade una cuarta vida al siguiente intento clásico. Se consiguen en los niveles 4, 26 y 37 del pase gratuito.</p><h2 class="collection-themes-title">Temas del juego</h2>${themesContent(profile)}`;
 }
 
 export function skinInspector(profile: PlayerProfile, id: SkinId): string {

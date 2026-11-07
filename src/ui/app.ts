@@ -21,7 +21,8 @@ import { rewardsContent, themesContent, rewardLabel, skinInspector } from './rew
 import { isThemeName } from '../config/theme';
 import { isSkinId } from '../config/collection';
 import type { SkinId } from '../config/collection';
-import { PASS_TIERS } from '../config/pass';
+import { PASS_TIERS, parseRewardKey } from '../config/pass';
+import { rewardClaimMotion } from './reward-claim';
 import { energyWaitMs, regenerateEnergy } from '../services/energy';
 import type { ChestDrop } from '../services/economy';
 import { isWorldId } from '../config/worlds';
@@ -317,16 +318,32 @@ export class GameApp {
         if (this.pendingEnergySession) this.begin(this.pendingEnergySession);
         break;
       case 'claim-reward': {
-        const match = /^(free|premium):([1-9]|10)$/.exec(value ?? '');
-        if (!match) break;
-        const track = match[1] as 'free' | 'premium';
-        const tier = Number(match[2]);
+        const parsed = parseRewardKey(value);
+        if (!parsed) break;
+        const { track, tier } = parsed;
         if (this.store.claimPassReward(tier, track)) {
           this.render();
+          rewardClaimMotion(
+            this.root,
+            tier,
+            track,
+            this.store.profile.settings.reducedMotion ||
+              matchMedia('(prefers-reduced-motion: reduce)').matches,
+          );
           this.toast(`Recogido: ${rewardLabel(PASS_TIERS[tier - 1]![track])}.`);
         }
         break;
       }
+      case 'pass-chapter':
+        this.root.querySelector(`[data-pass-tier="${Number(value)}"]`)?.scrollIntoView({
+          behavior:
+            this.store.profile.settings.reducedMotion ||
+            matchMedia('(prefers-reduced-motion: reduce)').matches
+              ? 'instant'
+              : 'smooth',
+          block: 'start',
+        });
+        break;
       case 'open-chest':
         if (!this.chestDrop) {
           this.chestDrop = this.store.openChest();
@@ -359,13 +376,13 @@ export class GameApp {
         );
         break;
       case 'filter-skins':
-        if (!['all', 'owned', 'legendary'].includes(value ?? '')) break;
+        if (!['all', 'owned', 'common', 'rare', 'epic', 'legendary'].includes(value ?? '')) break;
         this.root.querySelectorAll<HTMLElement>('[data-collection-skin]').forEach((card) => {
           card.hidden =
             value === 'owned'
               ? card.dataset.owned !== 'true'
-              : value === 'legendary'
-                ? card.dataset.rarity !== 'legendary'
+              : value !== 'all'
+                ? card.dataset.rarity !== value
                 : false;
         });
         this.root.querySelectorAll('[data-action="filter-skins"]').forEach((button) => {
@@ -543,6 +560,7 @@ export class GameApp {
         height: width,
         density,
         complexity,
+        ...(complexity === 1 ? { tuning: 'chain-v2' as const } : {}),
         ...(isBoardShape(shape) && shape !== 'square' ? { shape } : {}),
       });
       this.pendingShared = false;
@@ -1131,7 +1149,7 @@ export class GameApp {
   private sharedContent(): string {
     const spec = this.challengeSpec;
     if (!spec)
-      return `<section class="page-section shared-page"><div class="eyebrow">UN POCO DE RIVALIDAD SANA</div><h1 class="page-title">Reta a<br>otra mente.</h1><p class="page-description">Crea un puzle que viaje en un enlace. Sin cuentas, sin complicaciones.</p><div class="challenge-form"><label for="challenge-seed">DALE UNA SEMILLA<input class="challenge-input" id="challenge-seed" maxlength="128" value="reto-${crypto.randomUUID().slice(0, 8)}" autocomplete="off" spellcheck="false" /></label><label for="challenge-size">TAMAÑO DEL TABLERO<select id="challenge-size">${[4, 5, 6, 7, 8, 9, 10].map((size) => `<option value="${size}" ${size === 5 ? 'selected' : ''}>${size} × ${size}</option>`).join('')}</select></label><label for="challenge-shape">FORMA DEL TABLERO<select id="challenge-shape">${BOARD_SHAPES.map((shape) => `<option value="${shape}">${SHAPE_LABELS[shape]}</option>`).join('')}</select></label><div class="form-columns"><label for="challenge-density">DENSIDAD<select id="challenge-density"><option value="0.55">Ligera · 55 %</option><option value="0.7" selected>Media · 70 %</option><option value="0.85">Alta · 85 %</option></select></label><label for="challenge-complexity">COMPLEJIDAD<select id="challenge-complexity"><option value="0.35">Tranquila</option><option value="0.65" selected>Ingeniosa</option><option value="0.9">Exigente</option></select></label></div><p class="form-error" data-challenge-error role="alert"></p><button class="primary-button" data-action="shared-create">Crear mi reto ${icon('spark')}</button></div><p class="daily-fineprint">Misma semilla y parámetros, mismo tablero. Los resultados se guardan en cada dispositivo; no existe un ranking global.</p></section>`;
+      return `<section class="page-section shared-page"><div class="eyebrow">UN POCO DE RIVALIDAD SANA</div><h1 class="page-title">Reta a<br>otra mente.</h1><p class="page-description">Crea un puzle que viaje en un enlace. Sin cuentas, sin complicaciones.</p><div class="challenge-form"><label for="challenge-seed">DALE UNA SEMILLA<input class="challenge-input" id="challenge-seed" maxlength="128" value="reto-${crypto.randomUUID().slice(0, 8)}" autocomplete="off" spellcheck="false" /></label><label for="challenge-size">TAMAÑO DEL TABLERO<select id="challenge-size">${[4, 5, 6, 7, 8, 9, 10].map((size) => `<option value="${size}" ${size === 5 ? 'selected' : ''}>${size} × ${size}</option>`).join('')}</select></label><label for="challenge-shape">FORMA DEL TABLERO<select id="challenge-shape">${BOARD_SHAPES.map((shape) => `<option value="${shape}">${SHAPE_LABELS[shape]}</option>`).join('')}</select></label><div class="form-columns"><label for="challenge-density">DENSIDAD<select id="challenge-density"><option value="0.55">Ligera · 55 %</option><option value="0.7" selected>Media · 70 %</option><option value="0.85">Alta · 85 %</option><option value="0.95">Extrema · 95 %</option></select></label><label for="challenge-complexity">COMPLEJIDAD<select id="challenge-complexity"><option value="0.35">Tranquila</option><option value="0.65" selected>Ingeniosa</option><option value="0.9">Exigente</option><option value="1">Maestro · Cadenas largas</option></select></label></div><p class="form-error" data-challenge-error role="alert"></p><button class="primary-button" data-action="shared-create">Crear mi reto ${icon('spark')}</button></div><p class="daily-fineprint">Misma semilla y parámetros, mismo tablero. Los resultados se guardan en cada dispositivo; no existe un ranking global.</p></section>`;
     let url = '';
     let configError = '';
     try {
@@ -1439,7 +1457,7 @@ export class GameApp {
         Date.now(),
         this.store.energyCapacity,
       );
-      content = `${close}<div class="modal-symbol lime">${icon('energy')}</div><div class="eyebrow">TU ENERGÍA</div><h2>${current.amount ? 'Listo para<br>otro intento.' : 'Recarga y<br>vuelve a volar.'}</h2><strong class="energy-total" data-energy-amount>${current.amount} / ${this.store.energyCapacity}</strong><p>Una carga por nueva partida clásica o diaria. Al ganar la recuperas. Continuar un guardado es gratis.</p><p class="energy-next">${current.amount >= this.store.energyCapacity ? 'Energía completa' : 'Próxima carga en'} <strong data-energy-wait></strong></p><p class="fine-print">Una carga cada 10 minutos, también con la app cerrada. Las bonificaciones pueden superar el límite.</p>${this.monetization.ads.rewardedAvailable ? `<button class="secondary-button" data-action="rewarded-energy">${this.commercePreview ? 'Ver anuncio de prueba por energía' : 'Ver anuncio por energía'}</button>` : ''}${this.pendingEnergySession ? '<button class="primary-button" data-action="retry-energy">Volver a intentar</button>' : ''}<button class="secondary-button" data-action="pass">Ver recompensas del pase</button><button class="text-button centered" data-action="practice">Practicar sin energía</button>`;
+      content = `${close}<div class="modal-symbol lime">${icon('energy')}</div><div class="eyebrow">TU ENERGÍA</div><h2>${current.amount ? 'Listo para<br>otro intento.' : 'Recarga y<br>vuelve a volar.'}</h2><strong class="energy-total" data-energy-amount>${current.amount} / ${this.store.energyCapacity}</strong><p>Cada intento nuevo clásico o diario cuesta 1 energía, ganes o pierdas. Continuar un guardado es gratis.</p><p class="energy-next">${current.amount >= this.store.energyCapacity ? 'Energía completa' : 'Próxima carga en'} <strong data-energy-wait></strong></p><p class="fine-print">Una carga cada 10 minutos, también con la app cerrada. Las bonificaciones pueden superar el límite.</p>${this.monetization.ads.rewardedAvailable ? `<button class="secondary-button" data-action="rewarded-energy">${this.commercePreview ? 'Ver anuncio de prueba por energía' : 'Ver anuncio por energía'}</button>` : ''}${this.pendingEnergySession ? '<button class="primary-button" data-action="retry-energy">Volver a intentar</button>' : ''}<button class="secondary-button" data-action="pass">Ver recompensas del pase</button><button class="text-button centered" data-action="practice">Practicar sin energía</button>`;
     }
     layer.innerHTML = `<div class="modal-backdrop"><section class="modal-card ${this.overlay === 'result' ? 'result-card' : this.overlay === 'skin-preview' ? 'skin-inspector-card' : this.overlay === 'chest' ? 'chest-opening-card' : ''}" role="dialog" aria-modal="true" aria-label="${this.overlay === 'settings' ? 'Ajustes' : this.overlay === 'skin-preview' ? 'Inspector de skin' : this.overlay === 'chest' ? 'Apertura de cofre' : this.overlay === 'result' ? 'Resultado de la partida' : this.overlay === 'pause' ? 'Partida en pausa' : 'FLECHA TRAMPA'}">${content}</section></div>`;
     if (this.overlay === 'chest' && this.chestDrop) {
@@ -1492,7 +1510,7 @@ export class GameApp {
             ? 'Volver al reto'
             : 'Siguiente nivel'
       : 'Volver a intentarlo';
-    return `<div class="result-burst ${won ? '' : 'defeat'}">${icon(won ? 'spark' : 'retry')}</div><div class="eyebrow">${won ? (tutorial ? 'YA TIENES LA CLAVE' : 'CAMINO DESPEJADO') : 'TÓMATE OTRO INTENTO'}</div><h2>${won ? (tutorial ? 'Ahora, a<br>tu manera.' : session.state.errors === 0 ? 'Así de<br>impecable.' : 'Una pequeña<br>gran victoria.') : 'La salida<br>sigue ahí.'}</h2><p>${won ? (tutorial ? 'Busca caminos libres. Cada flecha que sale abre nuevas posibilidades.' : session.state.errors === 0 ? 'Ni un solo error. A veces, todo encaja.' : 'Has encontrado el orden. Disfruta ese momento.') : 'Ya conoces mejor el tablero. ¿Lo vuelves a intentar?'}</p>${masteryContent(session)}<div class="result-stats"><div><strong>${formatTime(session.elapsedMs)}</strong><span>TIEMPO</span></div><div><strong>${session.state.errors}</strong><span>ERRORES</span></div><div><strong>${session.state.totalArrows - session.state.board.arrows.length}</strong><span>FLECHAS</span></div></div>${won && !tutorial && this.store.profile.stats.wins % 3 === 0 ? '<div class="reward-note">+1 pista · Cada victoria abre caminos.</div>' : ''}${session.rewardXp ? `<div class="reward-note">+${session.rewardXp} XP para el pase${session.energySpent ? ' · Energía recuperada' : ''}</div>` : ''}<button class="primary-button" data-action="${nextAction}">${nextLabel} ${icon(won ? 'arrow' : 'retry')}</button>${!tutorial ? `<button class="secondary-button" data-action="share-result">Compartir resultado ${icon('share')}</button>` : ''}${this.manualShareText ? `<textarea class="manual-copy" readonly aria-label="Resultado para copiar">${escapeHtml(this.manualShareText)}</textarea>` : ''}<button class="text-button centered" data-action="home">Volver al inicio</button>`;
+    return `<div class="result-burst ${won ? '' : 'defeat'}">${icon(won ? 'spark' : 'retry')}</div><div class="eyebrow">${won ? (tutorial ? 'YA TIENES LA CLAVE' : 'CAMINO DESPEJADO') : 'TÓMATE OTRO INTENTO'}</div><h2>${won ? (tutorial ? 'Ahora, a<br>tu manera.' : session.state.errors === 0 ? 'Así de<br>impecable.' : 'Una pequeña<br>gran victoria.') : 'La salida<br>sigue ahí.'}</h2><p>${won ? (tutorial ? 'Busca caminos libres. Cada flecha que sale abre nuevas posibilidades.' : session.state.errors === 0 ? 'Ni un solo error. A veces, todo encaja.' : 'Has encontrado el orden. Disfruta ese momento.') : 'Ya conoces mejor el tablero. ¿Lo vuelves a intentar?'}</p>${masteryContent(session)}<div class="result-stats"><div><strong>${formatTime(session.elapsedMs)}</strong><span>TIEMPO</span></div><div><strong>${session.state.errors}</strong><span>ERRORES</span></div><div><strong>${session.state.totalArrows - session.state.board.arrows.length}</strong><span>FLECHAS</span></div></div>${won && !tutorial && this.store.profile.stats.wins % 3 === 0 ? '<div class="reward-note">+1 pista · Cada victoria abre caminos.</div>' : ''}${session.rewardChests ? '<div class="reward-note chest-milestone">+1 cofre · Cinco niveles más. Tu colección sigue creciendo.</div>' : ''}${session.rewardXp ? `<div class="reward-note">+${session.rewardXp} XP para el pase${session.energySpent && session.energyPolicy !== 'attempt-v2' ? ' · Energía recuperada del intento antiguo' : ''}</div>` : ''}<button class="primary-button" data-action="${nextAction}">${nextLabel} ${icon(won ? 'arrow' : 'retry')}</button>${!tutorial ? `<button class="secondary-button" data-action="share-result">Compartir resultado ${icon('share')}</button>` : ''}${this.manualShareText ? `<textarea class="manual-copy" readonly aria-label="Resultado para copiar">${escapeHtml(this.manualShareText)}</textarea>` : ''}<button class="text-button centered" data-action="home">Volver al inicio</button>`;
   }
 
   private handleKey(event: KeyboardEvent): void {
