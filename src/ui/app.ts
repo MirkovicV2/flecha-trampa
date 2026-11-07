@@ -34,6 +34,7 @@ import { comboStage } from '../config/combos';
 import { ComboEffects } from './combo-effects';
 import { SkinMotionPreview } from './skin-motion';
 import { ChestOpening, chestOpeningContent } from './chest-opening';
+import { homeScreen } from './home';
 
 type Screen = 'home' | 'modes' | 'game' | 'stats' | 'daily' | 'shared' | 'rewards';
 type Overlay =
@@ -122,6 +123,7 @@ export class GameApp {
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
         this.chestOpening?.skip(true);
+        this.skinMotion.clear();
         this.feedback.stopChest();
         this.tick();
         this.pause();
@@ -129,7 +131,12 @@ export class GameApp {
       }
       this.lastTick = performance.now();
       // Run after Phaser's own visibility listener, which can wake its frame loop.
-      queueMicrotask(() => this.renderer?.setPaused(this.overlay !== null || document.hidden));
+      queueMicrotask(() => {
+        this.renderer?.setPaused(this.overlay !== null || document.hidden);
+        document.documentElement.dataset.effectsPaused = String(
+          this.overlay !== null || document.hidden,
+        );
+      });
     });
     window.addEventListener('pagehide', () => {
       this.chestOpening?.skip(true);
@@ -604,6 +611,7 @@ export class GameApp {
     this.lastTick = performance.now();
     this.store.flush();
     this.render();
+    window.scrollTo({ top: 0, behavior: 'instant' });
   }
 
   private restart(): void {
@@ -992,9 +1000,7 @@ export class GameApp {
   }
 
   private homeContent(): string {
-    const profile = this.store.profile;
-    const continuing = profile.classicSave?.state.status === 'playing';
-    return `<section class="home-hero"><div class="hero-copy"><div class="eyebrow"><span class="live-dot"></span> TU PRÓXIMA PEQUEÑA VICTORIA</div><h1>Piensa<br>la <span>salida.</span></h1><p class="hero-description">Cada flecha tiene un camino.<br>El truco es encontrar el orden.</p><button class="primary-button hero-play" data-action="play"><span>${continuing ? 'Continuar partida' : 'Jugar ahora'}<small>CLÁSICO <span>·</span> NIVEL ${String(profile.level).padStart(2, '0')}</small></span>${icon('diagonal')}</button><p class="hero-caption">${icon('heart')} ${this.store.hasPremium || profile.economy.collection.lifeTokens > 0 ? 'Cuatro' : 'Tres'} vidas. Cero prisas.</p>${profile.economy.collection.lifeTokens ? `<p class="bonus-life-note">${profile.economy.collection.lifeTokens} reservas de vida extra: una por nuevo intento clásico; continuar es gratis.</p>` : ''}</div><div class="hero-art" aria-hidden="true"><div class="art-orbit orbit-one"></div><div class="art-orbit orbit-two"></div><div class="art-caption">ENCUENTRA TU CAMINO</div>${['up', 'right', 'left', 'down', 'right', 'up', 'down', 'left', 'up'].map((direction, index) => `<div class="art-tile art-${index} direction-${direction}"><span>↑</span></div>`).join('')}<div class="art-tag">${icon('spark')} UN MOVIMIENTO LO CAMBIA TODO</div></div></section><section class="home-lower"><div class="section-heading"><span>Más formas de pensar</span><span class="micro-copy">ELIGE TU RETO</span></div><div class="mode-preview-grid"><button class="mode-preview daily-preview" data-action="daily"><span class="preview-icon">${icon('calendar')}</span><span><small>UNO CADA DÍA</small><strong>El reto de hoy</strong><span>Un nuevo día, una nueva salida.</span></span>${icon('diagonal')}</button><button class="mode-preview share-preview" data-action="shared"><span class="preview-icon">${icon('share')}</span><span><small>MEJOR EN COMPAÑÍA</small><strong>Reta a alguien</strong><span>El mismo puzle. ¿Otro camino?</span></span>${icon('diagonal')}</button></div><button class="world-shortcut" data-action="worlds">${icon('gift')}<span><strong>Navidad. Halloween. Tu mundo.</strong><small>Fondos de evento gratis ? ${profile.events.stamps} sellos disponibles</small></span>${icon('arrow')}</button><div class="rewards-shortcuts"><button data-action="pass">${icon('gift')}<span>Pase de temporada<small>${profile.economy.pass.xp} XP · Recompensas gratuitas</small></span>${icon('arrow')}</button><button data-action="collection">${icon('chest')}<span>Tu colección<small>${profile.economy.collection.chests} cofres · Skins y temas</small></span>${icon('arrow')}</button></div><div class="home-footnote"><span class="tiny-dots"><i></i><i></i><i></i><i></i></span> Sin cuenta. Sin prisa. Con ingenio.</div></section>`;
+    return homeScreen(this.store.profile, this.store.hasPremium);
   }
 
   private modesContent(): string {
@@ -1068,7 +1074,7 @@ export class GameApp {
   private gameContent(): string {
     const session = this.session!;
     const tutorial = session.mode === 'tutorial';
-    return `<section class="game-layout"><div class="game-intro"><div class="eyebrow">${tutorial ? 'APRENDER HACIENDO' : session.mode === 'classic' ? 'MODO CLÁSICO' : session.mode === 'daily' ? 'DESAFÍO DIARIO' : 'RETO COMPARTIDO'}</div><h1 class="game-title">${tutorial ? 'Todo tiene<br> un orden.' : 'Una flecha.<br> Un paso más.'}</h1><p class="game-description">Observa el tablero. Libera los caminos.<br>La siguiente salida está ahí.</p><div class="desktop-tip">${icon('help')}<p>Una flecha solo puede salir si no hay otra en su trayectoria. Cada intento bloqueado cuesta una vida.</p></div></div><div class="play-area">${session.lifeTokenSpent ? `<p class="bonus-life-note">${icon('heart')} Vida extra del pase · 4 vidas en este intento</p>` : ''}<div class="game-hud"><div class="lives" role="img" aria-label="3 vidas" data-lives></div><span class="game-timer">${icon('clock')}<span data-timer>${formatTime(session.elapsedMs)}</span></span></div><div class="frenzy-console" data-tier="idle"><span class="frenzy-symbol" aria-hidden="true">ϟ</span><div class="frenzy-copy"><small>COMBO · 1,8 SEGUNDOS</small><strong data-frenzy-title>ENCUENTRA EL RITMO</strong></div><div class="frenzy-timer" role="progressbar" aria-label="Tiempo para continuar el combo" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i data-frenzy-fill></i></div><span class="frenzy-count" data-frenzy-count>—</span></div><div class="board-viewport"><div class="board-frame"><div class="board-corner corner-tl"></div><div class="board-corner corner-br"></div><div class="board-host" aria-hidden="true"></div><div class="board-controls" role="group" aria-label="Tablero de flechas"></div><div class="board-loading">Preparando tu camino…</div></div></div><div class="board-feedback"><strong class="combo-badge" data-combo hidden></strong><button class="text-button zoom-button" data-action="zoom-board" aria-pressed="false">Ampliar tablero</button></div><div class="board-progress"><span>FLECHAS LIBERADAS</span><strong data-counter></strong><div class="progress-track"><i data-progress></i></div></div><div class="tutorial-instruction" ${tutorial ? '' : 'hidden'}></div><div class="game-tools"><button class="hint-button" data-action="hint">${icon('spark')}<span>Una pista</span><span class="hint-count" data-hints>${this.store.profile.hints}</span></button><button class="text-button" data-action="pause">Tomar un respiro ${icon('pause')}</button></div><p class="board-caption">${icon('arrow')} Toca una flecha para liberarla.</p></div></section>`;
+    return `<section class="game-layout"><div class="game-intro"><div class="eyebrow">${tutorial ? 'APRENDER HACIENDO' : session.mode === 'classic' ? 'MODO CLÁSICO' : session.mode === 'daily' ? 'DESAFÍO DIARIO' : 'RETO COMPARTIDO'}</div><h1 class="game-title">${tutorial ? 'Aprende el orden.' : 'Encuentra la salida.'}</h1><p class="game-description">Observa el tablero. Libera los caminos.<br>La siguiente salida está ahí.</p><div class="desktop-tip">${icon('help')}<p>Una flecha solo puede salir si no hay otra en su trayectoria. Cada intento bloqueado cuesta una vida.</p></div></div><div class="play-area">${session.lifeTokenSpent ? `<p class="bonus-life-note">${icon('heart')} Vida extra del pase · 4 vidas en este intento</p>` : ''}<div class="game-hud"><div class="lives" role="img" aria-label="3 vidas" data-lives></div><span class="game-timer">${icon('clock')}<span data-timer>${formatTime(session.elapsedMs)}</span></span></div><div class="frenzy-console" data-tier="idle"><span class="frenzy-symbol" aria-hidden="true">ϟ</span><div class="frenzy-copy"><small>COMBO · 1,8 SEGUNDOS</small><strong data-frenzy-title>ENCUENTRA EL RITMO</strong></div><div class="frenzy-timer" role="progressbar" aria-label="Tiempo para continuar el combo" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i data-frenzy-fill></i></div><span class="frenzy-count" data-frenzy-count>—</span></div><div class="board-viewport"><div class="board-frame"><div class="board-corner corner-tl"></div><div class="board-corner corner-br"></div><div class="board-host" aria-hidden="true"></div><div class="board-controls" role="group" aria-label="Tablero de flechas"></div><div class="board-loading">Preparando tu camino…</div></div></div><div class="board-feedback"><strong class="combo-badge" data-combo hidden></strong><button class="text-button zoom-button" data-action="zoom-board" aria-pressed="false">Ampliar tablero</button></div><div class="board-progress"><span>FLECHAS LIBERADAS</span><strong data-counter></strong><div class="progress-track"><i data-progress></i></div></div><div class="tutorial-instruction" ${tutorial ? '' : 'hidden'}></div><div class="game-tools"><button class="hint-button" data-action="hint">${icon('spark')}<span>Una pista</span><span class="hint-count" data-hints>${this.store.profile.hints}</span></button><button class="text-button" data-action="pause">Tomar un respiro ${icon('pause')}</button></div><p class="board-caption">${icon('arrow')} Toca una flecha para liberarla.</p></div></section>`;
   }
 
   private async mountBoard(): Promise<void> {
@@ -1294,6 +1300,9 @@ export class GameApp {
   }
 
   private renderOverlay(): void {
+    document.documentElement.dataset.effectsPaused = String(
+      this.overlay !== null || document.hidden,
+    );
     this.disposeChest();
     this.skinMotion.clear();
     this.renderer?.setPaused(this.overlay !== null || document.hidden);
