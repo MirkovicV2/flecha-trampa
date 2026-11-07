@@ -9,6 +9,7 @@ import { isSkinId } from '../config/collection';
 import { isThemeName } from '../config/theme';
 import { PASS_SEASON } from '../config/pass';
 import { defaultEconomy } from './economy';
+import { defaultEvents, isWorldId, WORLD_NAMES } from '../config/worlds';
 
 function isEconomy(value: unknown): boolean {
   if (
@@ -180,6 +181,22 @@ export function decodeProfile(serialized: string | null): PlayerProfile | null {
     )
       return null;
     if (value.settings.skin === undefined) value.settings.skin = 'classic';
+    if (value.settings.world === undefined) value.settings.world = 'void';
+    if (!isWorldId(value.settings.world)) return null;
+    if (value.events === undefined) value.events = defaultEvents();
+    if (
+      !isRecord(value.events) ||
+      !integer(value.events.stamps, 0, 99999) ||
+      !integer(value.events.earned, 0, 99999) ||
+      value.events.stamps > value.events.earned ||
+      !Array.isArray(value.events.ownedWorlds) ||
+      !value.events.ownedWorlds.includes('void') ||
+      value.events.ownedWorlds.length > WORLD_NAMES.length ||
+      !value.events.ownedWorlds.every(isWorldId) ||
+      new Set(value.events.ownedWorlds).size !== value.events.ownedWorlds.length
+    )
+      return null;
+    if (!value.events.ownedWorlds.includes(value.settings.world)) value.settings.world = 'void';
     if (!isSkinId(value.settings.skin)) return null;
     if (value.economy === undefined) value.economy = defaultEconomy();
     if (
