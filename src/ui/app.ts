@@ -1,6 +1,7 @@
 import { attemptMove } from '../core/game';
 import { availableMoves } from '../core/board';
-import { configForLevel } from '../generator/config';
+import { configForLevel, classicConfigForLevel } from '../generator/config';
+import { BOARD_SHAPES, SHAPE_LABELS, arrowCount, isBoardShape } from '../generator/shapes';
 import { FeedbackService } from '../services/feedback';
 import { ProgressStore, SAVE_KEY } from '../services/progress';
 import { currentStreak, dailyChallenge, dailyCountdown, utcDate } from '../services/daily';
@@ -35,6 +36,8 @@ import { ComboEffects } from './combo-effects';
 import { SkinMotionPreview } from './skin-motion';
 import { ChestOpening, chestOpeningContent } from './chest-opening';
 import { homeScreen } from './home';
+import { gameScreen } from './game-screen';
+import { RouteInspector } from './route-inspector';
 
 type Screen = 'home' | 'modes' | 'game' | 'stats' | 'daily' | 'shared' | 'rewards';
 type Overlay =
@@ -86,11 +89,14 @@ export class GameApp {
   private energyReturn: Overlay = null;
   private pendingEnergySession: PlaySession | null = null;
   private purchasing = false;
+  private readonly routes: RouteInspector;
+  private inspecting = false;
 
   constructor(
     private readonly root: HTMLElement,
     private readonly store = new ProgressStore(),
   ) {
+    this.routes = new RouteInspector(root);
     this.commerceView = new CommercePreviewView(root);
     this.effects = new ComboEffects(root);
     this.commercePreview = (import.meta.env.VITE_MONETIZATION_MODE ?? 'preview') === 'preview';
@@ -116,9 +122,14 @@ export class GameApp {
       }
       this.action(target.dataset.action ?? '', target.dataset.value);
     });
-    new BoardInput(root, (id) => {
-      void this.selectArrow(id);
-    });
+    new BoardInput(
+      root,
+      (id) => {
+        if (this.inspecting) this.inspectRoute(id);
+        else void this.selectArrow(id);
+      },
+      (id) => this.inspectRoute(id),
+    );
     root.addEventListener('keydown', (event) => this.handleKey(event));
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
@@ -155,6 +166,16 @@ export class GameApp {
       this.pendingShared = true;
       this.screen = 'shared';
     }
+    window.addEventListener('hashchange', () => {
+      if (this.store.conflicted) return;
+      const incoming = readChallengeUrl(location.href);
+      if (incoming.error) this.toast(incoming.error);
+      if (!incoming.challenge) return;
+      this.commerceView.cancel();
+      this.challengeSpec = incoming.challenge;
+      this.pendingShared = true;
+      this.go('shared');
+    });
     this.render();
     bindNativeLifecycle(
       () => {
@@ -412,6 +433,18 @@ export class GameApp {
         if (button) button.textContent = zoomed ? 'Ver tablero completo' : 'Ampliar tablero';
         break;
       }
+      case 'inspect-routes': {
+        this.inspecting = !this.inspecting;
+        this.routes.clear();
+        this.root
+          .querySelector('[data-action="inspect-routes"]')
+          ?.setAttribute('aria-pressed', String(this.inspecting));
+        const status = this.root.querySelector('[data-route-status]');
+        if (this.inspecting && status)
+          status.textContent =
+            'Toca cualquier flecha para inspeccionar. Desactiva Rutas para jugar.';
+        break;
+      }
       case 'toggle':
         this.toggleSetting(value);
         break;
@@ -449,7 +482,7 @@ export class GameApp {
         'classic',
         level,
         `classic:${this.store.profile.runId}:${level}`,
-        configForLevel(level),
+        classicConfigForLevel(level),
         null,
         this.store.hasPremium ? 4 : 3,
       ),
@@ -501,7 +534,14 @@ export class GameApp {
       const complexity = Number(
         this.root.querySelector<HTMLSelectElement>('#challenge-complexity')?.value,
       );
-      this.challengeSpec = createChallenge(seed, { width, height: width, density, complexity });
+      const shape = this.root.querySelector<HTMLSelectElement>('#challenge-shape')?.value;
+      this.challengeSpec = createChallenge(seed, {
+        width,
+        height: width,
+        density,
+        complexity,
+        ...(isBoardShape(shape) && shape !== 'square' ? { shape } : {}),
+      });
       this.pendingShared = false;
       this.render();
     } catch (error) {
@@ -805,6 +845,7 @@ export class GameApp {
   }
 
   private pause(): void {
+    this.routes.clear();
     this.combo = { ...this.combo, count: 0, lastMoveAt: 0 };
     this.effects.clear();
     this.updateCombo();
@@ -857,6 +898,8 @@ export class GameApp {
       this.blockedArrows.has(id)
     )
       return;
+    this.routes.clear();
+    const availableBefore = new Set(availableMoves(session.state.board).map((arrow) => arrow.id));
     const result = attemptMove(session.state, id);
     if (result.kind === 'ignored') return;
     const hitRect = this.root.querySelector(`[data-arrow="${id}"]`)?.getBoundingClientRect();
@@ -884,6 +927,14 @@ export class GameApp {
       this.combo.count,
     );
     this.updateHud();
+    if (result.kind === 'removed') {
+      for (const arrow of availableMoves(session.state.board)) {
+        if (availableBefore.has(arrow.id)) continue;
+        const button = this.root.querySelector(`[data-arrow="${arrow.id}"]`);
+        button?.classList.add('just-unlocked');
+        window.setTimeout(() => button?.classList.remove('just-unlocked'), 650);
+      }
+    } else this.routes.show(session.state.board, id, true);
     this.updateCombo(true);
     if (result.kind === 'removed' && hitRect)
       this.effects.hit(
@@ -914,6 +965,22 @@ export class GameApp {
     this.store.recordResult(session);
     if (session.state.status === 'won') this.feedback.play('win', this.store.profile.settings);
     this.openOverlay('result');
+  }
+
+  private inspectRoute(id: string | null): void {
+    if (id === null) {
+      this.routes.clear();
+      return;
+    }
+    if (
+      this.busy ||
+      this.overlay ||
+      this.screen !== 'game' ||
+      !this.session ||
+      this.session.state.status !== 'playing'
+    )
+      return;
+    this.routes.show(this.session.state.board, id);
   }
 
   private hint(): void {
@@ -952,6 +1019,8 @@ export class GameApp {
   }
 
   private render(): void {
+    this.routes.clear();
+    this.inspecting = false;
     this.disposeChest();
     this.skinMotion.clear();
     this.effects.clear();
@@ -1056,7 +1125,7 @@ export class GameApp {
   private sharedContent(): string {
     const spec = this.challengeSpec;
     if (!spec)
-      return `<section class="page-section shared-page"><div class="eyebrow">UN POCO DE RIVALIDAD SANA</div><h1 class="page-title">Reta a<br>otra mente.</h1><p class="page-description">Crea un puzle que viaje en un enlace. Sin cuentas, sin complicaciones.</p><div class="challenge-form"><label for="challenge-seed">DALE UNA SEMILLA<input class="challenge-input" id="challenge-seed" maxlength="128" value="reto-${crypto.randomUUID().slice(0, 8)}" autocomplete="off" spellcheck="false" /></label><label for="challenge-size">TAMAÑO DEL TABLERO<select id="challenge-size">${[4, 5, 6, 7, 8, 9, 10].map((size) => `<option value="${size}" ${size === 5 ? 'selected' : ''}>${size} × ${size}</option>`).join('')}</select></label><div class="form-columns"><label for="challenge-density">DENSIDAD<select id="challenge-density"><option value="0.55">Ligera · 55 %</option><option value="0.7" selected>Media · 70 %</option><option value="0.85">Alta · 85 %</option></select></label><label for="challenge-complexity">COMPLEJIDAD<select id="challenge-complexity"><option value="0.35">Tranquila</option><option value="0.65" selected>Ingeniosa</option><option value="0.9">Exigente</option></select></label></div><p class="form-error" data-challenge-error role="alert"></p><button class="primary-button" data-action="shared-create">Crear mi reto ${icon('spark')}</button></div><p class="daily-fineprint">Misma semilla y parámetros, mismo tablero. Los resultados se guardan en cada dispositivo; no existe un ranking global.</p></section>`;
+      return `<section class="page-section shared-page"><div class="eyebrow">UN POCO DE RIVALIDAD SANA</div><h1 class="page-title">Reta a<br>otra mente.</h1><p class="page-description">Crea un puzle que viaje en un enlace. Sin cuentas, sin complicaciones.</p><div class="challenge-form"><label for="challenge-seed">DALE UNA SEMILLA<input class="challenge-input" id="challenge-seed" maxlength="128" value="reto-${crypto.randomUUID().slice(0, 8)}" autocomplete="off" spellcheck="false" /></label><label for="challenge-size">TAMAÑO DEL TABLERO<select id="challenge-size">${[4, 5, 6, 7, 8, 9, 10].map((size) => `<option value="${size}" ${size === 5 ? 'selected' : ''}>${size} × ${size}</option>`).join('')}</select></label><label for="challenge-shape">FORMA DEL TABLERO<select id="challenge-shape">${BOARD_SHAPES.map((shape) => `<option value="${shape}">${SHAPE_LABELS[shape]}</option>`).join('')}</select></label><div class="form-columns"><label for="challenge-density">DENSIDAD<select id="challenge-density"><option value="0.55">Ligera · 55 %</option><option value="0.7" selected>Media · 70 %</option><option value="0.85">Alta · 85 %</option></select></label><label for="challenge-complexity">COMPLEJIDAD<select id="challenge-complexity"><option value="0.35">Tranquila</option><option value="0.65" selected>Ingeniosa</option><option value="0.9">Exigente</option></select></label></div><p class="form-error" data-challenge-error role="alert"></p><button class="primary-button" data-action="shared-create">Crear mi reto ${icon('spark')}</button></div><p class="daily-fineprint">Misma semilla y parámetros, mismo tablero. Los resultados se guardan en cada dispositivo; no existe un ranking global.</p></section>`;
     let url = '';
     let configError = '';
     try {
@@ -1068,13 +1137,11 @@ export class GameApp {
     const continuing =
       this.store.profile.sharedSave?.seed === spec.seed &&
       this.store.profile.sharedSave.state.status === 'playing';
-    return `<section class="page-section shared-page"><div class="eyebrow">${this.pendingShared ? 'TE HAN INVITADO A PENSAR' : 'TU RETO ESTÁ LISTO'}</div><h1 class="page-title">El mismo reto.<br>Otra mente.</h1><p class="page-description">La salida será la misma. La forma de encontrarla, muy tuya.</p><div class="challenge-ready"><div class="challenge-symbol">${icon('share')}</div><span class="challenge-seed-label">SEMILLA DEL RETO</span><h2>${escapeHtml(spec.seed)}</h2><p>${spec.config.width} × ${spec.config.height} · ${Math.round(spec.config.width * spec.config.height * spec.config.density)} flechas · Complejidad ${Math.round(spec.config.complexity * 100)} %</p><button class="primary-button" data-action="shared-play">${continuing ? 'Continuar este reto' : 'Jugar este reto'} ${icon('play')}</button><div class="share-buttons"><button class="secondary-button" data-action="share-challenge" ${!url ? 'disabled' : ''}>Compartir ${icon('share')}</button><button class="secondary-button" data-action="copy-challenge" ${!url ? 'disabled' : ''}>Copiar enlace ${icon('copy')}</button></div><label class="share-url-label" for="challenge-url">ENLACE REPRODUCIBLE<input id="challenge-url" readonly value="${escapeHtml(url)}" aria-label="Enlace del reto" /></label>${configError ? `<p class="form-error">${escapeHtml(configError)}</p>` : ''}</div><button class="text-button centered" data-action="shared-reset">Crear otro reto ${icon('retry')}</button>${isLocal ? '<p class="daily-fineprint">Este enlace usa la dirección local del juego. Para abrirlo en otro dispositivo, publica el juego y configura su URL pública.</p>' : '<p class="daily-fineprint">Cualquiera con el enlace puede jugar el mismo tablero. No necesita cuenta ni servidor de partidas.</p>'}</section>`;
+    return `<section class="page-section shared-page"><div class="eyebrow">${this.pendingShared ? 'TE HAN INVITADO A PENSAR' : 'TU RETO ESTÁ LISTO'}</div><h1 class="page-title">El mismo reto.<br>Otra mente.</h1><p class="page-description">La salida será la misma. La forma de encontrarla, muy tuya.</p><div class="challenge-ready"><div class="challenge-symbol">${icon('share')}</div><span class="challenge-seed-label">SEMILLA DEL RETO</span><h2>${escapeHtml(spec.seed)}</h2><p>${spec.config.width} × ${spec.config.height} · ${arrowCount(spec.config)} flechas · ${SHAPE_LABELS[spec.config.shape ?? 'square']} · Complejidad ${Math.round(spec.config.complexity * 100)} %</p><button class="primary-button" data-action="shared-play">${continuing ? 'Continuar este reto' : 'Jugar este reto'} ${icon('play')}</button><div class="share-buttons"><button class="secondary-button" data-action="share-challenge" ${!url ? 'disabled' : ''}>Compartir ${icon('share')}</button><button class="secondary-button" data-action="copy-challenge" ${!url ? 'disabled' : ''}>Copiar enlace ${icon('copy')}</button></div><label class="share-url-label" for="challenge-url">ENLACE REPRODUCIBLE<input id="challenge-url" readonly value="${escapeHtml(url)}" aria-label="Enlace del reto" /></label>${configError ? `<p class="form-error">${escapeHtml(configError)}</p>` : ''}</div><button class="text-button centered" data-action="shared-reset">Crear otro reto ${icon('retry')}</button>${isLocal ? '<p class="daily-fineprint">Este enlace usa la dirección local del juego. Para abrirlo en otro dispositivo, publica el juego y configura su URL pública.</p>' : '<p class="daily-fineprint">Cualquiera con el enlace puede jugar el mismo tablero. No necesita cuenta ni servidor de partidas.</p>'}</section>`;
   }
 
   private gameContent(): string {
-    const session = this.session!;
-    const tutorial = session.mode === 'tutorial';
-    return `<section class="game-layout"><div class="game-intro"><div class="eyebrow">${tutorial ? 'APRENDER HACIENDO' : session.mode === 'classic' ? 'MODO CLÁSICO' : session.mode === 'daily' ? 'DESAFÍO DIARIO' : 'RETO COMPARTIDO'}</div><h1 class="game-title">${tutorial ? 'Aprende el orden.' : 'Encuentra la salida.'}</h1><p class="game-description">Observa el tablero. Libera los caminos.<br>La siguiente salida está ahí.</p><div class="desktop-tip">${icon('help')}<p>Una flecha solo puede salir si no hay otra en su trayectoria. Cada intento bloqueado cuesta una vida.</p></div></div><div class="play-area">${session.lifeTokenSpent ? `<p class="bonus-life-note">${icon('heart')} Vida extra del pase · 4 vidas en este intento</p>` : ''}<div class="game-hud"><div class="lives" role="img" aria-label="3 vidas" data-lives></div><span class="game-timer">${icon('clock')}<span data-timer>${formatTime(session.elapsedMs)}</span></span></div><div class="frenzy-console" data-tier="idle"><span class="frenzy-symbol" aria-hidden="true">ϟ</span><div class="frenzy-copy"><small>COMBO · 1,8 SEGUNDOS</small><strong data-frenzy-title>ENCUENTRA EL RITMO</strong></div><div class="frenzy-timer" role="progressbar" aria-label="Tiempo para continuar el combo" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i data-frenzy-fill></i></div><span class="frenzy-count" data-frenzy-count>—</span></div><div class="board-viewport"><div class="board-frame"><div class="board-corner corner-tl"></div><div class="board-corner corner-br"></div><div class="board-host" aria-hidden="true"></div><div class="board-controls" role="group" aria-label="Tablero de flechas"></div><div class="board-loading">Preparando tu camino…</div></div></div><div class="board-feedback"><strong class="combo-badge" data-combo hidden></strong><button class="text-button zoom-button" data-action="zoom-board" aria-pressed="false">Ampliar tablero</button></div><div class="board-progress"><span>FLECHAS LIBERADAS</span><strong data-counter></strong><div class="progress-track"><i data-progress></i></div></div><div class="tutorial-instruction" ${tutorial ? '' : 'hidden'}></div><div class="game-tools"><button class="hint-button" data-action="hint">${icon('spark')}<span>Una pista</span><span class="hint-count" data-hints>${this.store.profile.hints}</span></button><button class="text-button" data-action="pause">Tomar un respiro ${icon('pause')}</button></div><p class="board-caption">${icon('arrow')} Toca una flecha para liberarla.</p></div></section>`;
+    return gameScreen(this.session!, this.store.profile.hints);
   }
 
   private async mountBoard(): Promise<void> {
@@ -1086,12 +1153,17 @@ export class GameApp {
     try {
       const { BoardRenderer } = await import('../scenes/BoardScene');
       if (epoch !== this.epoch || !host.isConnected) return;
-      this.renderer = new BoardRenderer(host, session.state.board, {
-        ...this.store.profile.settings,
-        reducedMotion:
-          this.store.profile.settings.reducedMotion ||
-          matchMedia('(prefers-reduced-motion: reduce)').matches,
-      });
+      this.renderer = new BoardRenderer(
+        host,
+        session.state.board,
+        {
+          ...this.store.profile.settings,
+          reducedMotion:
+            this.store.profile.settings.reducedMotion ||
+            matchMedia('(prefers-reduced-motion: reduce)').matches,
+        },
+        session.config.shape,
+      );
       await this.renderer.ready;
       if (epoch !== this.epoch) return;
       this.renderer.setPaused(this.overlay !== null || document.hidden);
