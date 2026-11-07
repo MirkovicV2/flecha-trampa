@@ -16,7 +16,7 @@ import { escapeHtml, formatTime } from '../utils/format';
 import { icon } from './icons';
 import { BoardInput } from './board-input';
 import { advanceCombo, COMBO_WINDOW_MS, emptyCombo } from '../core/combo';
-import { rewardsContent, themesContent, chestContent, rewardLabel, skinInspector } from './rewards';
+import { rewardsContent, themesContent, rewardLabel, skinInspector } from './rewards';
 import { isThemeName } from '../config/theme';
 import { isSkinId } from '../config/collection';
 import type { SkinId } from '../config/collection';
@@ -33,6 +33,7 @@ import { PREVIEW_PURCHASE_KEY } from '../services/preview-commerce';
 import { comboStage } from '../config/combos';
 import { ComboEffects } from './combo-effects';
 import { SkinMotionPreview } from './skin-motion';
+import { ChestOpening, chestOpeningContent } from './chest-opening';
 
 type Screen = 'home' | 'modes' | 'game' | 'stats' | 'daily' | 'shared' | 'rewards';
 type Overlay =
@@ -78,6 +79,7 @@ export class GameApp {
   private rewardsTab: 'pass' | 'collection' | 'worlds' = 'pass';
   private previewWorld: WorldId = 'christmas';
   private chestDrop: ChestDrop | null = null;
+  private chestOpening: ChestOpening | null = null;
   private previewSkin: SkinId = 'classic';
   private readonly skinMotion = new SkinMotionPreview();
   private energyReturn: Overlay = null;
@@ -119,6 +121,8 @@ export class GameApp {
     root.addEventListener('keydown', (event) => this.handleKey(event));
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
+        this.chestOpening?.skip(true);
+        this.feedback.stopChest();
         this.tick();
         this.pause();
         this.store.flush();
@@ -128,6 +132,8 @@ export class GameApp {
       queueMicrotask(() => this.renderer?.setPaused(this.overlay !== null || document.hidden));
     });
     window.addEventListener('pagehide', () => {
+      this.chestOpening?.skip(true);
+      this.feedback.stopChest();
       this.tick();
       this.store.flush();
     });
@@ -146,6 +152,8 @@ export class GameApp {
     bindNativeLifecycle(
       () => {
         this.commerceView.cancel();
+        this.chestOpening?.skip(true);
+        this.feedback.stopChest();
         this.tick();
         this.pause();
         this.store.flush();
@@ -188,6 +196,11 @@ export class GameApp {
 
   private action(action: string, value?: string): void {
     if (this.commerceView.active) return;
+    if (
+      this.overlay === 'chest' &&
+      !['skip-chest', 'chest-sound', 'equip-drop', 'close-overlay', 'reload'].includes(action)
+    )
+      return;
     if (this.store.conflicted && action !== 'reload') return;
     switch (action) {
       case 'reload':
@@ -289,6 +302,14 @@ export class GameApp {
           if (this.chestDrop) this.openOverlay('chest');
         }
         break;
+      case 'skip-chest':
+        this.chestOpening?.skip();
+        break;
+      case 'chest-sound':
+        this.store.profile.settings.sound = !this.store.profile.settings.sound;
+        this.store.flush();
+        this.chestOpening?.updateSound();
+        break;
       case 'skin':
         if (isSkinId(value)) this.equipSkin(value);
         break;
@@ -327,7 +348,7 @@ export class GameApp {
         if (isSkinId(value) && this.store.craftSkin(value)) this.equipSkin(value);
         break;
       case 'equip-drop':
-        if (this.chestDrop) this.equipSkin(this.chestDrop.skin);
+        if (this.chestDrop && this.chestOpening?.revealed) this.equipSkin(this.chestDrop.skin);
         break;
       case 'buy-pass':
         void this.purchasePass();
@@ -923,6 +944,7 @@ export class GameApp {
   }
 
   private render(): void {
+    this.disposeChest();
     this.skinMotion.clear();
     this.effects.clear();
     this.epoch++;
@@ -1241,6 +1263,11 @@ export class GameApp {
   private closeOverlay(): void {
     this.skinMotion.clear();
     if (this.overlay === 'chest') {
+      if (this.chestOpening && !this.chestOpening.revealed) {
+        this.chestOpening.skip();
+        return;
+      }
+      this.disposeChest();
       this.chestDrop = null;
       this.overlay = null;
       this.render();
@@ -1267,6 +1294,7 @@ export class GameApp {
   }
 
   private renderOverlay(): void {
+    this.disposeChest();
     this.skinMotion.clear();
     this.renderer?.setPaused(this.overlay !== null || document.hidden);
     const layer = this.root.querySelector<HTMLElement>('.overlay-layer');
@@ -1278,8 +1306,9 @@ export class GameApp {
             value: document.activeElement.dataset.value,
           }
         : null;
-    const main = this.root.querySelector<HTMLElement>('main');
-    if (main) main.inert = this.overlay !== null;
+    this.root.querySelectorAll<HTMLElement>('main, .topbar, .bottom-nav').forEach((element) => {
+      element.inert = this.overlay !== null;
+    });
     if (!this.overlay) {
       layer.innerHTML = '';
       return;
@@ -1314,7 +1343,8 @@ export class GameApp {
       content = worldPreview(this.store.profile, this.previewWorld);
     if (this.overlay === 'skin-preview')
       content = skinInspector(this.store.profile, this.previewSkin);
-    if (this.overlay === 'chest' && this.chestDrop) content = chestContent(this.chestDrop);
+    if (this.overlay === 'chest' && this.chestDrop)
+      content = chestOpeningContent(this.chestDrop, this.store.profile.settings.sound);
     if (this.overlay === 'energy') {
       const current = regenerateEnergy(
         this.store.profile.economy.energy,
@@ -1323,7 +1353,15 @@ export class GameApp {
       );
       content = `${close}<div class="modal-symbol lime">${icon('energy')}</div><div class="eyebrow">TU ENERGÍA</div><h2>${current.amount ? 'Listo para<br>otro intento.' : 'Recarga y<br>vuelve a volar.'}</h2><strong class="energy-total" data-energy-amount>${current.amount} / ${this.store.energyCapacity}</strong><p>Una carga por nueva partida clásica o diaria. Al ganar la recuperas. Continuar un guardado es gratis.</p><p class="energy-next">${current.amount >= this.store.energyCapacity ? 'Energía completa' : 'Próxima carga en'} <strong data-energy-wait></strong></p><p class="fine-print">Una carga cada 10 minutos, también con la app cerrada. Las bonificaciones pueden superar el límite.</p>${this.monetization.ads.rewardedAvailable ? `<button class="secondary-button" data-action="rewarded-energy">${this.commercePreview ? 'Ver anuncio de prueba por energía' : 'Ver anuncio por energía'}</button>` : ''}${this.pendingEnergySession ? '<button class="primary-button" data-action="retry-energy">Volver a intentar</button>' : ''}<button class="secondary-button" data-action="pass">Ver recompensas del pase</button><button class="text-button centered" data-action="practice">Practicar sin energía</button>`;
     }
-    layer.innerHTML = `<div class="modal-backdrop"><section class="modal-card ${this.overlay === 'result' ? 'result-card' : this.overlay === 'skin-preview' ? 'skin-inspector-card' : ''}" role="dialog" aria-modal="true" aria-label="${this.overlay === 'settings' ? 'Ajustes' : this.overlay === 'skin-preview' ? 'Inspector de skin' : this.overlay === 'result' ? 'Resultado de la partida' : this.overlay === 'pause' ? 'Partida en pausa' : 'FLECHA TRAMPA'}">${content}</section></div>`;
+    layer.innerHTML = `<div class="modal-backdrop"><section class="modal-card ${this.overlay === 'result' ? 'result-card' : this.overlay === 'skin-preview' ? 'skin-inspector-card' : this.overlay === 'chest' ? 'chest-opening-card' : ''}" role="dialog" aria-modal="true" aria-label="${this.overlay === 'settings' ? 'Ajustes' : this.overlay === 'skin-preview' ? 'Inspector de skin' : this.overlay === 'chest' ? 'Apertura de cofre' : this.overlay === 'result' ? 'Resultado de la partida' : this.overlay === 'pause' ? 'Partida en pausa' : 'FLECHA TRAMPA'}">${content}</section></div>`;
+    if (this.overlay === 'chest' && this.chestDrop) {
+      this.chestOpening = new ChestOpening(
+        layer,
+        this.chestDrop,
+        () => this.store.profile.settings,
+        (kind, drop) => this.feedback.chest(kind, this.store.profile.settings, drop.rarity),
+      );
+    }
     this.updateEnergy();
     window.requestAnimationFrame(() => {
       const match = focused?.action
@@ -1334,6 +1372,12 @@ export class GameApp {
         : null;
       (match ?? layer.querySelector<HTMLElement>('button'))?.focus({ preventScroll: true });
     });
+  }
+
+  private disposeChest(): void {
+    this.chestOpening?.dispose();
+    this.chestOpening = null;
+    this.feedback.stopChest();
   }
 
   private resultContent(): string {
@@ -1380,7 +1424,7 @@ export class GameApp {
     if (event.key !== 'Tab' || !this.overlay) return;
     const buttons = [
       ...this.root.querySelectorAll<HTMLElement>('.modal-card button:not([disabled])'),
-    ];
+    ].filter((button) => !button.closest('[hidden]') && button.getClientRects().length > 0);
     const first = buttons[0];
     const last = buttons.at(-1);
     if (event.shiftKey && document.activeElement === first) {
