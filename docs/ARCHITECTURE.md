@@ -10,7 +10,7 @@
 
 ## Geometría y presentación cosmética
 
-`config/arrow-designs.ts` define caras y tintas originales en coordenadas normalizadas. SVG y Phaser consumen la misma geometría. `SkinMotionPreview` limita la vida de las animaciones del inspector; un identificador de generación impide que una finalización antigua borre una vista nueva. `home.ts` y las vistas previas de escenarios utilizan la pieza equipada.
+`config/arrow-designs.ts` y `arrow-expansion.ts` definen 32 siluetas, 16 familias de salida, caras y tintas originales en coordenadas normalizadas. SVG y Phaser consumen la misma geometría. `SkinMotionPreview` limita la vida de las animaciones del inspector; un identificador de generación impide que una finalización antigua borre una vista nueva. `home.ts` y las vistas previas de escenarios utilizan la pieza equipada.
 
 `ChestOpening` presenta un premio que `ProgressStore.openChest()` ya sorteó y guardó. `chest-reel.ts` separa tarjetas decorativas, encuadre y frenado de la economía. Saltar, ocultar, redimensionar y navegar cancelan temporizadores y animaciones, sin repetir transacciones. Los clics y acordes se sintetizan y se detienen al salir. Los ambientes de los escenarios son CSS acotado; se pausan tras modales y compras y se omiten con movimiento reducido. Ver [diseño y garantías](COSMETICS.md).
 
@@ -39,13 +39,13 @@ Cada nueva celda recibe una puntuación según las trayectorias existentes que a
 
 El solver no llama `findBlocker`: calcula relaciones geométricas por pares y retira nodos sin bloqueos. Si quedan nodos, hay un ciclo. Retirar una flecha válida nunca añade bloqueos; por eso no se necesita backtracking. El grafo cuesta O(n²), con un máximo de 100 flechas.
 
-`inverse-v1` identifica PRNG, orden de candidatos, puntuación y presupuesto de generación predeterminado. Si una actualización cambia tableros, deberá crear otra versión o conservar el generador anterior. Los enlaces de versiones desconocidas se rechazan.
+`inverse-v1` identifica el algoritmo anterior. La revisión opcional `config.tuning: chain-v2` usa presión de cadena y un análisis de las celdas que quedarían encerradas antes de insertar. Esto permite mayor densidad sin agotar las posiciones disponibles; mantiene cuatro intentos y el mismo fallback probado. FT3 transporta esta revisión, mientras FT1/FT2 mantienen sus tableros y formatos. Ver [métricas reproducibles](BALANCE.md). Si una actualización cambia tableros, deberá crear otra versión o conservar el generador anterior. Los enlaces de versiones desconocidas se rechazan.
 
 ## Sesiones y concurrencia
 
 Cada sesión conserva ID, modo, semilla, parámetros, versión, tablero inicial, estado, tiempo y banderas `counted`/`recorded`. El estado se aplica de forma síncrona antes de animar. Los controles HTML se actualizan sin reconstruir las flechas restantes y aceptan otras jugadas mientras las animaciones se solapan. Solo la flecha bloqueada tiene un breve bloqueo local. `BoardInput` distingue taps de arrastres y evita el click duplicado. Un contador de montaje impide que una escena antigua modifique la siguiente pantalla.
 
-`energy.ts` contiene regeneración y consumo puros. `economy.ts`, `config/pass.ts` y `config/collection.ts` definen el inventario, la temporada y las probabilidades de cofres. `ProgressStore` cobra cada intento una vez, devuelve energía al ganar y registra XP y premios de forma idempotente. Los derechos de pago se consultan al adaptador de compras y no se infieren del guardado. `save-validation.ts` migra los perfiles anteriores sin borrar sus partidas. Ver [reglas y límites de economía](ECONOMY.md).
+`energy.ts` contiene regeneración y consumo puros. `economy.ts`, `config/pass.ts` y `config/collection.ts` definen el inventario, la temporada y las probabilidades de cofres. `ProgressStore` cobra cada intento una vez, mantiene el coste por intento bajo `energyPolicy: attempt-v2`, respeta el reembolso único de sesiones anteriores y registra XP y premios de forma idempotente. Los derechos de pago se consultan al adaptador de compras y no se infieren del guardado. `save-validation.ts` migra los perfiles anteriores sin borrar sus partidas. Ver [reglas y límites de economía](ECONOMY.md).
 
 El resultado se registra antes de animar el último movimiento. Al cargar, se reconcilian sesiones terminales no registradas. Reiniciar crea otro intento con el mismo tablero; continuar conserva el ID y no duplica partidas.
 
@@ -71,4 +71,4 @@ Antes de escribir se comprueba que el principal no haya cambiado desde la últim
 
 Las fechas y rachas usan UTC. Cada fecha completada suma una vez. Los mejores resultados priorizan menos errores y, a igualdad de errores, menor tiempo. La racha visible caduca tras un día sin completar. El reloj y los resultados locales no permiten rankings fiables sin backend.
 
-`#reto=FT1.payload.checksum` contiene los retos rectangulares y `FT2.payload.checksum` las máscaras. La nueva app abre ambos; los clientes anteriores rechazan FT2 en vez de eliminar el parámetro de forma silenciosamente. Un fixture fija el formato FT1 anterior byte a byte y se rechaza cambiar el sobre sin adaptar los parámetros. El payload contiene esquema, generador, semilla y parámetros en base64url con Unicode. El checksum detecta daños accidentales: no es una firma ni una protección contra trampas. El fragmento evita rutas dinámicas en hosting estático. Los valores mostrados en HTML se escapan.
+`#reto=FT1.payload.checksum` contiene los retos rectangulares y `FT2.payload.checksum` las máscaras. FT3 añade la revisión opcional chain-v2. La nueva app abre los tres formatos; los clientes anteriores rechazan los sobres desconocidos en vez de eliminar el parámetro de forma silenciosamente. Un fixture fija el formato FT1 anterior byte a byte y se rechaza cambiar el sobre sin adaptar los parámetros. El payload contiene esquema, generador, semilla y parámetros en base64url con Unicode. El checksum detecta daños accidentales: no es una firma ni una protección contra trampas. El fragmento evita rutas dinámicas en hosting estático. Los valores mostrados en HTML se escapan.

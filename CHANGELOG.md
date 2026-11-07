@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.0 — 2026-11-07
+
+- Catálogo de 32 skins: 24 matrices originales nuevas, ocho familias adicionales de salida (16 en total), materiales y efectos compartidos entre inspector y Phaser. Filtros para cada rareza.
+- Pase ampliado sin reinicio a 40 niveles y 80 recompensas; 23 skins garantizadas entre ambas rutas, cofres, sellos, fragmentos, pistas y vidas. Hitos ilustrados, capítulos y feedback al recoger; duplicados garantizados compensados.
+- Revisión opcional `chain-v2`: cadenas profundas, densidad creciente y análisis de celdas encerradas. Comparador reproducible `npm run balance`, 600 semillas adicionales verificadas y FT3 compatible con guardados nuevos. FT1, FT2 y diario anteriores conservados.
+- Suministro gratuito permanente: un cofre por cada cinco niveles clásicos nuevos, incluso después de completar el pase, sin duplicados por recarga ni devolución de energía.
+- Los intentos nuevos mantienen su coste energético al ganar o perder. Continuar y practicar siguen gratis; se respeta el reembolso único de intentos anteriores.
+- APK 0.6.0 / código 7 con el mismo certificado de actualización. Prueba nativa ampliada para reclamar el nivel 40, equipar Fénix y recrear un reto táctico.
+
 ## 0.5.0 — 2026-11-07
 
 - Referencias oficiales de Slide Arrows Match y Arrow Slide Puzzle documentadas, conservando reglas y recursos originales.
