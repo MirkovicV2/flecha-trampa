@@ -23,6 +23,10 @@ test('continues an old season, claims tier 40 on both tracks and keeps inventory
   await page.getByRole('button', { name: 'Recompensas', exact: true }).click();
   await expect(page.locator('[data-action="claim-reward"]')).toHaveCount(80);
   await expect(page.locator('.pass-xp')).toContainText('40 / 40');
+  const pendingRewards = page.getByRole('button', { name: 'Ver recompensas pendientes' });
+  await expect(pendingRewards).toHaveAttribute('data-value', '2');
+  await pendingRewards.click();
+  await expect(page.locator('[data-pass-tier="2"]')).toBeInViewport();
   await page.getByRole('button', { name: 'Recoger gratis nivel 40', exact: true }).click();
   await expect(
     page.getByRole('button', { name: 'Recogido gratis nivel 40', exact: true }),

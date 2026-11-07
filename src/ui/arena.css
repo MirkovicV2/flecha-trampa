@@ -6,30 +6,12 @@
   font:
     700 10px 'Manrope',
     sans-serif;
-  letter-spacing: 1.4px;
   text-transform: uppercase;
-  color: #b7c0cb;
-}
-.board-index > span:last-child {
-  font-size: 8px;
-  color: #8492a4;
-  letter-spacing: 1px;
 }
 .board-index i {
   font-style: normal;
   margin: 0 5px;
   color: #d3b582;
-}
-.board-frame {
-  border-radius: 16px;
-  box-shadow:
-    0 12px 35px #0003,
-    inset 0 1px #ffffff05;
-}
-.board-host,
-.board-loading,
-.board-viewport {
-  border-radius: 16px;
 }
 .route-overlay {
   position: absolute;
@@ -78,10 +60,7 @@
   stroke-linejoin: round;
 }
 .route-status {
-  min-height: 29px;
-  font-size: 10px;
   line-height: 1.5;
-  color: #8d9aac;
   margin: 0;
 }
 .route-status[data-state='blocked'] {
@@ -95,7 +74,6 @@
   align-items: center;
   gap: 5px;
   min-height: 44px;
-  font-size: 11px;
 }
 .route-toggle .icon {
   width: 15px;
@@ -145,35 +123,10 @@
   }
 }
 @media (max-width: 760px) {
-  .is-playing .game-layout {
-    padding-top: 13px;
-    gap: 14px;
-  }
   .is-playing .game-title {
-    font-size: 27px;
     margin-top: 6px;
   }
-  .is-playing .game-intro .eyebrow {
-    font-size: 8px;
-  }
-  .is-playing .play-area {
-    max-width: 500px;
-  }
-  .is-playing .game-hud {
-    margin-bottom: 10px;
-  }
-  .is-playing .frenzy-console {
-    margin-bottom: 10px;
-    height: 35px;
-  }
-  .is-playing .board-progress {
-    margin: 7px 0 15px;
-  }
-  .is-playing .board-caption {
-    margin-top: 15px;
-  }
   .is-playing .topbar {
-    height: 64px;
     padding-top: 13px;
     padding-bottom: 13px;
   }

@@ -21,8 +21,9 @@ export function gameScreen(session: PlaySession, hints: number): string {
     </div>
     <div class="play-area">
       ${session.lifeTokenSpent ? `<p class="bonus-life-note">${icon('heart')} Vida extra del pase · 4 vidas en este intento</p>` : ''}
-      <div class="game-hud"><div class="lives" role="img" aria-label="3 vidas" data-lives></div>
+      <div class="game-hud"><div class="hud-health"><span class="hud-label">VIDAS</span><div class="lives" role="img" aria-label="3 vidas" data-lives></div></div>
         <span class="game-timer">${icon('clock')}<span data-timer>${formatTime(session.elapsedMs)}</span></span>
+        <div class="board-progress"><span>FLECHAS LIBERADAS</span><strong data-counter></strong><div class="progress-track"><i data-progress></i></div></div>
       </div>
       <div class="frenzy-console" data-tier="idle"><span class="frenzy-symbol" aria-hidden="true">ϟ</span>
         <div class="frenzy-copy"><small>COMBO · 1,8 SEGUNDOS</small><strong data-frenzy-title>ENCUENTRA EL RITMO</strong></div>
@@ -41,7 +42,6 @@ export function gameScreen(session: PlaySession, hints: number): string {
         <button class="text-button zoom-button" data-action="zoom-board" aria-pressed="false">Ampliar tablero</button>
       </div>
       <p class="route-status" data-route-status role="status" aria-live="polite">Mantén pulsado para leer una ruta. Suelta sin mover.</p>
-      <div class="board-progress"><span>FLECHAS LIBERADAS</span><strong data-counter></strong><div class="progress-track"><i data-progress></i></div></div>
       <div class="tutorial-instruction" ${tutorial ? '' : 'hidden'}></div>
       <div class="game-tools"><button class="hint-button" data-action="hint">${icon('spark')}<span>Una pista</span><span class="hint-count" data-hints>${hints}</span></button>
         <button class="text-button" data-action="pause">Tomar un respiro ${icon('pause')}</button>

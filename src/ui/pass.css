@@ -6,8 +6,6 @@
 }
 .pass-milestone {
   border: 1px solid #465063;
-  background: linear-gradient(160deg, #263242, #151c27);
-  border-radius: 12px;
   padding: 15px 8px;
   display: grid;
   justify-items: center;
@@ -16,18 +14,15 @@
 }
 .pass-milestone small {
   font: 9px var(--label-font);
-  color: #e9b96a;
 }
 .pass-milestone strong {
   font-size: 12px;
 }
 .pass-chapters {
   display: flex;
-  gap: 8px;
   position: sticky;
   top: 0;
   z-index: 3;
-  background: #10151eeb;
   padding: 10px 0;
   backdrop-filter: blur(12px);
 }
