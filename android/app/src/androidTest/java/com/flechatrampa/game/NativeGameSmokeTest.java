@@ -136,12 +136,62 @@ public class NativeGameSmokeTest {
         }
     }
 
+    @Test(timeout = 180000)
+    public void shapedChallengeAndRouteInspectionSurviveNativeRecreation() throws Exception {
+        Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        SharedPreferences preferences = context.getSharedPreferences("CapacitorStorage", Context.MODE_PRIVATE);
+        assertTrue(preferences.edit().clear().commit());
+        try (ActivityScenario<MainActivity> activity = ActivityScenario.launch(MainActivity.class)) {
+            activity.onActivity(instance -> instance.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON));
+            await(activity, "!!document.querySelector('[data-action=skip-tutorial]')");
+            click(activity, "[data-action=skip-tutorial]");
+            click(activity, "[data-action=shared]");
+            await(activity, "!!document.querySelector('#challenge-shape')");
+            evaluate(activity, "document.querySelector('#challenge-seed').value = 'native-mask-050'; document.querySelector('#challenge-size').value = '8'; document.querySelector('#challenge-shape').value = 'diamond'; true");
+            click(activity, "[data-action=shared-create]");
+            click(activity, "[data-action=shared-play]");
+            await(activity, "!document.querySelector('.board-loading') && document.querySelectorAll('[data-arrow]').length === 28");
+            assertEquals("true", evaluate(activity, "document.querySelector('.board-frame').dataset.shape === 'diamond'"));
+            assertEquals("true", evaluate(activity, "document.documentElement.scrollWidth <= innerWidth"));
+            click(activity, "[data-action=inspect-routes]");
+            click(activity, "[data-arrow]");
+            await(activity, "!!document.querySelector('.route-overlay svg')");
+            assertEquals("true", evaluate(activity, "document.querySelectorAll('[data-arrow]').length === 28 && document.querySelector('[data-lives]').getAttribute('aria-label') === '3 vidas' && document.querySelector('[data-hints]').textContent === '3'"));
+            click(activity, "[data-action=inspect-routes]");
+            await(activity, "!document.querySelector('.route-overlay svg')");
+            click(activity, "[data-action=hint]");
+            await(activity, "document.querySelector('[data-hints]').textContent === '2'");
+            long deadline = SystemClock.elapsedRealtime() + 15000;
+            while (SystemClock.elapsedRealtime() < deadline && profile(preferences).optInt("hints", -1) != 2) SystemClock.sleep(100);
+            assertEquals(1, profile(preferences).getJSONObject("sharedSave").getInt("hintsUsed"));
+            assertEquals(5, profile(preferences).getJSONObject("economy").getJSONObject("energy").getInt("amount"));
+            InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
+            await(activity, "!!document.querySelector('[data-action=resume]')");
+            activity.recreate();
+            await(activity, "!!document.querySelector('.hero-play')");
+            click(activity, "[data-action=shared]");
+            click(activity, "[data-action=shared-play]");
+            await(activity, "!document.querySelector('.board-loading') && document.querySelectorAll('[data-arrow]').length === 28");
+            JSONObject saved = profile(preferences);
+            assertEquals("diamond", saved.getJSONObject("sharedSave").getJSONObject("config").getString("shape"));
+            assertEquals(1, saved.getJSONObject("sharedSave").getInt("hintsUsed"));
+            assertEquals(1, saved.getJSONObject("stats").getInt("played"));
+            assertEquals("true", evaluate(activity, "document.querySelector('.board-frame').dataset.shape === 'diamond' && document.querySelector('[data-hints]').textContent === '2'"));
+            SystemClock.sleep(300);
+            capture(context, "native-silhouette.png");
+        }
+    }
+
     private static void capture(Context context) throws Exception {
+        capture(context, "native-smoke.png");
+    }
+
+    private static void capture(Context context, String filename) throws Exception {
         // Shared media survives the test runner's automatic removal of app data.
         Bitmap screenshot = InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot();
         assertNotNull(screenshot);
         ContentValues image = new ContentValues();
-        image.put(MediaStore.Images.Media.DISPLAY_NAME, "native-smoke.png");
+        image.put(MediaStore.Images.Media.DISPLAY_NAME, filename);
         image.put(MediaStore.Images.Media.MIME_TYPE, "image/png");
         image.put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/FlechaTrampaTest");
         image.put(MediaStore.Images.Media.IS_PENDING, 1);
