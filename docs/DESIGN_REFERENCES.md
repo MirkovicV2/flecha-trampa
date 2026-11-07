@@ -23,3 +23,7 @@ Las máscaras restringen dónde se colocan las piezas. Un hueco de la silueta no
 El generador rectangular `inverse-v1` conserva sus resultados. `shape` es un parámetro opcional y validado: su ausencia significa el tablero anterior. La fecha UTC del diario sigue usando sus parámetros originales. No se regeneran los guardados existentes. Nuevos guardados y enlaces conservan la máscara completa.
 
 Los cosméticos originales, cofres y progresión continúan disponibles. La referencia visual orienta decisiones concretas de legibilidad y ritmo; no demuestra por sí sola que el juego tenga mejor retención o calidad que otros productos. Esa comparación requiere sesiones con jugadores y pruebas en teléfonos físicos.
+
+## Dominio de cada intento
+
+Una victoria concede una estrella; terminar además sin errores concede dos, y hacerlo también sin consumir pistas concede tres. Se muestra el mejor combo de ese intento y se cuentan las victorias de tres estrellas en las estadísticas. Consultar manualmente una ruta no consume pistas ni mueve piezas. El uso de pistas se guarda en la misma transacción que su descuento. Un guardado antiguo sin ese registro puede obtener dos estrellas, pero no se supone que no utilizó pistas. Registrar o restaurar el mismo resultado no duplica sus estadísticas. Estas estrellas son una valoración visual y no alteran la energía ni los premios de cofres.

@@ -38,6 +38,9 @@ import { ChestOpening, chestOpeningContent } from './chest-opening';
 import { homeScreen } from './home';
 import { gameScreen } from './game-screen';
 import { RouteInspector } from './route-inspector';
+import { masteryContent } from './mastery';
+import { mastery } from '../core/mastery';
+import { version } from '../../package.json';
 
 type Screen = 'home' | 'modes' | 'game' | 'stats' | 'daily' | 'shared' | 'rewards';
 type Overlay =
@@ -611,7 +614,7 @@ export class GameApp {
         this.shareBaseUrl(),
         createChallenge(session.seed, session.config),
       );
-      const text = `FLECHA TRAMPA · ${session.state.status === 'won' ? 'Camino despejado' : 'La salida sigue ahí'}\nTiempo: ${formatTime(session.elapsedMs)} · Errores: ${session.state.errors}\n¿Aceptas el reto?`;
+      const text = `FLECHA TRAMPA · ${session.state.status === 'won' ? 'Camino despejado' : 'La salida sigue ahí'}\nTiempo: ${formatTime(session.elapsedMs)} · Errores: ${session.state.errors}\n${session.state.status === 'won' ? `${mastery(session.state, session.hintsUsed)} de 3 estrellas · ` : ''}Mejor combo ×${session.bestCombo ?? 0}\n¿Aceptas el reto?`;
       const outcome = await this.shareService.share({
         title: 'Mi resultado · FLECHA TRAMPA',
         text,
@@ -906,6 +909,7 @@ export class GameApp {
     this.tick();
     if (result.kind === 'blocked') this.blockedArrows.add(id);
     this.combo = advanceCombo(this.combo, result.kind === 'removed', performance.now());
+    session.bestCombo = Math.max(session.bestCombo ?? 0, this.combo.count);
     this.pendingArrowFocus =
       document.activeElement instanceof HTMLElement && document.activeElement.dataset.arrow
         ? id
@@ -998,7 +1002,7 @@ export class GameApp {
     }
     const valid = availableMoves(this.session.state.board)[0];
     if (!valid) return;
-    if (!this.store.consumeHint()) return;
+    if (!this.store.consumeHint(this.session)) return;
     this.updateHud();
     this.renderer.hint(valid.id);
     const button = this.root.querySelector<HTMLElement>(`[data-arrow="${valid.id}"]`);
@@ -1082,6 +1086,7 @@ export class GameApp {
       [stats.played, 'Partidas jugadas', 'grid'],
       [stats.wins, 'Victorias', 'trophy'],
       [stats.flawless, 'Sin errores', 'shield'],
+      [stats.mastered, 'Victorias de 3 estrellas', 'spark'],
       [formatTime(stats.totalPlayMs), 'Tiempo de juego', 'clock'],
       [stats.arrowsCleared, 'Flechas liberadas', 'arrow'],
       [hints, 'Pistas disponibles', 'spark'],
@@ -1320,10 +1325,11 @@ export class GameApp {
         ([screen, glyph, label]) =>
           `<button data-action="${screen}" class="nav-item ${activeScreen === screen ? 'active' : ''}" ${activeScreen === screen ? 'aria-current="page"' : ''}>${icon(glyph!)}<span>${label}</span></button>`,
       )
-      .join('')}<span class="nav-signature">FLECHA TRAMPA <small>v0.3</small></span></nav>`;
+      .join('')}<span class="nav-signature">FLECHA TRAMPA <small>v${version}</small></span></nav>`;
   }
 
   private openOverlay(overlay: Overlay): void {
+    this.routes.clear();
     if (this.overlay === 'conflict' && overlay !== 'conflict') return;
     if (overlay !== 'result') {
       this.effects.clear();
@@ -1485,7 +1491,7 @@ export class GameApp {
             ? 'Volver al reto'
             : 'Siguiente nivel'
       : 'Volver a intentarlo';
-    return `<div class="result-burst ${won ? '' : 'defeat'}">${icon(won ? 'spark' : 'retry')}</div><div class="eyebrow">${won ? (tutorial ? 'YA TIENES LA CLAVE' : 'CAMINO DESPEJADO') : 'TÓMATE OTRO INTENTO'}</div><h2>${won ? (tutorial ? 'Ahora, a<br>tu manera.' : session.state.errors === 0 ? 'Así de<br>impecable.' : 'Una pequeña<br>gran victoria.') : 'La salida<br>sigue ahí.'}</h2><p>${won ? (tutorial ? 'Busca caminos libres. Cada flecha que sale abre nuevas posibilidades.' : session.state.errors === 0 ? 'Ni un solo error. A veces, todo encaja.' : 'Has encontrado el orden. Disfruta ese momento.') : 'Ya conoces mejor el tablero. ¿Lo vuelves a intentar?'}</p><div class="result-stats"><div><strong>${formatTime(session.elapsedMs)}</strong><span>TIEMPO</span></div><div><strong>${session.state.errors}</strong><span>ERRORES</span></div><div><strong>${session.state.totalArrows - session.state.board.arrows.length}</strong><span>FLECHAS</span></div></div>${won && !tutorial && this.store.profile.stats.wins % 3 === 0 ? '<div class="reward-note">+1 pista · Cada victoria abre caminos.</div>' : ''}${session.rewardXp ? `<div class="reward-note">+${session.rewardXp} XP para el pase${session.energySpent ? ' · Energía recuperada' : ''}</div>` : ''}<button class="primary-button" data-action="${nextAction}">${nextLabel} ${icon(won ? 'arrow' : 'retry')}</button>${!tutorial ? `<button class="secondary-button" data-action="share-result">Compartir resultado ${icon('share')}</button>` : ''}${this.manualShareText ? `<textarea class="manual-copy" readonly aria-label="Resultado para copiar">${escapeHtml(this.manualShareText)}</textarea>` : ''}<button class="text-button centered" data-action="home">Volver al inicio</button>`;
+    return `<div class="result-burst ${won ? '' : 'defeat'}">${icon(won ? 'spark' : 'retry')}</div><div class="eyebrow">${won ? (tutorial ? 'YA TIENES LA CLAVE' : 'CAMINO DESPEJADO') : 'TÓMATE OTRO INTENTO'}</div><h2>${won ? (tutorial ? 'Ahora, a<br>tu manera.' : session.state.errors === 0 ? 'Así de<br>impecable.' : 'Una pequeña<br>gran victoria.') : 'La salida<br>sigue ahí.'}</h2><p>${won ? (tutorial ? 'Busca caminos libres. Cada flecha que sale abre nuevas posibilidades.' : session.state.errors === 0 ? 'Ni un solo error. A veces, todo encaja.' : 'Has encontrado el orden. Disfruta ese momento.') : 'Ya conoces mejor el tablero. ¿Lo vuelves a intentar?'}</p>${masteryContent(session)}<div class="result-stats"><div><strong>${formatTime(session.elapsedMs)}</strong><span>TIEMPO</span></div><div><strong>${session.state.errors}</strong><span>ERRORES</span></div><div><strong>${session.state.totalArrows - session.state.board.arrows.length}</strong><span>FLECHAS</span></div></div>${won && !tutorial && this.store.profile.stats.wins % 3 === 0 ? '<div class="reward-note">+1 pista · Cada victoria abre caminos.</div>' : ''}${session.rewardXp ? `<div class="reward-note">+${session.rewardXp} XP para el pase${session.energySpent ? ' · Energía recuperada' : ''}</div>` : ''}<button class="primary-button" data-action="${nextAction}">${nextLabel} ${icon(won ? 'arrow' : 'retry')}</button>${!tutorial ? `<button class="secondary-button" data-action="share-result">Compartir resultado ${icon('share')}</button>` : ''}${this.manualShareText ? `<textarea class="manual-copy" readonly aria-label="Resultado para copiar">${escapeHtml(this.manualShareText)}</textarea>` : ''}<button class="text-button centered" data-action="home">Volver al inicio</button>`;
   }
 
   private handleKey(event: KeyboardEvent): void {
