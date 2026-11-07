@@ -133,7 +133,7 @@ public class NativeGameSmokeTest {
         }
     }
 
-    @Test(timeout = 180000)
+    @Test(timeout = 240000)
     public void shapedChallengeAndRouteInspectionSurviveNativeRecreation() throws Exception {
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         SharedPreferences preferences = context.getSharedPreferences("CapacitorStorage", Context.MODE_PRIVATE);
@@ -142,9 +142,27 @@ public class NativeGameSmokeTest {
             activity.onActivity(instance -> instance.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON));
             await(activity, "!!document.querySelector('[data-action=skip-tutorial]')");
             click(activity, "[data-action=skip-tutorial]");
+            // Fixture XP only: claim the real new reward through the bundled UI.
+            // No test hooks or synthetic rewards are added to the production app.
+            await(activity, "!!document.querySelector('.hero-play')");
+            long seedDeadline = SystemClock.elapsedRealtime() + 15000;
+            while (SystemClock.elapsedRealtime() < seedDeadline && !preferences.contains(SAVE_KEY)) SystemClock.sleep(100);
+            JSONObject fixture = profile(preferences);
+            fixture.getJSONObject("economy").getJSONObject("pass").put("xp", 4000);
+            assertTrue(preferences.edit().putString(SAVE_KEY, fixture.toString()).commit());
+            activity.recreate();
+            await(activity, "!!document.querySelector('.hero-play')");
+            click(activity, "[data-action=rewards]");
+            await(activity, "document.querySelectorAll('[data-action=claim-reward]').length === 80");
+            click(activity, "[data-action=claim-reward][data-value='free:40']");
+            await(activity, "document.querySelector('[data-action=claim-reward][data-value=\"free:40\"]').disabled");
+            click(activity, ".rewards-tabs [data-action=collection]");
+            assertEquals("true", evaluate(activity, "document.querySelectorAll('[data-collection-skin]').length === 32"));
+            click(activity, "[data-action=skin][data-value=phoenix]");
+            click(activity, "[data-action=home]");
             click(activity, "[data-action=shared]");
             await(activity, "!!document.querySelector('#challenge-shape')");
-            evaluate(activity, "document.querySelector('#challenge-seed').value = 'native-mask-050'; document.querySelector('#challenge-size').value = '8'; document.querySelector('#challenge-shape').value = 'diamond'; true");
+            evaluate(activity, "document.querySelector('#challenge-seed').value = 'native-mask-060'; document.querySelector('#challenge-size').value = '8'; document.querySelector('#challenge-shape').value = 'diamond'; document.querySelector('#challenge-complexity').value = '1'; true");
             click(activity, "[data-action=shared-create]");
             click(activity, "[data-action=shared-play]");
             await(activity, "!document.querySelector('.board-loading') && document.querySelectorAll('[data-arrow]').length === 28");
@@ -170,6 +188,9 @@ public class NativeGameSmokeTest {
             click(activity, "[data-action=shared-play]");
             await(activity, "!document.querySelector('.board-loading') && document.querySelectorAll('[data-arrow]').length === 28");
             JSONObject saved = profile(preferences);
+            assertEquals("chain-v2", saved.getJSONObject("sharedSave").getJSONObject("config").getString("tuning"));
+            assertEquals("phoenix", saved.getJSONObject("settings").getString("skin"));
+            assertTrue(saved.getJSONObject("economy").getJSONObject("pass").getJSONArray("claimed").toString().contains("free:40"));
             assertEquals("diamond", saved.getJSONObject("sharedSave").getJSONObject("config").getString("shape"));
             assertEquals(1, saved.getJSONObject("sharedSave").getInt("hintsUsed"));
             assertEquals(1, saved.getJSONObject("stats").getInt("played"));
