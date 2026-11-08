@@ -1,11 +1,8 @@
 name: CI
 on:
   workflow_dispatch:
-  push:
-    # Topic branches are validated by their PR; keep integration branch gates.
-    branches: [main, develop]
   pull_request:
-    branches: [main, develop]
+    branches: [main]
 permissions:
   contents: read
 concurrency:
