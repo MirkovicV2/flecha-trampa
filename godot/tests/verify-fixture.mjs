@@ -10,7 +10,10 @@ assert.equal(gems.length, 25);
 function matches(board) {
   const union = new Set();
   for (let i = 0; i < 25; i++) {
-    for (const [dx, dy] of [[1, 0], [0, 1]]) {
+    for (const [dx, dy] of [
+      [1, 0],
+      [0, 1],
+    ]) {
       let x = i % 5;
       let y = Math.floor(i / 5);
       const run = [];
@@ -31,7 +34,11 @@ const swapped = [...gems];
 assert.deepEqual(matches(swapped), [0, 1, 2], 'Known initial valid swap');
 
 // Fail when source directions change, requiring review of this separate geometry oracle.
-assert.ok(source.includes('directions.append(3 if row == 0 else (1 if row == 4 else (0 if row % 2 == 0 else 2)))'));
+assert.ok(
+  source.includes(
+    'directions.append(3 if row == 0 else (1 if row == 4 else (0 if row % 2 == 0 else 2)))',
+  ),
+);
 const directions = Array.from({ length: 25 }, (_, cell) => {
   const row = Math.floor(cell / 5);
   return row === 0 ? 3 : row === 4 ? 1 : row % 2 === 0 ? 0 : 2;
@@ -41,7 +48,10 @@ function blocks(a, b) {
   const y = Math.floor(a / 5);
   const bx = b % 5;
   const by = Math.floor(b / 5);
-  return a !== b && [by === y && bx > x, bx === x && by > y, by === y && bx < x, bx === x && by < y][directions[a]];
+  return (
+    a !== b &&
+    [by === y && bx > x, bx === x && by > y, by === y && bx < x, bx === x && by < y][directions[a]]
+  );
 }
 
 let remaining = Array.from({ length: 25 }, (_, cell) => cell);
@@ -55,9 +65,14 @@ while (remaining.length) {
 for (const removed of [[], matches(swapped)]) {
   remaining = solution.filter((cell) => !removed.includes(cell));
   for (const cell of [...remaining]) {
-    assert.ok(!remaining.some((other) => blocks(cell, other)), 'Solution remains legal after match');
+    assert.ok(
+      !remaining.some((other) => blocks(cell, other)),
+      'Solution remains legal after match',
+    );
     remaining = remaining.filter((other) => cell !== other);
   }
   assert.equal(remaining.length, 0);
 }
-console.log('Fixed fixture: no initial matches; valid three-match; complete acyclic extraction solution preserved after match.');
+console.log(
+  'Fixed fixture: no initial matches; valid three-match; complete acyclic extraction solution preserved after match.',
+);

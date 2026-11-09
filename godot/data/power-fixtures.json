@@ -1,0 +1,57 @@
+{
+  "ref": "3c00af2b630ff1a5f7ef1397a4c057ecf0bc54ce",
+  "path": "src/core/special-arrow.ts",
+  "sourceSha256": "f33d73013e7879e743f1efb4877e9f8333693f75a7ab9b642de69110e63390c3",
+  "runId": "00000000-0000-4000-8000-000000000001",
+  "powerRunId": "classic:00000000-0000-4000-8000-000000000001",
+  "fixtures": [
+    {
+      "level": 1,
+      "kind": "pulse",
+      "id": "a5",
+      "targets": ["a1", "a7"]
+    },
+    {
+      "level": 2,
+      "kind": "nova",
+      "id": "a8",
+      "targets": ["a12", "a9", "a5"]
+    },
+    {
+      "level": 3,
+      "kind": "ray",
+      "id": "a9",
+      "targets": ["a3", "a2", "a7"]
+    },
+    {
+      "level": 4,
+      "kind": "nova",
+      "id": "a1",
+      "targets": ["a0", "a2", "a5"]
+    },
+    {
+      "level": 5,
+      "kind": "pulse",
+      "id": "a8",
+      "targets": ["a12", "a10"]
+    },
+    {
+      "level": 6,
+      "kind": "ray",
+      "id": "a13",
+      "targets": ["a12", "a2", "a3"]
+    },
+    {
+      "level": 7,
+      "kind": "ray",
+      "id": "a14",
+      "targets": ["a25", "a13", "a24"]
+    },
+    {
+      "level": 8,
+      "kind": "pulse",
+      "id": "a0",
+      "targets": ["a2", "a4"]
+    }
+  ]
+}
