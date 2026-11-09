@@ -8,3 +8,4 @@ coverage/
 android/
 ios/
 package-lock.json
+godot/.godot/

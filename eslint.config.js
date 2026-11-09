@@ -14,6 +14,7 @@ export default tseslint.config(
       'test-results/**',
       'android/**',
       'ios/**',
+      'godot/.godot/**',
     ],
   },
   js.configs.recommended,
